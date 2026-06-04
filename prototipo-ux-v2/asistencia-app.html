@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Asistencia - Gestión de Equipos</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f172a;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;}
+
+/* ── WINDOW ── */
+.win{width:1100px;max-width:100%;height:640px;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 32px 80px rgba(0,0,0,.6);}
+.title-bar{height:36px;background:#1e2a3a;display:flex;align-items:center;gap:10px;padding:0 14px;flex-shrink:0;user-select:none;}
+.title-bar-icon{font-size:14px;}
+.title-bar-text{font-size:12px;color:#a0aec0;font-weight:500;flex:1;}
+.win-btns{display:flex;gap:0;}
+.wb{width:46px;height:36px;border:none;background:transparent;color:#a0aec0;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s;}
+.wb:hover{background:rgba(255,255,255,.08);}
+.wb.close:hover{background:#e81123;color:#fff;}
+.app-body{flex:1;display:flex;overflow:hidden;}
+
+/* ── SIDEBAR ── */
+.sidebar{width:182px;background:#1a2035;display:flex;flex-direction:column;flex-shrink:0;}
+.sb-brand{padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.06);}
+.sb-brand-icon{font-size:22px;color:#60a5fa;margin-bottom:6px;}
+.sb-brand-name{font-size:15px;font-weight:700;color:#fff;line-height:1.2;}
+.sb-nav{flex:1;padding:8px 0;}
+.sni{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;color:#94a3b8;font-size:13px;border-radius:0;transition:all .15s;margin:1px 0;}
+.sni:hover{background:rgba(255,255,255,.05);color:#e2e8f0;}
+.sni.active{background:#2563eb;color:#fff;font-weight:600;}
+.sni-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0;}
+.sni-badge{margin-left:auto;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:99px;padding:1px 6px;}
+.sb-user{padding:12px 14px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:10px;}
+.sb-av{width:36px;height:36px;border-radius:50%;background:#2563eb;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;}
+.sb-online{width:10px;height:10px;border-radius:50%;background:#22c55e;border:2px solid #1a2035;position:absolute;bottom:0;right:0;}
+.sb-uname{font-size:12px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sb-urole{font-size:10px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sb-ustore{font-size:10px;color:#64748b;white-space:nowrap;}
+
+/* ── MAIN ── */
+.app-main{flex:1;background:#f1f5f9;overflow-y:auto;display:flex;flex-direction:column;}
+.app-page{display:none;flex:1;flex-direction:column;}
+.app-page.active{display:flex;}
+
+/* ── ASISTENCIA PAGE ── */
+.asi-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 14px;background:#fff;border-bottom:1px solid #f0f1f5;}
+.asi-title{font-size:22px;font-weight:800;color:#1a1a2e;}
+.asi-sub{font-size:12px;color:#64748b;margin-top:2px;}
+.asi-datetime{display:flex;align-items:center;gap:14px;font-size:13px;color:#374151;font-weight:500;}
+.asi-dt-item{display:flex;align-items:center;gap:5px;}
+.asi-body{flex:1;display:flex;align-items:center;justify-content:center;padding:24px;}
+.asi-card{background:#fff;border-radius:14px;border:1px solid #e8eaf0;padding:30px 32px;width:100%;max-width:480px;box-shadow:0 2px 12px rgba(0,0,0,.05);}
+.asi-card-title{font-size:18px;font-weight:700;color:#1a1a2e;text-align:center;margin-bottom:6px;}
+.asi-card-sub{font-size:13px;color:#64748b;text-align:center;margin-bottom:28px;}
+.asi-actions{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px;}
+.asi-btn{display:flex;flex-direction:column;align-items:center;gap:10px;padding:24px 16px;border:1.5px solid #e8eaf0;border-radius:12px;cursor:pointer;transition:all .15s;background:#fff;}
+.asi-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.1);}
+.asi-btn.ingreso:hover{border-color:#16a34a;}
+.asi-btn.salida:hover{border-color:#dc2626;}
+.asi-btn-circle{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;}
+.asi-btn-circle.green{background:#16a34a;}
+.asi-btn-circle.red{background:#dc2626;}
+.asi-btn-label{font-size:17px;font-weight:800;letter-spacing:.04em;}
+.asi-btn-label.green{color:#16a34a;}
+.asi-btn-label.red{color:#dc2626;}
+.asi-btn-desc{font-size:12px;color:#64748b;}
+.asi-info{display:flex;align-items:center;gap:8px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;font-size:12.5px;color:#1e40af;}
+
+/* Other pages (placeholder) */
+.placeholder-page{display:flex;align-items:center;justify-content:center;flex:1;color:#94a3b8;font-size:14px;}
+
+/* ── MODAL OVERLAY ── */
+.m-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px;}
+.m-overlay.open{display:flex;}
+.m-box{background:#fff;border-radius:12px;width:380px;max-width:100%;box-shadow:0 24px 64px rgba(0,0,0,.3);overflow:hidden;}
+.m-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #f0f1f5;}
+.m-title{font-size:14px;font-weight:700;color:#1a1a2e;}
+.m-x{width:26px;height:26px;border-radius:50%;border:1.5px solid #e8eaf0;background:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;color:#64748b;}
+.m-x:hover{background:#f1f5f9;}
+.m-body{padding:22px 20px;}
+.m-footer{padding:0 18px 16px;display:flex;gap:10px;justify-content:flex-end;}
+
+/* Modal: Huella */
+.m-huella{text-align:center;}
+.fp-wrap{position:relative;width:100px;height:100px;margin:0 auto 18px;}
+.fp-icon{font-size:56px;line-height:100px;}
+.fp-ring{position:absolute;inset:0;border-radius:50%;border:3px solid #e2e8f0;border-top-color:#2563eb;animation:fp-spin 1.2s linear infinite;}
+.fp-ring2{position:absolute;inset:6px;border-radius:50%;border:2px solid transparent;border-top-color:#60a5fa;animation:fp-spin .8s linear infinite reverse;}
+@keyframes fp-spin{to{transform:rotate(360deg);}}
+.m-huella-title{font-size:18px;font-weight:700;color:#1a1a2e;margin-bottom:6px;}
+.m-huella-sub{font-size:12.5px;color:#64748b;line-height:1.5;}
+.m-cancel-only{display:flex;justify-content:center;padding:0 18px 18px;}
+
+/* Modal: Programación encontrada */
+.m-prog-warn{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;}
+.m-prog-ico{font-size:28px;flex-shrink:0;line-height:1;}
+.m-prog-ttl{font-size:16px;font-weight:700;color:#1a1a2e;margin-bottom:4px;}
+.m-prog-info{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;font-size:12px;color:#374151;line-height:1.8;margin-bottom:12px;}
+.m-prog-info strong{color:#1a1a2e;}
+.m-prog-note{font-size:12px;color:#64748b;line-height:1.5;}
+
+/* Modal: Auth code */
+.m-auth{text-align:center;}
+.m-auth-ico{font-size:48px;margin-bottom:14px;opacity:.85;}
+.m-auth-title{font-size:16px;font-weight:700;color:#1a1a2e;margin-bottom:4px;}
+.m-auth-sub{font-size:12px;color:#64748b;margin-bottom:20px;line-height:1.5;}
+.auth-inputs{display:flex;gap:8px;justify-content:center;margin-bottom:20px;}
+.auth-input{width:42px;height:48px;border:2px solid #e8eaf0;border-radius:8px;text-align:center;font-size:20px;font-weight:700;color:#1a1a2e;outline:none;transition:border-color .15s;}
+.auth-input:focus{border-color:#2563eb;}
+.auth-eye{color:#94a3b8;cursor:pointer;font-size:16px;margin-left:6px;}
+
+/* Modal: Confirmación */
+.m-conf{text-align:center;}
+.m-conf-ico{font-size:52px;margin-bottom:14px;display:block;}
+.m-conf-title{font-size:17px;font-weight:700;color:#1a1a2e;margin-bottom:10px;}
+.m-conf-desc{font-size:12.5px;color:#64748b;line-height:1.6;margin-bottom:12px;}
+.m-conf-q{font-size:13px;font-weight:600;color:#374151;}
+
+/* Modal: Registro exitoso */
+.m-success .m-body{padding:16px 18px;}
+.success-hdr{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.success-ico{width:40px;height:40px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.success-title{font-size:15px;font-weight:700;color:#1a1a2e;}
+.success-type{font-size:12px;color:#64748b;}
+.success-dt{font-size:12px;color:#64748b;}
+.success-notes{display:flex;flex-direction:column;gap:7px;margin-bottom:16px;}
+.sn-item{display:flex;align-items:flex-start;gap:8px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:9px 11px;font-size:11.5px;color:#1e40af;line-height:1.4;}
+.sn-item.green{background:#f0fdf4;border-color:#bbf7d0;color:#166534;}
+.sn-icon{flex-shrink:0;font-size:13px;}
+
+/* Notificaciones panel (after success) */
+.notif-panel{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:1200;opacity:0;pointer-events:none;transition:opacity .4s;}
+.notif-panel.show{opacity:1;pointer-events:all;}
+.notif-card{background:#fff;border:1px solid #f0f1f5;border-radius:10px;padding:12px 14px;width:210px;box-shadow:0 8px 24px rgba(0,0,0,.12);display:flex;flex-direction:column;gap:4px;}
+.nc-hdr{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#1a1a2e;}
+.nc-ico{font-size:14px;}
+.nc-body{font-size:11px;color:#64748b;line-height:1.4;}
+.nc-time{font-size:10px;color:#94a3b8;}
+
+/* Buttons */
+.btn-outline{padding:8px 18px;border:1.5px solid #e8eaf0;border-radius:8px;font-size:12.5px;font-weight:600;color:#374151;background:#fff;cursor:pointer;}
+.btn-outline:hover{background:#f8fafc;}
+.btn-primary{padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;}
+.btn-primary:hover{background:#1d4ed8;}
+.btn-danger{padding:8px 18px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;}
+.btn-danger:hover{background:#b91c1c;}
+
+/* Progress bar in huella */
+.fp-progress{height:3px;background:#f0f1f5;border-radius:99px;margin-top:16px;overflow:hidden;}
+.fp-progress-bar{height:100%;background:#2563eb;border-radius:99px;width:0%;transition:width 2.4s linear;}
+
+/* ── REPORTES PAGE ── */
+.rpt-header{display:flex;align-items:center;justify-content:space-between;padding:16px 22px 12px;background:#fff;border-bottom:1px solid #f0f1f5;flex-shrink:0;}
+.rpt-title{font-size:19px;font-weight:800;color:#1a1a2e;}
+.rpt-sub{font-size:12px;color:#64748b;margin-top:2px;}
+.rpt-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:12px 22px;background:#f8fafc;border-bottom:1px solid #f0f1f5;flex-shrink:0;}
+.rpt-kpi{background:#fff;border-radius:9px;padding:10px 14px;border:1px solid #f0f1f5;}
+.rpt-kpi-val{font-size:22px;font-weight:800;color:#1a1a2e;line-height:1;}
+.rpt-kpi-lbl{font-size:10.5px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-top:3px;}
+.rpt-kpi.green .rpt-kpi-val{color:#16a34a;}
+.rpt-kpi.blue  .rpt-kpi-val{color:#2563eb;}
+.rpt-kpi.red   .rpt-kpi-val{color:#dc2626;}
+.rpt-tbl-wrap{flex:1;overflow:auto;padding:12px 22px 16px;}
+.rpt-tbl{width:100%;min-width:760px;border-collapse:collapse;font-size:12px;}
+.rpt-tbl th:nth-child(5),.rpt-tbl td:nth-child(5),
+.rpt-tbl th:nth-child(6),.rpt-tbl td:nth-child(6),
+.rpt-tbl th:nth-child(7),.rpt-tbl td:nth-child(7){white-space:nowrap;}
+.rpt-tbl thead th{padding:7px 10px;font-size:10.5px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid #f0f1f5;background:#fff;text-align:left;white-space:nowrap;position:sticky;top:0;}
+.rpt-tbl tbody tr{border-bottom:1px solid #f8fafc;transition:background .1s;}
+.rpt-tbl tbody tr:hover{background:#f8faff;}
+.rpt-tbl td{padding:7px 10px;color:#374151;vertical-align:middle;}
+.rpt-dni{font-family:monospace;font-size:11.5px;color:#64748b;}
+.rpt-hora{font-size:12px;font-weight:700;font-family:monospace;}
+.rpt-hora.in{color:#16a34a;}
+.rpt-hora.out{color:#dc2626;}
+.rpt-hora.none{color:#d1d5db;}
+.rpt-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;}
+.rpt-badge.completo{background:#dcfce7;color:#15803d;}
+.rpt-badge.tienda {background:#dbeafe;color:#1d4ed8;}
+.rpt-badge.sin-marc{background:#fee2e2;color:#991b1b;}
+.rpt-badge.tardanza{background:#fef3c7;color:#b45309;}
+.rpt-badge.anticipada{background:#e0e7ff;color:#4338ca;}
+.rpt-badge.ausencia{background:#f1f5f9;color:#475569;}
+.rpt-flag{display:inline-block;margin-left:5px;padding:1px 6px;border-radius:10px;font-size:9.5px;font-weight:700;vertical-align:middle;}
+.rpt-flag.tar{background:#fef3c7;color:#b45309;}
+.rpt-flag.ant{background:#e0e7ff;color:#4338ca;}
+.rpt-horario{font-size:11px;color:#94a3b8;font-family:monospace;}
+/* Identidad detectada por huella (H-14) */
+.fp-detected{margin-top:14px;text-align:left;background:#f8fafc;border:1px solid #e8eaf0;border-radius:8px;padding:10px 12px;}
+.fp-detected label{display:block;font-size:10.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;}
+.fp-detected select{width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:8px 10px;font-size:12.5px;color:#1a1a2e;background:#fff;outline:none;cursor:pointer;}
+.fp-sim{display:flex;gap:6px;justify-content:center;margin-top:14px;flex-wrap:wrap;}
+.fp-sim button{font-size:10.5px;padding:5px 9px;border-radius:7px;border:1.5px solid #e8eaf0;background:#fff;cursor:pointer;color:#374151;font-weight:600;}
+.fp-sim button.err{color:#b91c1c;border-color:#fecaca;}
+/* Estado de error del lector (P-08) */
+.fp-error{text-align:center;padding:6px 0;}
+.fp-error-ico{font-size:46px;line-height:1.2;}
+.fp-error-ttl{font-size:17px;font-weight:700;color:#b91c1c;margin:8px 0 4px;}
+.fp-error-sub{font-size:12.5px;color:#64748b;line-height:1.5;margin-bottom:14px;}
+/* Auditoría (H-16) */
+.sn-item.audit{background:#f5f3ff;border-color:#ddd6fe;color:#5b21b6;font-family:monospace;font-size:10.5px;}
+
+/* ── ALERTAS DE MARCACIONES (portado) ── */
+.am-refresh { color:#4f46e5; cursor:pointer; font-size:16px; display:inline-flex; align-items:center; }
+.am-filters { display:flex; align-items:flex-end; gap:16px; padding:11px 22px; background:#fff; border-bottom:1px solid #f0f1f5; flex-wrap:wrap; }
+.am-fg { display:flex; flex-direction:column; gap:4px; }
+.am-fg label { font-size:11.5px; font-weight:600; color:#374151; }
+.am-kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; padding:14px 22px 4px; }
+.am-kpi { background:#fff; border-radius:10px; border:1px solid #f0f1f5; padding:14px 18px; display:flex; align-items:center; gap:14px; }
+.am-kpi-ico { width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+.am-kpi-ico.blue  { background:#eef2ff; }
+.am-kpi-ico.warn  { background:#fff7ed; }
+.am-kpi-ico.green { background:#f0fdf4; }
+.am-kpi-label { font-size:12px; color:#64748b; margin-bottom:3px; }
+.am-kpi-val { font-size:28px; font-weight:800; color:#1a1a2e; line-height:1; }
+.am-kpi-val.red   { color:#dc2626; }
+.am-kpi-val.green { color:#16a34a; }
+.am-tbl-wrap { padding:0 22px 20px; overflow:auto; }
+.am-tbl { width:100%; min-width:680px; border-collapse:collapse; background:#fff; border-radius:10px; overflow:hidden; border:1px solid #f0f1f5; }
+.am-tbl thead th { padding:7px 10px; font-size:10.5px; font-weight:700; color:#94a3b8; text-transform:uppercase; text-align:left; background:#fafbfc; border-bottom:1px solid #f0f1f5; white-space:nowrap; }
+.am-tbl tbody tr { border-bottom:1px solid #f8fafc; }
+.am-tbl tbody tr:last-child { border-bottom:none; }
+.am-tbl td { padding:8px 10px; font-size:12px; color:#374151; }
+.am-emp { display:flex; align-items:center; gap:10px; }
+.am-av  { display:none; }
+.am-emp-name { font-weight:600; color:#1a1a2e; font-size:13px; white-space:nowrap; }
+.am-no-marco { display:inline-block; background:#fee2e2; color:#dc2626; font-size:11px; font-weight:700; padding:3px 10px; border-radius:5px; white-space:nowrap; }
+.am-tardanza { display:inline-block; background:#fef3c7; color:#b45309; font-size:11px; font-weight:700; padding:3px 10px; border-radius:5px; white-space:nowrap; }
+.am-anticipada { display:inline-block; background:#e0e7ff; color:#4338ca; font-size:11px; font-weight:700; padding:3px 10px; border-radius:5px; white-space:nowrap; }
+.am-ausencia { display:inline-block; background:#f1f5f9; color:#475569; font-size:11px; font-weight:700; padding:3px 10px; border-radius:5px; white-space:nowrap; }
+.am-req { color:#dc2626; }
+.am-audit-note { font-size:11px; color:#5b21b6; background:#f5f3ff; border:1px solid #ddd6fe; border-radius:8px; padding:8px 12px; margin-top:10px; font-family:monospace; line-height:1.5; }
+.am-opc-btn { display:inline-flex; align-items:center; border:1.5px solid #e8eaf0; border-radius:8px; overflow:hidden; cursor:pointer; background:#fff; }
+.am-opc-btn span:first-child { padding:6px 14px; font-size:12.5px; font-weight:600; color:#374151; border-right:1px solid #e8eaf0; }
+.am-opc-btn span:last-child { padding:6px 9px; color:#64748b; font-size:11px; }
+.am-opc-btn:hover span { background:#f1f5f9; }
+.am-ov { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:2000; display:none; align-items:center; justify-content:center; padding:16px; }
+.am-ov.open { display:flex; }
+.am-md { background:#fff; border-radius:14px; width:490px; max-width:100%; box-shadow:0 20px 60px rgba(0,0,0,.25); }
+.am-md-hdr { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid #f0f1f5; }
+.am-md-title { font-size:16px; font-weight:700; color:#1a1a2e; }
+.am-md-x { width:28px; height:28px; border-radius:50%; border:1.5px solid #e8eaf0; background:#fff; cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center; color:#64748b; }
+.am-md-body { padding:18px 20px; }
+.am-md-footer { padding:0 20px 18px; display:flex; justify-content:center; gap:10px; }
+.am-md-note { font-size:11px; color:#64748b; text-align:center; padding:10px 20px 16px; border-top:1px solid #f0f1f5; }
+.am-opt-sub { font-size:13px; color:#64748b; margin-bottom:16px; }
+.am-opt-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:4px; }
+.am-opt-card { border:1.5px solid #e8eaf0; border-radius:10px; padding:24px 14px 16px; text-align:center; cursor:pointer; transition:all .15s; }
+.am-opt-card.falta:hover   { border-color:#dc2626; background:#fff5f5; }
+.am-opt-card.descanso:hover{ border-color:#16a34a; background:#f0fdf4; }
+.am-opt-ico  { font-size:42px; margin-bottom:8px; display:block; }
+.am-opt-name { font-size:16px; font-weight:700; margin-bottom:6px; }
+.am-opt-name.red   { color:#dc2626; }
+.am-opt-name.green { color:#16a34a; }
+.am-opt-desc { font-size:11.5px; color:#64748b; line-height:1.4; }
+.am-conf { text-align:center; padding:4px 20px 20px; }
+.am-conf-ico { font-size:52px; margin-bottom:14px; display:block; }
+.am-conf-msg { font-size:15px; font-weight:700; color:#1a1a2e; line-height:1.4; }
+.am-conf-desc { font-size:13px; color:#64748b; margin:10px 0 6px; line-height:1.5; }
+.am-reg-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; }
+.am-reg-field { display:flex; flex-direction:column; gap:5px; }
+.am-reg-field label { font-size:11.5px; font-weight:600; color:#374151; }
+.am-prop-lbl { font-size:12px; font-weight:700; color:#374151; margin-bottom:8px; }
+.am-proposals { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
+.am-prop { border:1.5px solid #e8eaf0; border-radius:8px; padding:10px 10px 8px; cursor:pointer; transition:all .15s; }
+.am-prop.sel { border-color:#16a34a; background:#f0fdf4; }
+.am-prop-date { font-size:13px; font-weight:700; color:#1a1a2e; display:flex; align-items:center; gap:6px; }
+.am-prop-rdot { width:8px; height:8px; border-radius:50%; background:#e2e8f0; flex-shrink:0; }
+.am-prop.sel .am-prop-rdot { background:#16a34a; }
+.am-prop-day  { font-size:11px; color:#64748b; padding-left:14px; margin-top:1px; }
+.am-prop-sts  { font-size:11px; color:#94a3b8; font-weight:600; padding-left:14px; margin-top:2px; }
+.am-prop.sel .am-prop-sts { color:#16a34a; }
+.am-input { padding:8px 12px; border:1.5px solid #e8eaf0; border-radius:8px; font-size:13px; color:#374151; font-family:inherit; width:100%; }
+.am-input:focus { outline:none; border-color:#4f46e5; }
+.am-textarea { padding:9px 12px; border:1.5px solid #e8eaf0; border-radius:8px; font-size:13px; color:#374151; font-family:inherit; width:100%; resize:vertical; min-height:66px; margin-bottom:14px; }
+.am-btn-outline { padding:9px 22px; border:1.5px solid #e8eaf0; border-radius:8px; font-size:13px; font-weight:600; color:#374151; background:#fff; cursor:pointer; }
+.am-btn-danger  { padding:9px 22px; background:#dc2626; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; }
+.am-btn-primary { padding:9px 22px; background:#4f46e5; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; }
+.am-toast { position:fixed; bottom:24px; right:24px; width:330px; background:#1e293b; border-radius:12px; padding:14px 16px; color:#fff; z-index:9999; box-shadow:0 8px 32px rgba(0,0,0,.35); display:flex; flex-direction:column; gap:5px; transform:translateY(120px); opacity:0; transition:all .45s cubic-bezier(.4,0,.2,1); pointer-events:none; }
+.am-toast.show { transform:translateY(0); opacity:1; pointer-events:all; }
+.am-toast-hdr { display:flex; align-items:center; justify-content:space-between; }
+.am-toast-brand { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; }
+.am-toast-time { font-size:11px; color:#94a3b8; }
+.am-toast-x { color:#94a3b8; cursor:pointer; font-size:18px; background:none; border:none; padding:0; line-height:1; }
+.am-toast-msg { font-size:14px; font-weight:700; }
+.am-toast-sub { font-size:12px; color:#94a3b8; }
+.am-toast-cta { font-size:12px; color:#60a5fa; cursor:pointer; margin-top:2px; }
+</style>
+</head>
+<body>
+
+<div class="win" id="win">
+  <!-- Title bar -->
+  <div class="title-bar">
+    <span class="title-bar-icon">📊</span>
+    <span class="title-bar-text">Asistencia – Gestión de Equipos</span>
+    <div class="win-btns">
+      <button class="wb">─</button>
+      <button class="wb">□</button>
+      <button class="wb close" onclick="document.body.style.opacity='.4'">×</button>
+    </div>
+  </div>
+
+  <!-- App body -->
+  <div class="app-body">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sb-brand">
+        <div class="sb-brand-icon">📊</div>
+        <div class="sb-brand-name">Gestión<br>de Equipos</div>
+      </div>
+      <nav class="sb-nav">
+        <div class="sni active" onclick="switchPage('asistencia',this)"><span class="sni-icon">📅</span> Asistencia</div>
+        <div class="sni" onclick="switchPage('reportes',this)"><span class="sni-icon">📈</span> Reportes</div>
+        <div class="sni" onclick="switchPage('alertas',this)"><span class="sni-icon">🔔</span> Alertas</div>
+        <div class="sni" onclick="switchPage('huellas',this)"><span class="sni-icon">🫆</span> Huellas</div>
+      </nav>
+      <div class="sb-user">
+        <div class="sb-av" style="position:relative">JL<span class="sb-online"></span></div>
+        <div style="min-width:0">
+          <div class="sb-uname">José Luis Pérez</div>
+          <div class="sb-urole">Gerente de Tienda</div>
+          <div class="sb-ustore">EL REAL CUSCO</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main -->
+    <div class="app-main">
+
+      <!-- PAGE: Asistencia -->
+      <div class="app-page active" id="page-asistencia">
+        <div class="asi-header">
+          <div>
+            <div class="asi-title">Asistencia</div>
+            <div class="asi-sub">Marca tu ingreso o salida</div>
+          </div>
+          <div class="asi-datetime">
+            <div class="asi-dt-item">📅 <span id="asi-date">15/04/2026</span></div>
+            <div class="asi-dt-item">⏰ <span id="asi-time">08:45 a. m.</span></div>
+          </div>
+        </div>
+        <div class="asi-body">
+          <div class="asi-card">
+            <div class="asi-card-title">Selecciona tu acción</div>
+            <div class="asi-card-sub">Elige el tipo de marcación que deseas realizar</div>
+            <div class="asi-actions">
+              <div class="asi-btn ingreso" onclick="startFlow('ingreso')">
+                <div class="asi-btn-circle green">➡️</div>
+                <div class="asi-btn-label green">INGRESO</div>
+                <div class="asi-btn-desc">Marcar ingreso</div>
+              </div>
+              <div class="asi-btn salida" onclick="startFlow('salida')">
+                <div class="asi-btn-circle red">🚪</div>
+                <div class="asi-btn-label red">SALIDA</div>
+                <div class="asi-btn-desc">Marcar salida</div>
+              </div>
+            </div>
+            <div class="asi-info">ℹ️ Asegúrate de registrar tu huella correctamente.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAGE: Reportes -->
+      <div class="app-page" id="page-reportes">
+        <div class="rpt-header">
+          <div>
+            <div class="rpt-title">Reporte de Asistencia</div>
+            <div class="rpt-sub" id="rpt-sub">—</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn-outline" style="font-size:12px;padding:5px 13px" onclick="renderReport()">↻ Actualizar</button>
+            <button class="btn-outline" style="font-size:12px;padding:5px 13px" onclick="exportReport()">⬇ Exportar</button>
+            <button class="btn-primary" style="font-size:12px;padding:5px 13px" onclick="window.print()">🖨 Imprimir</button>
+          </div>
+        </div>
+        <div class="rpt-kpis" id="rpt-kpis">
+          <div class="rpt-kpi"><div class="rpt-kpi-val" id="rpt-k-total">—</div><div class="rpt-kpi-lbl">Total empleados</div></div>
+          <div class="rpt-kpi green"><div class="rpt-kpi-val" id="rpt-k-comp">—</div><div class="rpt-kpi-lbl">Completos</div></div>
+          <div class="rpt-kpi blue"><div class="rpt-kpi-val" id="rpt-k-tienda">—</div><div class="rpt-kpi-lbl">En tienda</div></div>
+          <div class="rpt-kpi red"><div class="rpt-kpi-val" id="rpt-k-sin">—</div><div class="rpt-kpi-lbl">Sin marcación</div></div>
+        </div>
+        <div class="rpt-tbl-wrap">
+          <table class="rpt-tbl">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Empleado</th>
+                <th>DNI</th>
+                <th>Puesto</th>
+                <th>H. Ingreso</th>
+                <th>H. Salida</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="rpt-tbody">
+              <tr><td colspan="8" style="text-align:center;padding:32px;color:#94a3b8">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PAGE: Alertas de Marcaciones -->
+      <div class="app-page" id="page-alertas">
+        <div class="rpt-header">
+          <div>
+            <div class="asi-title">Alertas de Marcaciones</div>
+            <div class="asi-sub">Empleados que no han registrado su asistencia</div>
+          </div>
+          <div style="font-size:12px;color:#64748b;display:flex;align-items:center;gap:6px">Última actualización: 08:00 a. m. <span class="am-refresh" onclick="this.style.transform='rotate(360deg)';this.style.transition='transform .5s'">↻</span></div>
+        </div>
+        <div style="font-size:11px;color:#64748b;padding:4px 22px 8px">ℹ️ Los empleados con ausencia programada (descanso / vacaciones / licencia) se muestran con su estado y NO se cuentan como "no marcó".</div>
+        <div class="am-tbl-wrap">
+          <table class="am-tbl">
+            <thead><tr><th>Empleado</th><th>Puesto</th><th>Estado</th><th>Acción</th></tr></thead>
+            <tbody>
+              <tr><td><div class="am-emp"><div class="am-av" style="background:#fce7f3;color:#be185d">ED</div><span class="am-emp-name">Erika Del Carpio Vargas</span></div></td><td>Asesor</td><td><span class="am-no-marco">No marcó</span></td><td><button class="am-opc-btn" onclick="openAmOptions('Erika Del Carpio Vargas')"><span>Opciones</span><span>▾</span></button></td></tr>
+              <tr><td><div class="am-emp"><div class="am-av" style="background:#fef3c7;color:#d97706">JD</div><span class="am-emp-name">Jesús Delgado Gudiño</span></div></td><td>Asesor</td><td><span class="am-no-marco">No marcó</span></td><td><button class="am-opc-btn" onclick="openAmOptions('Jesús Delgado Gudiño')"><span>Opciones</span><span>▾</span></button></td></tr>
+              <tr><td><div class="am-emp"><div class="am-av" style="background:#e0e7ff;color:#3730a3">CM</div><span class="am-emp-name">Cristian Monteagudo Cruz</span></div></td><td>Asesor Senior</td><td><span class="am-tardanza">Tardanza · ingresó 08:22</span></td><td><button class="am-opc-btn" onclick="openAmOptions('Cristian Monteagudo Cruz')"><span>Opciones</span><span>▾</span></button></td></tr>
+              <tr><td><div class="am-emp"><div class="am-av" style="background:#dcfce7;color:#166534">SR</div><span class="am-emp-name">Susy Rodríguez Mallqui</span></div></td><td>Asesor</td><td><span class="am-anticipada">Anticipada · ingresó 07:41</span></td><td><button class="am-opc-btn" onclick="openAmOptions('Susy Rodríguez Mallqui')"><span>Opciones</span><span>▾</span></button></td></tr>
+              <tr><td><div class="am-emp"><div class="am-av" style="background:#ede9fe;color:#7c3aed">GS</div><span class="am-emp-name">Gabriel Suarez Palomino</span></div></td><td>Asesor</td><td><span class="am-ausencia">Descanso (programado)</span></td><td><span style="font-size:11px;color:#94a3b8">Ausencia justificada</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PAGE: Huellas -->
+      <div class="app-page" id="page-huellas">
+        <div class="rpt-header">
+          <div>
+            <div class="asi-title">Registro de huellas</div>
+            <div class="asi-sub">Configura la huella biométrica de cada empleado</div>
+          </div>
+          <div class="rpt-kpi-inline" id="fp-summary" style="font-size:13px;color:#64748b"></div>
+        </div>
+        <div style="flex:1;overflow:auto;padding:14px 22px">
+          <div id="fp-list"></div>
+        </div>
+      </div>
+
+    </div><!-- /app-main -->
+  </div><!-- /app-body -->
+</div><!-- /win -->
+
+<!-- ── Clave del Gerente de Tienda (gate Alertas/Huellas) ── -->
+<div class="am-ov" id="ov-clave" onclick="if(event.target===this)claveCancel()">
+  <div class="am-md" style="width:380px">
+    <div class="am-md-hdr"><div class="am-md-title">🔒 Acceso restringido</div><button class="am-md-x" onclick="claveCancel()">×</button></div>
+    <div class="am-md-body">
+      <div class="am-opt-sub" id="clave-sub">Ingresa tu clave</div>
+      <input type="password" class="am-input" id="clave-inp" placeholder="Clave del Gerente de Tienda" onkeydown="if(event.key==='Enter')claveCheck()">
+      <div id="clave-err" style="display:none;font-size:11px;color:#dc2626;margin-top:6px">Clave incorrecta.</div>
+    </div>
+    <div class="am-md-footer" style="justify-content:flex-end"><button class="am-btn-outline" onclick="claveCancel()">Cancelar</button><button class="am-btn-primary" onclick="claveCheck()">Acceder</button></div>
+  </div>
+</div>
+
+<!-- ── ALERTAS: Modales + toast ── -->
+<div class="am-ov" id="am-ov1" onclick="if(event.target===this)closeAm('am-ov1')">
+  <div class="am-md">
+    <div class="am-md-hdr"><div class="am-md-title" id="am-opt-title">Opciones</div><button class="am-md-x" onclick="closeAm('am-ov1')">×</button></div>
+    <div class="am-md-body">
+      <div class="am-opt-sub">Selecciona la acción a realizar</div>
+      <div class="am-opt-grid">
+        <div class="am-opt-card falta" onclick="amGoFalta()"><span class="am-opt-ico">🙅</span><div class="am-opt-name red">Falta</div><div class="am-opt-desc">El empleado no asistió y no tiene un descanso registrado.</div></div>
+        <div class="am-opt-card descanso" onclick="amGoDescanso()"><span class="am-opt-ico">😴</span><div class="am-opt-name green">Descanso</div><div class="am-opt-desc">El empleado tiene un descanso programado o justificado.</div></div>
+      </div>
+    </div>
+    <div class="am-md-footer"><button class="am-btn-outline" onclick="closeAm('am-ov1')">Cancelar</button></div>
+  </div>
+</div>
+<div class="am-ov" id="am-ov2" onclick="if(event.target===this)closeAm('am-ov2')">
+  <div class="am-md">
+    <div class="am-md-hdr"><div class="am-md-title">Confirmar falta</div><button class="am-md-x" onclick="closeAm('am-ov2')">×</button></div>
+    <div class="am-md-body">
+      <div class="am-conf" style="margin-bottom:6px"><span class="am-conf-ico">⚠️</span><div class="am-conf-msg">Vas a registrar una <strong>FALTA</strong> para<br><span id="am-conf-name"></span></div><div class="am-conf-desc">El registro de falta queda auditado (quién y cuándo). El motivo es obligatorio.</div></div>
+      <div class="am-reg-field"><label>Motivo de la falta <span class="am-req">*</span></label><textarea class="am-textarea" id="am-falta-motivo" placeholder="Indica el motivo de la falta (obligatorio)..." style="margin-top:5px" oninput="document.getElementById('am-falta-err').style.display='none'"></textarea><div id="am-falta-err" style="display:none;font-size:11px;color:#dc2626;margin-top:4px">El motivo es obligatorio para registrar la falta.</div></div>
+      <div class="am-audit-note" id="am-falta-audit">Auditoría: registrado por — · —</div>
+    </div>
+    <div class="am-md-footer" style="justify-content:center"><button class="am-btn-outline" onclick="closeAm('am-ov2')">Cancelar</button><button class="am-btn-danger" onclick="amConfirmFalta()">Registrar falta →</button></div>
+  </div>
+</div>
+<div class="am-ov" id="am-ov3" onclick="if(event.target===this)closeAm('am-ov3')">
+  <div class="am-md">
+    <div class="am-md-hdr"><div class="am-md-title">Registrar descanso</div><button class="am-md-x" onclick="closeAm('am-ov3')">×</button></div>
+    <div class="am-md-body">
+      <div class="am-reg-row">
+        <div class="am-reg-field"><label>Tipo de descanso</label><select class="am-input"><option>Compensación</option><option>Descanso regular</option><option>Descanso médico</option></select></div>
+        <div class="am-reg-field"><label>Fecha a compensar</label><input type="date" class="am-input" value="2026-04-15"></div>
+      </div>
+      <div class="am-prop-lbl">Propuestas de fecha (criterios de la empresa)</div>
+      <div class="am-proposals">
+        <div class="am-prop sel" onclick="selectAmProp(this)"><div class="am-prop-date"><span class="am-prop-rdot"></span>18/04/2026</div><div class="am-prop-day">(Vie)</div><div class="am-prop-sts">Disponible</div></div>
+        <div class="am-prop" onclick="selectAmProp(this)"><div class="am-prop-date"><span class="am-prop-rdot"></span>21/04/2026</div><div class="am-prop-day">(Lun)</div><div class="am-prop-sts">Disponible</div></div>
+        <div class="am-prop" onclick="selectAmProp(this)"><div class="am-prop-date"><span class="am-prop-rdot"></span>26/04/2026</div><div class="am-prop-day">(Sáb)</div><div class="am-prop-sts">Disponible</div></div>
+      </div>
+      <div class="am-reg-field" style="margin-bottom:12px"><label>Motivo</label><input class="am-input" type="text" value="Compensación por trabajo en feriado." style="margin-top:5px"></div>
+      <div class="am-reg-field"><label>Observaciones (opcional)</label><textarea class="am-textarea" placeholder="Agrega una observación..." style="margin-top:5px"></textarea></div>
+    </div>
+    <div class="am-md-footer" style="justify-content:space-between"><button class="am-btn-outline" onclick="closeAm('am-ov3')">Cancelar</button><button class="am-btn-primary" onclick="closeAm('am-ov3');_amMsg('Descanso registrado para '+_amWorker)">Registrar descanso</button></div>
+    <div class="am-md-note">El empleado recibirá una notificación en la app para revisar y firmar el documento.</div>
+  </div>
+</div>
+<div class="am-toast" id="am-toast">
+  <div class="am-toast-hdr"><div class="am-toast-brand">🔔 Alertas de Marcaciones</div><div style="display:flex;align-items:center;gap:8px"><span class="am-toast-time">08:00 a. m.</span><button class="am-toast-x" onclick="document.getElementById('am-toast').classList.remove('show')">×</button></div></div>
+  <div class="am-toast-msg" id="am-toast-msg">2 empleados activos no marcaron asistencia</div>
+  <div class="am-toast-sub" id="am-toast-sub">Revisa y gestiona las marcaciones.</div>
+</div>
+
+<!-- ── MODAL: Registro/enrolamiento de huella ── -->
+<div class="m-overlay" id="ov-fpenroll">
+  <div class="m-box">
+    <div class="m-hdr">
+      <div class="m-title">Registrar huella</div>
+      <button class="m-x" onclick="closeOv('ov-fpenroll')">×</button>
+    </div>
+    <div class="m-body m-huella" id="fpenroll-body"></div>
+  </div>
+</div>
+
+<!-- ── MODAL 1: Verificación de huella ── -->
+<div class="m-overlay" id="ov-huella">
+  <div class="m-box">
+    <div class="m-hdr">
+      <div class="m-title">Verificación de huella</div>
+      <button class="m-x" onclick="cancelFlow()">×</button>
+    </div>
+    <div class="m-body m-huella" id="fp-scan-body">
+      <div class="fp-wrap">
+        <div class="fp-icon">🫆</div>
+        <div class="fp-ring"></div>
+        <div class="fp-ring2"></div>
+      </div>
+      <div class="m-huella-title">Coloca tu huella</div>
+      <div class="m-huella-sub">Presiona tu dedo en el lector biométrico<br>para continuar</div>
+      <div class="fp-progress"><div class="fp-progress-bar" id="fp-bar"></div></div>
+      <!-- H-14: la huella resuelve la identidad del dueño (demo: elegir qué huella se escanea) -->
+      <div class="fp-detected">
+        <label>Huella detectada (demo)</label>
+        <select id="fp-emp"></select>
+      </div>
+      <!-- Demo: simular el resultado del lector (P-08) -->
+      <div class="fp-sim">
+        <button onclick="fpResult('ok')">✔ Huella OK</button>
+        <button class="err" onclick="fpResult('nomatch')">✖ No reconocida</button>
+        <button class="err" onclick="fpResult('offline')">⚠ Lector offline</button>
+      </div>
+    </div>
+    <!-- Sub-estado de error del lector (P-08) -->
+    <div class="m-body fp-error" id="fp-error-body" style="display:none">
+      <div class="fp-error-ico" id="fp-error-ico">✖</div>
+      <div class="fp-error-ttl" id="fp-error-ttl">Huella no reconocida</div>
+      <div class="fp-error-sub" id="fp-error-sub">No pudimos identificar tu huella. Vuelve a intentarlo.</div>
+    </div>
+    <div class="m-cancel-only" id="fp-scan-footer">
+      <button class="btn-outline" onclick="cancelFlow()">Cancelar</button>
+    </div>
+    <div class="m-footer" id="fp-error-footer" style="display:none">
+      <button class="btn-outline" onclick="cancelFlow()">Cancelar</button>
+      <button class="btn-primary" onclick="fpRetry()">↻ Reintentar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL 2: Programación encontrada ── -->
+<div class="m-overlay" id="ov-prog">
+  <div class="m-box">
+    <div class="m-hdr">
+      <div class="m-title">Programación encontrada</div>
+      <button class="m-x" onclick="cancelFlow()">×</button>
+    </div>
+    <div class="m-body">
+      <div class="m-prog-warn">
+        <span class="m-prog-ico">⚠️</span>
+        <div class="m-prog-ttl">Programación encontrada para <span id="prog-emp">—</span></div>
+      </div>
+      <div class="m-prog-info">
+        <strong>Empleado (dueño de la huella):</strong> <span id="prog-emp2">—</span><br>
+        <strong>Fecha:</strong> 15/04/2026 (Miércoles)<br>
+        <strong>Horario programado:</strong> <span id="prog-horario">08:00 a.m. – 05:00 p.m.</span><br>
+        <strong>Puesto:</strong> <span id="prog-puesto">Asesor de Ventas</span><br>
+        <strong>Tienda:</strong> EL REAL CUSCO
+      </div>
+      <div class="m-prog-note">Si deseas registrar tu asistencia de todas formas, se anulará tu programación actual.</div>
+    </div>
+    <div class="m-footer">
+      <button class="btn-outline" onclick="cancelFlow()">Cancelar</button>
+      <button class="btn-primary" onclick="goToAuth()">Registrar asistencia →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL 3: Código de autorización ── -->
+<div class="m-overlay" id="ov-auth">
+  <div class="m-box">
+    <div class="m-hdr">
+      <div class="m-title">Código de autorización</div>
+      <button class="m-x" onclick="cancelFlow()">×</button>
+    </div>
+    <div class="m-body m-auth">
+      <div class="m-auth-ico">🔒</div>
+      <div class="m-auth-title">Ingresa el código de autorización</div>
+      <div class="m-auth-sub">Este código es brindado por tu Gerente Zonal.</div>
+      <div class="auth-inputs">
+        <input class="auth-input" maxlength="1" oninput="authNext(this)" onkeydown="authBack(event,this)" type="text" inputmode="numeric">
+        <input class="auth-input" maxlength="1" oninput="authNext(this)" onkeydown="authBack(event,this)" type="text" inputmode="numeric">
+        <input class="auth-input" maxlength="1" oninput="authNext(this)" onkeydown="authBack(event,this)" type="text" inputmode="numeric">
+        <input class="auth-input" maxlength="1" oninput="authNext(this)" onkeydown="authBack(event,this)" type="text" inputmode="numeric">
+        <input class="auth-input" maxlength="1" oninput="authNext(this)" onkeydown="authBack(event,this)" type="text" inputmode="numeric">
+        <input class="auth-input" maxlength="1" oninput="authNext(this)" onkeydown="authBack(event,this)" type="text" inputmode="numeric">
+        <span class="auth-eye" onclick="toggleAuthVis()">👁</span>
+      </div>
+    </div>
+    <div class="m-footer">
+      <button class="btn-outline" onclick="cancelFlow()">Cancelar</button>
+      <button class="btn-primary" onclick="goToConfirm()">Validar código →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL 4: Confirmación ── -->
+<div class="m-overlay" id="ov-confirm">
+  <div class="m-box">
+    <div class="m-hdr">
+      <div class="m-title">Confirmación</div>
+      <button class="m-x" onclick="cancelFlow()">×</button>
+    </div>
+    <div class="m-body m-conf">
+      <span class="m-conf-ico">⚠️</span>
+      <div class="m-conf-title">Se va a anular tu programación actual</div>
+      <div class="m-conf-desc">Tu programación del día 15/04/2026 será anulada.<br>El sistema reprogramará automáticamente en la semana<br>(si solo han pasado 2 días).</div>
+      <div class="m-conf-q">¿Estás de acuerdo?</div>
+    </div>
+    <div class="m-footer">
+      <button class="btn-outline" onclick="cancelFlow()">No, cancelar</button>
+      <button class="btn-primary" onclick="goToSuccess()">Sí, confirmar →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL 5: Registro exitoso ── -->
+<div class="m-overlay" id="ov-success">
+  <div class="m-box m-success">
+    <div class="m-hdr">
+      <div class="m-title">Registro exitoso</div>
+      <button class="m-x" onclick="closeSuccess()">×</button>
+    </div>
+    <div class="m-body">
+      <div class="success-hdr">
+        <div class="success-ico">✅</div>
+        <div>
+          <div class="success-title">Asistencia registrada — <span id="succ-emp">—</span></div>
+          <div class="success-type">Tipo: &nbsp;<strong id="succ-type">INGRESO</strong> &nbsp;·&nbsp; <span id="succ-clasif">—</span></div>
+          <div class="success-dt" id="succ-dt">Fecha y hora: 15/04/2026 &nbsp;08:47 a. m.</div>
+        </div>
+      </div>
+      <div class="success-notes">
+        <div class="sn-item green">
+          <span class="sn-icon">ℹ️</span>
+          La programación de <span id="succ-emp2">—</span> ha sido anulada y reprogramada automáticamente en la semana.
+        </div>
+        <div class="sn-item audit" id="succ-audit">
+          <span class="sn-icon">🛡️</span>
+          <span id="succ-audit-txt">Auditoría: —</span>
+        </div>
+        <div class="sn-item">
+          <span class="sn-icon">ℹ️</span>
+          Hemos enviado una notificación a la app y un correo electrónico con los detalles.
+        </div>
+      </div>
+    </div>
+    <div class="m-footer" style="justify-content:center">
+      <button class="btn-primary" onclick="closeSuccess()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Notification cards (bottom-center, appears with success) -->
+<div class="notif-panel" id="notif-panel">
+  <div class="notif-card">
+    <div class="nc-hdr"><span class="nc-ico">🔔</span> Notificación en la app</div>
+    <div class="nc-body">Tu programación del día 15/04/2026 ha sido anulada y reprogramada automáticamente.</div>
+    <div class="nc-time">Ahora</div>
+  </div>
+  <div class="notif-card">
+    <div class="nc-hdr"><span class="nc-ico">✉️</span> Correo electrónico</div>
+    <div class="nc-body">Se ha actualizado tu programación automáticamente.</div>
+    <div class="nc-time">Ahora</div>
+  </div>
+</div>
+
+<script>
+// ── Live clock ──
+function updateClock() {
+  const now = new Date();
+  const d = now.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
+  let h = now.getHours(), m = now.getMinutes(), s = now.getSeconds(), ampm = 'a. m.';
+  if (h >= 12) { ampm = 'p. m.'; if (h > 12) h -= 12; }
+  if (h === 0) h = 12;
+  const time = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} ${ampm}`;
+  document.getElementById('asi-date').textContent = d;
+  document.getElementById('asi-time').textContent = time;
+  document.getElementById('succ-dt').textContent = `Fecha y hora: ${d}  ${time}`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── Navigation ──
+const _CLAVE_GATE = ['alertas','huellas'];   // requieren clave del GT
+const _CLAVE_GT = '1234';                    // demo
+let _clavePending = null;
+function switchPage(id, el) {
+  if (_CLAVE_GATE.includes(id)) { _clavePending = {id, el}; openClave(id); return; }
+  _applyPage(id, el);
+}
+function _applyPage(id, el) {
+  document.querySelectorAll('.app-page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelectorAll('.sni').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  if (id === 'alertas' && typeof showAmToast === 'function') showAmToast();
+}
+function openClave(id){
+  document.getElementById('clave-inp').value = '';
+  document.getElementById('clave-err').style.display = 'none';
+  document.getElementById('clave-sub').textContent = 'Ingresa tu clave para acceder a ' + (id==='alertas'?'Alertas':'Huellas');
+  document.getElementById('ov-clave').classList.add('open');
+  setTimeout(()=>document.getElementById('clave-inp').focus(), 100);
+}
+function claveCheck(){
+  const v = document.getElementById('clave-inp').value;
+  if (v !== _CLAVE_GT){ document.getElementById('clave-err').style.display='block'; return; }
+  document.getElementById('ov-clave').classList.remove('open');
+  if (_clavePending){ _applyPage(_clavePending.id, _clavePending.el); _clavePending = null; }
+}
+function claveCancel(){ document.getElementById('ov-clave').classList.remove('open'); _clavePending = null; }
+
+// ── Modal flow ──
+let _flowType = '';
+let _fpTimer = null;
+let _detectedEmpId = null;     // H-14: dueño de la huella resuelto por el lector
+let _auditCode = '';           // H-16: código zonal usado como traza
+let _rptExport = [];           // P-07: filas planas del último render para exportar
+const _KIOSK_USER = 'José Luis Pérez (GT)'; // sesión del kiosko (no es quien marca)
+
+function openOv(id)  { document.getElementById(id).classList.add('open'); }
+function closeOv(id) { document.getElementById(id).classList.remove('open'); }
+
+// Mostrar el sub-estado de escaneo (reset) dentro del modal de huella
+function _fpShowScan() {
+  document.getElementById('fp-scan-body').style.display = '';
+  document.getElementById('fp-scan-footer').style.display = '';
+  document.getElementById('fp-error-body').style.display = 'none';
+  document.getElementById('fp-error-footer').style.display = 'none';
+  const bar = document.getElementById('fp-bar');
+  bar.style.width = '0%';
+  setTimeout(() => bar.style.width = '100%', 50);
+}
+
+function startFlow(type) {
+  _flowType = type;
+  _detectedEmpId = null;
+  document.getElementById('succ-type').textContent = type.toUpperCase();
+  openOv('ov-huella');
+  _fpShowScan();
+  // NOTA: el escaneo ya no avanza solo; el resultado se resuelve en fpResult()
+  // (en producción lo entrega el SDK del lector). Demo: botones OK/no reconocida/offline.
+}
+
+function fpRetry() { _fpShowScan(); }
+
+// P-08 / H-14: resultado del lector biométrico
+function fpResult(outcome) {
+  if (_fpTimer) { clearTimeout(_fpTimer); _fpTimer = null; }
+  if (outcome === 'nomatch' || outcome === 'offline') {
+    document.getElementById('fp-scan-body').style.display = 'none';
+    document.getElementById('fp-scan-footer').style.display = 'none';
+    document.getElementById('fp-error-body').style.display = '';
+    document.getElementById('fp-error-footer').style.display = '';
+    const ico = document.getElementById('fp-error-ico');
+    const ttl = document.getElementById('fp-error-ttl');
+    const sub = document.getElementById('fp-error-sub');
+    if (outcome === 'nomatch') {
+      ico.textContent = '✖'; ttl.textContent = 'Huella no reconocida';
+      sub.textContent = 'No pudimos identificar tu huella. Limpia el sensor y vuelve a intentarlo.';
+    } else {
+      ico.textContent = '⚠'; ttl.textContent = 'Lector biométrico offline';
+      sub.textContent = 'No hay comunicación con el lector. Verifica la conexión y reintenta.';
+    }
+    return;
+  }
+  // OK: la huella resuelve la identidad del dueño (H-14, RN-17)
+  _detectedEmpId = parseInt(document.getElementById('fp-emp').value, 10);
+  const emp = _rptEmps.find(e => e.id === _detectedEmpId);
+  closeOv('ov-huella');
+  // Reflejar el empleado detectado en el modal de programación
+  if (emp) {
+    document.getElementById('prog-emp').textContent  = emp.nombre;
+    document.getElementById('prog-emp2').textContent = emp.nombre + ' · DNI ' + emp.dni;
+    document.getElementById('prog-puesto').textContent = emp.puesto;
+    document.getElementById('prog-horario').textContent = emp.horario || '08:00 a.m. – 05:00 p.m.';
+  }
+  openOv('ov-prog');
+}
+
+function cancelFlow() {
+  ['ov-huella','ov-prog','ov-auth','ov-confirm','ov-success'].forEach(closeOv);
+  if (_fpTimer) { clearTimeout(_fpTimer); _fpTimer = null; }
+  _detectedEmpId = null; _auditCode = '';
+  document.querySelectorAll('.auth-input').forEach(i => { i.value = ''; i.type = 'text'; });
+}
+
+function goToAuth() {
+  closeOv('ov-prog');
+  openOv('ov-auth');
+  setTimeout(() => document.querySelector('.auth-input').focus(), 100);
+}
+
+function goToConfirm() {
+  // Capturar el código zonal ingresado como traza de auditoría (H-16, RN-04)
+  _auditCode = [...document.querySelectorAll('.auth-input')].map(i => i.value).join('');
+  closeOv('ov-auth');
+  openOv('ov-confirm');
+}
+
+function goToSuccess() {
+  closeOv('ov-confirm');
+  const emp = _rptEmps.find(e => e.id === _detectedEmpId);
+  const nombre = emp ? emp.nombre : 'Empleado';
+  const now = new Date();
+  // H-14: el éxito muestra el NOMBRE del empleado que marcó (dueño de la huella)
+  document.getElementById('succ-emp').textContent  = nombre;
+  document.getElementById('succ-emp2').textContent = nombre;
+  // H-16: traza de auditoría visible (quién/cuándo/código)
+  const codeMask = _auditCode ? (_auditCode.slice(0,2) + '••••') : '——';
+  document.getElementById('succ-audit-txt').textContent =
+    `Auditoría · Anulación/reprogramación autorizada por código zonal ${codeMask} · ` +
+    `registrada por ${_KIOSK_USER} · ${now.toLocaleDateString('es-PE')} ${_fmtHora(now)}`;
+  openOv('ov-success');
+  setTimeout(() => document.getElementById('notif-panel').classList.add('show'), 400);
+  setTimeout(() => document.getElementById('notif-panel').classList.remove('show'), 6400);
+}
+
+function closeSuccess() {
+  closeOv('ov-success');
+  document.getElementById('notif-panel').classList.remove('show');
+  document.querySelectorAll('.auth-input').forEach(i => { i.value = ''; i.type = 'text'; });
+  _detectedEmpId = null; _auditCode = '';
+}
+
+// ── Auth code inputs ──
+function authNext(el) {
+  el.value = el.value.replace(/\D/g,'');
+  if (el.value && el.nextElementSibling && el.nextElementSibling.classList.contains('auth-input')) {
+    el.nextElementSibling.focus();
+  }
+}
+function authBack(e, el) {
+  if (e.key === 'Backspace' && !el.value && el.previousElementSibling && el.previousElementSibling.classList.contains('auth-input')) {
+    el.previousElementSibling.focus();
+  }
+}
+function toggleAuthVis() {
+  document.querySelectorAll('.auth-input').forEach(i => {
+    i.type = i.type === 'text' ? 'password' : 'text';
+  });
+}
+
+// Close overlay on bg click
+document.querySelectorAll('.m-overlay').forEach(ov => {
+  ov.addEventListener('click', e => { if (e.target === ov) cancelFlow(); });
+});
+
+// ── REPORTE DE ASISTENCIA ────────────────────────────────────────
+const _RPT_SK = 'asi_marcaciones_v1';
+const _STORE  = 'EL REAL CUSCO';
+
+// Empleados de la tienda (demo)
+// hEntrada = hora teórica de entrada (24h, para clasificar tardanza/anticipada, RN-18)
+// ausencia = ausencia programada del día (descanso/vacaciones/licencia), RN-19/H-18
+const _rptEmps = [
+  {id:1, nombre:'Huapaya Ruiz, Hugo Sandro',    dni:'10066342', puesto:'Gerente de Tienda',      horario:'08:00 a.m. – 05:00 p.m.', hEntrada:'08:00', ausencia:null},
+  {id:2, nombre:'García López, María Elena',     dni:'47234561', puesto:'Jefe de Piso',           horario:'08:00 a.m. – 05:00 p.m.', hEntrada:'08:00', ausencia:null},
+  {id:3, nombre:'Torres Sánchez, Elena',         dni:'48234567', puesto:'Supervisora de Sección', horario:'08:00 a.m. – 05:00 p.m.', hEntrada:'08:00', ausencia:null},
+  {id:4, nombre:'Mendoza Flores, Carlos Raúl',   dni:'48765432', puesto:'Asesor Senior',          horario:'08:00 a.m. – 05:00 p.m.', hEntrada:'08:00', ausencia:null},
+  {id:5, nombre:'Quispe Mamani, Ana Rosa',       dni:'45678901', puesto:'Asesor de Ventas',       horario:'08:00 a.m. – 05:00 p.m.', hEntrada:'08:00', ausencia:null},
+  {id:6, nombre:'Ramos Condori, Luis Miguel',    dni:'49123456', puesto:'Asesor de Ventas',       horario:'08:00 a.m. – 05:00 p.m.', hEntrada:'08:00', ausencia:null},
+  {id:7, nombre:'Vargas Cruz, Rosa María',       dni:'46543210', puesto:'Secretaria-Cajera',      horario:'08:00 a.m. – 05:00 p.m.', hEntrada:'08:00', ausencia:null},
+  {id:8, nombre:'Ccopa Huanca, Pedro Jesús',     dni:'47890123', puesto:'Reponedor',              horario:'—',                       hEntrada:null,   ausencia:'Descanso'},
+  {id:9, nombre:'Lozano Ríos, Carla Beatriz',   dni:'48012345', puesto:'Promotora',              horario:'08:00 a.m. – 05:00 p.m.', hEntrada:'08:00', ausencia:null},
+  {id:10,nombre:'Herrera Tello, Marco Antonio',  dni:'47654321', puesto:'Prevención',             horario:'—',                       hEntrada:null,   ausencia:'Vacaciones'},
+];
+// Poblar el selector "huella detectada" (demo, H-14)
+function _fillFpEmpSelect(){
+  const sel = document.getElementById('fp-emp');
+  if (!sel) return;
+  sel.innerHTML = _rptEmps.map(e => `<option value="${e.id}">${e.nombre} · ${e.puesto}</option>`).join('');
+}
+_fillFpEmpSelect();
+
+// ── Registro de huellas ──
+const _FP_SK = 'asi_huellas_v1';
+let _fpReg = {};
+try { _fpReg = JSON.parse(localStorage.getItem(_FP_SK)) || {}; } catch(e) { _fpReg = {}; }
+// Demo: algunos ya registrados
+if (Object.keys(_fpReg).length === 0) { _fpReg = {1:true, 2:true, 4:true, 7:true}; }
+let _fpEnrollId = null;
+
+function _ini2(n){ const p=n.replace(/,/g,'').trim().split(/\s+/); return ((p[0]||'')[0]||'')+((p[1]||'')[0]||''); }
+function renderFpList(){
+  const list = document.getElementById('fp-list');
+  if (!list) return;
+  list.innerHTML = _rptEmps.map(e => {
+    const reg = !!_fpReg[e.id];
+    const badge = reg
+      ? '<span style="background:#dcfce7;color:#16a34a;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px">✓ Registrada</span>'
+      : '<span style="background:#f1f5f9;color:#94a3b8;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px">Sin registrar</span>';
+    const btn = reg
+      ? `<button onclick="enrollFp(${e.id})" style="border:1.5px solid #e2e8f0;background:#fff;color:#475569;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer">Re-registrar</button>`
+      : `<button onclick="enrollFp(${e.id})" style="border:none;background:linear-gradient(135deg,#312e81,#4f46e5);color:#fff;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer">Registrar</button>`;
+    return `<div style="display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #f0f1f5;border-radius:12px;padding:12px 14px;margin-bottom:10px">
+      <div style="width:38px;height:38px;border-radius:50%;background:#eef2ff;color:#4f46e5;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0">${_ini2(e.nombre)}</div>
+      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:#1a1a2e">${e.nombre}</div><div style="font-size:11px;color:#94a3b8">${e.puesto} · DNI ${e.dni}</div></div>
+      ${badge}
+      ${btn}
+    </div>`;
+  }).join('');
+  const reg = _rptEmps.filter(e=>_fpReg[e.id]).length;
+  const sum = document.getElementById('fp-summary');
+  if (sum) sum.textContent = reg + ' de ' + _rptEmps.length + ' registradas';
+}
+function enrollFp(id){
+  _fpEnrollId = id;
+  const e = _rptEmps.find(x=>x.id===id);
+  document.getElementById('fpenroll-body').innerHTML = `
+    <div style="text-align:center;font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:2px">${e.nombre}</div>
+    <div style="text-align:center;font-size:11px;color:#94a3b8;margin-bottom:18px">${e.puesto}</div>
+    <div class="fp-wrap"><div class="fp-icon">🫆</div><div class="fp-ring"></div><div class="fp-ring2"></div></div>
+    <div class="m-huella-title">Coloca la huella en el lector</div>
+    <div class="m-huella-sub">El empleado debe presionar su dedo<br>en el lector biométrico</div>
+    <button onclick="fpScan()" style="margin-top:8px;border:none;background:linear-gradient(135deg,#312e81,#4f46e5);color:#fff;border-radius:10px;padding:11px 22px;font-size:13px;font-weight:700;cursor:pointer">Iniciar escaneo</button>
+  `;
+  openOv('ov-fpenroll');
+}
+function fpScan(){
+  document.getElementById('fpenroll-body').innerHTML = `
+    <div class="fp-wrap"><div class="fp-icon">🫆</div><div class="fp-ring"></div><div class="fp-ring2"></div></div>
+    <div class="m-huella-title">Escaneando…</div>
+    <div class="m-huella-sub">No retires el dedo</div>
+  `;
+  setTimeout(() => {
+    document.getElementById('fpenroll-body').innerHTML = `
+      <div style="font-size:48px;text-align:center;margin-bottom:10px">✅</div>
+      <div class="m-huella-title" style="color:#16a34a">Huella registrada</div>
+      <div class="m-huella-sub">Quedó vinculada al empleado correctamente</div>
+      <button onclick="fpEnrollDone()" style="margin-top:8px;border:none;background:#16a34a;color:#fff;border-radius:10px;padding:11px 22px;font-size:13px;font-weight:700;cursor:pointer">Finalizar</button>
+    `;
+  }, 1300);
+}
+function fpEnrollDone(){
+  if (_fpEnrollId != null){ _fpReg[_fpEnrollId] = true; localStorage.setItem(_FP_SK, JSON.stringify(_fpReg)); }
+  closeOv('ov-fpenroll');
+  renderFpList();
+  _fillFpEmpSelect();
+}
+renderFpList();
+
+// ── Alertas de marcaciones (portado) ──
+let _amWorker = '';
+function openAmOptions(w){ _amWorker = w; document.getElementById('am-opt-title').textContent = 'Opciones – ' + w; document.getElementById('am-ov1').classList.add('open'); }
+function closeAm(id){ document.getElementById(id).classList.remove('open'); }
+function selectAmProp(el){ el.closest('.am-proposals').querySelectorAll('.am-prop').forEach(c=>c.classList.remove('sel')); el.classList.add('sel'); }
+function _amMsg(text){ const t=document.getElementById('am-toast'); document.getElementById('am-toast-msg').textContent=text; document.getElementById('am-toast-sub').textContent='Acción registrada y auditada.'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),4500); }
+function amGoFalta(){
+  closeAm('am-ov1');
+  document.getElementById('am-conf-name').textContent = _amWorker;
+  const mot=document.getElementById('am-falta-motivo'); if(mot) mot.value='';
+  const err=document.getElementById('am-falta-err'); if(err) err.style.display='none';
+  const now=new Date();
+  document.getElementById('am-falta-audit').textContent = 'Auditoría: registrará ' + _KIOSK_USER + ' · ' + now.toLocaleDateString('es-PE') + ' ' + now.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('am-ov2').classList.add('open');
+}
+function amConfirmFalta(){
+  const motivo=(document.getElementById('am-falta-motivo').value||'').trim();
+  if(!motivo){ document.getElementById('am-falta-err').style.display='block'; return; }
+  closeAm('am-ov2');
+  _amMsg('Falta registrada para ' + _amWorker + ' · auditada');
+}
+function amGoDescanso(){ closeAm('am-ov1'); document.getElementById('am-ov3').classList.add('open'); }
+function showAmToast(){
+  const t=document.getElementById('am-toast'); if(!t) return;
+  document.getElementById('am-toast-msg').textContent='2 empleados activos no marcaron asistencia';
+  document.getElementById('am-toast-sub').textContent='Revisa y gestiona las marcaciones.';
+  setTimeout(()=>t.classList.add('show'),500);
+  setTimeout(()=>t.classList.remove('show'),7000);
+}
+
+function _fmtHora(d){
+  let h=d.getHours(), m=d.getMinutes(), s=d.getSeconds(), ap='a. m.';
+  if(h>=12){ap='p. m.'; if(h>12)h-=12;} if(h===0)h=12;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} ${ap}`;
+}
+function _todayKey(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// Guardar marcación atribuida al DUEÑO de la huella (H-14, RN-17), no a la sesión del kiosko
+function _saveMarcacion(tipo){
+  const key=_todayKey();
+  let store={};
+  try{ store=JSON.parse(localStorage.getItem(_RPT_SK))||{}; }catch(e){}
+  if(!store[key]) store[key]={};
+  const empId = _detectedEmpId || 1; // empId resuelto por la huella
+  if(!store[key][empId]) store[key][empId]={};
+  if(tipo==='ingreso') store[key][empId].ingreso=_fmtHora(new Date());
+  else                 store[key][empId].salida =_fmtHora(new Date());
+  localStorage.setItem(_RPT_SK, JSON.stringify(store));
+}
+
+// Convierte "08:22 a. m." → minutos desde medianoche (para clasificar tardanza/anticipada)
+function _horaToMin(str){
+  if(!str) return null;
+  const m = str.match(/(\d{1,2}):(\d{2})\s*([ap])/i);
+  if(!m) return null;
+  let h = parseInt(m[1],10); const min = parseInt(m[2],10);
+  const ap = m[3].toLowerCase();
+  if(ap==='p' && h<12) h+=12;
+  if(ap==='a' && h===12) h=0;
+  return h*60+min;
+}
+const _TOL_ENTRADA_MIN = 5; // tolerancia parametrizable (RN-15/RN-18)
+
+// Cargar marcaciones del día (real + demo para los demás)
+function _loadMarcaciones(){
+  const key=_todayKey();
+  let store={};
+  try{ store=JSON.parse(localStorage.getItem(_RPT_SK))||{}; }catch(e){}
+  const hoy=store[key]||{};
+  // Demo para empleados 2-10 (si no tienen registros reales)
+  const demo={
+    2: {ingreso:'08:01:12 a. m.', salida:'05:05:48 p. m.'},
+    3: {ingreso:'07:58:33 a. m.', salida:null},
+    4: {ingreso:'08:10:05 a. m.', salida:'04:58:21 p. m.'},
+    5: {ingreso:'08:03:50 a. m.', salida:null},
+    6: {ingreso:'08:22:09 a. m.', salida:null},
+    7: {ingreso:'09:00:41 a. m.', salida:'06:12:30 p. m.'},
+    8: {ingreso:null,          salida:null},
+    9: {ingreso:'08:15:17 a. m.', salida:null},
+   10: {ingreso:null,          salida:null},
+  };
+  const result={};
+  _rptEmps.forEach(e=>{
+    result[e.id] = hoy[e.id] || demo[e.id] || {ingreso:null,salida:null};
+  });
+  return result;
+}
+
+function renderReport(){
+  const now=new Date();
+  const dd=String(now.getDate()).padStart(2,'0');
+  const mm=String(now.getMonth()+1).padStart(2,'0');
+  const yyyy=now.getFullYear();
+  const DIAS=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  document.getElementById('rpt-sub').textContent=
+    `${DIAS[now.getDay()]} ${dd}/${mm}/${yyyy} — ${_STORE}`;
+
+  const marc=_loadMarcaciones();
+  let comp=0, tienda=0, sin=0;
+  _rptExport = []; // filas planas para exportar (P-07)
+
+  const rows=_rptEmps.map((e,i)=>{
+    const m=marc[e.id]||{};
+    let badge, cls, flag='';
+    // H-18: ausencia programada NO cuenta como "sin marcación"
+    if(e.ausencia){
+      badge=e.ausencia; cls='ausencia';
+    } else {
+      // H-17: clasificar tardanza / entrada anticipada
+      if(m.ingreso && e.hEntrada){
+        const real=_horaToMin(m.ingreso), teor=_horaToMin(e.hEntrada);
+        if(real!=null && teor!=null){
+          if(real > teor + _TOL_ENTRADA_MIN)      flag='<span class="rpt-flag tar">Tardanza</span>';
+          else if(real < teor - _TOL_ENTRADA_MIN) flag='<span class="rpt-flag ant">Anticipada</span>';
+        }
+      }
+      if(m.ingreso && m.salida){ comp++;   badge='Completo';      cls='completo'; }
+      else if(m.ingreso)        { tienda++; badge='En tienda';     cls='tienda';  }
+      else                      { sin++;    badge='Sin marcación'; cls='sin-marc';}
+    }
+    const horaIn  = m.ingreso ? `<span class="rpt-hora in">${m.ingreso}</span>`  : `<span class="rpt-hora none">—</span>`;
+    const horaSal = m.salida  ? `<span class="rpt-hora out">${m.salida}</span>`  : `<span class="rpt-hora none">—</span>`;
+    _rptExport.push({
+      n:i+1, nombre:e.nombre, dni:e.dni, puesto:e.puesto, horario:e.horario||'—',
+      ingreso:m.ingreso||'—', salida:m.salida||'—',
+      estado: badge + (flag? ' ('+flag.replace(/<[^>]+>/g,'')+')' : '')
+    });
+    return `<tr>
+      <td style="color:#94a3b8;font-size:11px">${i+1}</td>
+      <td style="font-weight:600;color:#1a1a2e">${e.nombre}</td>
+      <td class="rpt-dni">${e.dni}</td>
+      <td style="color:#475569">${e.puesto}</td>
+      <td>${horaIn}</td>
+      <td>${horaSal}</td>
+      <td><span class="rpt-badge ${cls}">${badge}</span>${flag}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('rpt-tbody').innerHTML=rows;
+  document.getElementById('rpt-k-total').textContent  = _rptEmps.length;
+  document.getElementById('rpt-k-comp').textContent   = comp;
+  document.getElementById('rpt-k-tienda').textContent = tienda;
+  document.getElementById('rpt-k-sin').textContent    = sin;
+}
+
+// P-07: exportar el reporte a CSV
+function exportReport(){
+  if(!_rptExport.length){ renderReport(); }
+  const headers=['#','Empleado','DNI','Puesto','Horario programado','H. Ingreso','H. Salida','Estado'];
+  const esc = v => `"${String(v).replace(/"/g,'""')}"`;
+  const lines=[headers.map(esc).join(',')];
+  _rptExport.forEach(r=>{
+    lines.push([r.n,r.nombre,r.dni,r.puesto,r.horario,r.ingreso,r.salida,r.estado].map(esc).join(','));
+  });
+  const csv='﻿'+lines.join('\r\n'); // BOM para Excel
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`asistencia_${_todayKey()}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+
+// Conectar goToSuccess con guardado de marcación real
+const _origGoToSuccess = goToSuccess;
+goToSuccess = function(){
+  _saveMarcacion(_flowType);
+  _origGoToSuccess();
+};
+
+// Auto-render al entrar a reportes
+const _origSwitchPage = switchPage;
+switchPage = function(id, el){
+  _origSwitchPage(id, el);
+  if(id==='reportes') renderReport();
+};
+</script>
+</body>
+</html>

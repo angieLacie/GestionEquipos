@@ -1,0 +1,696 @@
+openapi: 3.1.0
+info:
+  title: Nova - Servicio de Maestros / Configuracion
+  version: "1.0.0"
+  description: |
+    Contrato del modulo de Maestros/Configuracion de Nova (bounded context `maes`).
+    Repositorio unico, versionado y auditado de catalogos y parametros transversales (Fase 0).
+    Cubre: catalogos (empresas, zonas, tiendas, puestos, roles, permisos, feriados con origen) en lectura
+    y escritura ADM; el servicio de configuracion centralizado (lookup de parametro vigente por clave+fecha,
+    CU-MAES-06) y el CRUD de parametros con vigencia y criticidad; carga manual de feriados (modelo hibrido)
+    y de semanas de campana (CAMPANA_SEMANAS).
+
+    Alineado a: ENT-MOD-MAES-001 v1.2, modelo-datos-fase0.md (esquema `maes`), ADR-004 (clave logica derivada),
+    ADR-005 (criticidad BLOQUEANTE/DEGRADABLE), arquitectura-nova.md.
+
+    Notas: el alta/baja de tiendas y puestos la hace RMS (sincronizacion, contratos-integracion.md sec 3); en Nova
+    son de solo lectura + enriquecimiento. La dotacion minima es de solo lectura (RN-MAES-05). Escritura
+    restringida a R-ADM (RN-MAES-18); GG solo solicita. Ejemplos con datos ficticios.
+servers:
+  - url: "{baseUrl}/v1"
+    variables:
+      baseUrl:
+        default: https://api.nova.example/maes
+        description: Base URL del servicio (variable de entorno; sin host real)
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Empresas
+  - name: Zonas
+  - name: Tiendas
+  - name: Puestos
+  - name: Roles y permisos
+  - name: Feriados
+  - name: Configuracion
+    description: Servicio de configuracion centralizado y parametros (CU-MAES-06, ADR-004/005)
+  - name: Campania
+    description: Semanas de campana / alta demanda (RN-MAES-21)
+
+paths:
+
+  # ----------------------- EMPRESAS -----------------------
+  /empresas:
+    get:
+      tags: [Empresas]
+      summary: Listar empresas/cadenas (Cadena, Lukers)
+      responses:
+        '200':
+          description: Empresas.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Empresa' }
+
+  # ----------------------- ZONAS -----------------------
+  /zonas:
+    get:
+      tags: [Zonas]
+      summary: Listar zonas
+      parameters:
+        - { name: id_empresa, in: query, schema: { $ref: '#/components/schemas/EmpresaId' } }
+        - { name: estado, in: query, schema: { $ref: '#/components/schemas/EstadoCatalogo' } }
+      responses:
+        '200':
+          description: Zonas.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Zona' }
+
+  # ----------------------- TIENDAS -----------------------
+  /tiendas:
+    get:
+      tags: [Tiendas]
+      summary: Listar tiendas (base RMS + enriquecimiento Nova)
+      parameters:
+        - { name: id_empresa, in: query, schema: { $ref: '#/components/schemas/EmpresaId' } }
+        - { name: id_zona, in: query, schema: { type: string, format: uuid } }
+        - { name: estado_operativo, in: query, schema: { $ref: '#/components/schemas/EstadoTienda' } }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Pagina de tiendas.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginaTiendas' }
+  /tiendas/{idTienda}:
+    parameters:
+      - { name: idTienda, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Tiendas]
+      summary: Obtener una tienda
+      responses:
+        '200':
+          description: Tienda.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tienda' }
+    patch:
+      tags: [Tiendas]
+      summary: Editar atributos operativos Nova de una tienda (CU-MAES-01)
+      description: |
+        Permiso MAES.PARAMETRO.CONFIGURAR (ADM). Edita SOLO atributos enriquecidos por Nova: ubicacion CC/PC,
+        zona Nova, estado operativo. La dotacion minima es de SOLO LECTURA (RN-MAES-05; proviene de RMS).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EditarTiendaRequest' }
+      responses:
+        '200':
+          description: Tienda actualizada y auditada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tienda' }
+        '422':
+          description: Intento de editar un campo de solo lectura (p. ej. dotacion minima).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /tiendas/sincronizar:
+    post:
+      tags: [Tiendas]
+      summary: Disparar sincronizacion on-demand con RMS (CU-MAES-01, VAC-MAES-12)
+      description: |
+        Permiso de ADM. Lanza la sincronizacion base de tiendas/puestos/dotacion minima desde RMS
+        (contratos-integracion.md sec 3; upsert idempotente). Si RMS no responde, opera con la ultima version y alerta antiguedad.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202': { description: Sincronizacion encolada. }
+
+  # ----------------------- PUESTOS -----------------------
+  /puestos:
+    get:
+      tags: [Puestos]
+      summary: Listar puestos (base RMS + atributos Nova)
+      responses:
+        '200':
+          description: Puestos.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Puesto' }
+
+  # ----------------------- ROLES Y PERMISOS -----------------------
+  /roles:
+    get:
+      tags: [Roles y permisos]
+      summary: Listar el catalogo de roles funcionales (RN-MAES-10)
+      description: Catalogo de roles que Seguridad operacionaliza. La asignacion vive en Seguridad (EX-SEGU-02).
+      responses:
+        '200':
+          description: Roles del catalogo.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Rol' }
+  /permisos:
+    get:
+      tags: [Roles y permisos]
+      summary: Listar el catalogo de permisos granulares (MODULO.RECURSO.ACCION)
+      parameters:
+        - { name: modulo, in: query, schema: { $ref: '#/components/schemas/Modulo' } }
+      responses:
+        '200':
+          description: Permisos.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Permiso' }
+  /roles/{idRol}/permisos:
+    parameters:
+      - { name: idRol, in: path, required: true, schema: { $ref: '#/components/schemas/RolId' } }
+    get:
+      tags: [Roles y permisos]
+      summary: Listar los permisos que compone un rol (RN-SEGU-04/21)
+      responses:
+        '200':
+          description: Permisos del rol.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Permiso' }
+
+  # ----------------------- FERIADOS -----------------------
+  /feriados:
+    get:
+      tags: [Feriados]
+      summary: Listar feriados vigentes (modelo hibrido REGIONAL_OFICIAL / MANUAL_ADM)
+      parameters:
+        - { name: id_empresa, in: query, schema: { $ref: '#/components/schemas/EmpresaId' } }
+        - { name: anio, in: query, schema: { type: integer, example: 2026 } }
+        - { name: alcance, in: query, schema: { type: string, enum: [NACIONAL, LOCAL] } }
+      responses:
+        '200':
+          description: Feriados.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Feriado' }
+    post:
+      tags: [Feriados]
+      summary: Cargar manualmente un feriado (RN-MAES-01, origen MANUAL_ADM)
+      description: Permiso de ADM. Para alcance LOCAL exige >=1 ambito (zona/tienda). No retroactivo (RN-MAES-03).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CrearFeriadoRequest' }
+            examples:
+              nacional:
+                value:
+                  fecha: "2026-07-28"
+                  descripcion: "Fiestas Patrias"
+                  alcance: "NACIONAL"
+                  empresas_aplicables: ["CADENA", "LUKERS"]
+                  compensable: true
+                  vigencia_desde: "2026-01-01"
+      responses:
+        '201':
+          description: Feriado creado y auditado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Feriado' }
+
+  # ----------------------- CONFIGURACION (servicio centralizado) -----------------------
+  /configuracion/parametros/lookup:
+    get:
+      tags: [Configuracion]
+      summary: Resolver el valor vigente de un parametro por clave y fecha (CU-MAES-06, RN-MAES-14)
+      description: |
+        Patron critico de consumo: devuelve el valor VIGENTE a la fecha de referencia (no el actual).
+        Incluye la criticidad (BLOQUEANTE/DEGRADABLE) para que el consumidor aplique la politica de
+        degradacion de ADR-005: si BLOQUEANTE y no resoluble, el consumidor NO ejecuta la operacion;
+        si DEGRADABLE, usa el ultimo valor en cache.
+      parameters:
+        - name: clave
+          in: query
+          required: true
+          description: Clave logica derivada (ADR-004).
+          schema: { type: string, example: "APRO_SLA_FL_ASCE_GG" }
+        - name: fecha
+          in: query
+          required: true
+          description: Fecha de referencia (RN-MAES-14).
+          schema: { type: string, format: date }
+        - name: id_empresa
+          in: query
+          schema: { $ref: '#/components/schemas/EmpresaId' }
+        - name: id_ambito
+          in: query
+          description: Tienda/zona/puesto si el parametro es de ambito acotado.
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Valor vigente del parametro.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ParametroValor' }
+              examples:
+                sla_ascenso:
+                  value:
+                    clave: "APRO_SLA_FL_ASCE_GG"
+                    tipo_dato: "ENTERO"
+                    unidad: "dias"
+                    valor: 5
+                    criticidad_consumo: "BLOQUEANTE"
+                    vigencia_desde: "2026-05-30"
+                plazo_rol:
+                  summary: Plazo del Rol (gestion interna del Rol, ADR-008; no es APRO_SLA_FL_ROL)
+                  value:
+                    clave: "ROL_PLAZO_APROBACION_GG"
+                    tipo_dato: "HORA"
+                    valor: "sabado 10:00"
+                    criticidad_consumo: "BLOQUEANTE"
+        '404':
+          description: No existe parametro vigente para la clave/fecha/ambito.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+  /configuracion/parametros/lookup-batch:
+    post:
+      tags: [Configuracion]
+      summary: Resolver varios parametros vigentes en una sola llamada
+      description: Optimizacion para consumidores que necesitan multiples claves a una fecha (reduce round-trips; soporta cache, ADR-005).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fecha, claves]
+              properties:
+                fecha: { type: string, format: date }
+                id_empresa: { $ref: '#/components/schemas/EmpresaId' }
+                claves:
+                  type: array
+                  items: { type: string }
+      responses:
+        '200':
+          description: Valores vigentes.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ParametroValor' }
+
+  /configuracion/parametros:
+    get:
+      tags: [Configuracion]
+      summary: Listar parametros (versiones) con filtros
+      parameters:
+        - { name: modulo, in: query, schema: { $ref: '#/components/schemas/Modulo' } }
+        - { name: flujo, in: query, schema: { type: string, example: "FL_ROL" } }
+        - { name: criticidad, in: query, schema: { $ref: '#/components/schemas/Criticidad' } }
+        - { name: clave, in: query, schema: { type: string } }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Pagina de parametros.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginaParametros' }
+    post:
+      tags: [Configuracion]
+      summary: Crear una nueva version vigente de un parametro (CU-MAES con vigencia)
+      description: |
+        Permiso MAES.PARAMETRO.CONFIGURAR (ADM, RN-MAES-18). Crea una nueva version con vigencia_desde
+        (no edita retroactivamente, RN-MAES-03). Si es_impacto_negocio la justificacion es OBLIGATORIA
+        (RN-MAES-17). La clave logica se deriva de modulo/flujo/nivel/nombre (ADR-004).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CrearParametroRequest' }
+            examples:
+              sla_flujo:
+                summary: SLA de un nivel de flujo (clave derivada APRO_SLA_FL_LSGH_GG)
+                value:
+                  modulo: "APROBACIONES"
+                  flujo: "FL_LSGH"
+                  nivel: "GG"
+                  nombre_parametro: "SLA"
+                  tipo_dato: "ENTERO"
+                  unidad: "dias"
+                  valor: 2
+                  criticidad_consumo: "DEGRADABLE"
+                  es_impacto_negocio: true
+                  justificacion: "SLA confirmado por PO (VAC-MAES-15)"
+                  vigencia_desde: "2026-06-01"
+              seguridad_pwd:
+                summary: Parametro de politica de seguridad (baseline arquitectura sec 6)
+                value:
+                  modulo: "SEGURIDAD"
+                  nombre_parametro: "PWD_LONGITUD_MINIMA"
+                  tipo_dato: "ENTERO"
+                  valor: 12
+                  criticidad_consumo: "DEGRADABLE"
+                  es_impacto_negocio: true
+                  justificacion: "Baseline recomendado, pendiente aprobacion TI (VAC-MAES-17)"
+                  vigencia_desde: "2026-06-01"
+      responses:
+        '201':
+          description: Nueva version creada y auditada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Parametro' }
+        '422':
+          description: Falta justificacion para parametro de impacto de negocio (RN-MAES-17) o valor fuera de rango.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /configuracion/parametros/{idParametro}/vigencia:
+    parameters:
+      - { name: idParametro, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      tags: [Configuracion]
+      summary: Cerrar/ajustar la vigencia de una version (CAMBIO_VIGENCIA)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vigencia_hasta]
+              properties:
+                vigencia_hasta: { type: string, format: date }
+                justificacion: { type: string }
+      responses:
+        '200':
+          description: Vigencia actualizada y auditada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Parametro' }
+
+  # ----------------------- CAMPANIA -----------------------
+  /campania/semanas:
+    get:
+      tags: [Campania]
+      summary: Listar semanas de campana/alta demanda (CAMPANA_SEMANAS, RN-MAES-21)
+      parameters:
+        - { name: id_empresa, in: query, schema: { $ref: '#/components/schemas/EmpresaId' } }
+        - { name: anio, in: query, schema: { type: integer } }
+      responses:
+        '200':
+          description: Semanas de campana.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/RangoFechas' }
+    post:
+      tags: [Campania]
+      summary: Cargar manualmente semanas de campana por empresa (CU-MAES-08, RN-MAES-21)
+      description: Permiso de ADM. Carga anticipada por empresa y rango de fechas (VAC-MAES-03 resuelto).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id_empresa, rangos]
+              properties:
+                id_empresa: { $ref: '#/components/schemas/EmpresaId' }
+                rangos:
+                  type: array
+                  items: { $ref: '#/components/schemas/RangoFechas' }
+            examples:
+              campania_lukers:
+                value:
+                  id_empresa: "LUKERS"
+                  rangos:
+                    - { desde: "2026-12-15", hasta: "2026-12-31" }
+      responses:
+        '201': { description: Semanas de campana registradas y auditadas. }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Clave de idempotencia para escrituras (ADR-003). Incluye la sincronizacion RMS y la carga de campana.
+      schema: { type: string, maxLength: 200 }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PageSize:
+      name: page_size
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+
+  schemas:
+    EmpresaId:
+      type: string
+      enum: [CADENA, LUKERS]
+    RolId:
+      type: string
+      enum: [R-ADM, R-GG, R-GG-SUP, R-GZ, R-GT, R-AV, R-AR, R-BIEN, R-SENIOR, R-EMP]
+    Modulo:
+      type: string
+      enum: [ROL, MARC, DESC, ENCA, TRAS, VAC, ASCE, APROBACIONES, SEGURIDAD, TRANSVERSAL]
+    EstadoCatalogo:
+      type: string
+      enum: [VIGENTE, DESACTIVADO]
+    EstadoTienda:
+      type: string
+      enum: [ACTIVA, SUSPENDIDA, CERRADA]
+    UbicacionTienda:
+      type: string
+      enum: [CC, PC]
+    OrigenDato:
+      type: string
+      enum: [RMS, NOVA]
+    Criticidad:
+      type: string
+      enum: [BLOQUEANTE, DEGRADABLE]
+    TipoDato:
+      type: string
+      enum: [ENTERO, DECIMAL, BOOLEAN, FECHA, HORA, TEXTO, LISTA, RANGO]
+    AmbitoParam:
+      type: string
+      enum: [GLOBAL, EMPRESA, ZONA, TIENDA, PUESTO]
+
+    Empresa:
+      type: object
+      properties:
+        id_empresa: { $ref: '#/components/schemas/EmpresaId' }
+        nombre: { type: string }
+        dia_inicio_semana: { type: string, enum: [DOMINGO, LUNES, MARTES, MIERCOLES, JUEVES, VIERNES, SABADO] }
+        existe_cobertura_tipo_venta: { type: boolean, description: "true en Lukers por defecto (RN-MAES-13)." }
+        estado: { $ref: '#/components/schemas/EstadoCatalogo' }
+    Zona:
+      type: object
+      properties:
+        id_zona: { type: string, format: uuid }
+        nombre: { type: string }
+        id_empresa: { $ref: '#/components/schemas/EmpresaId' }
+        estado: { $ref: '#/components/schemas/EstadoCatalogo' }
+    Tienda:
+      type: object
+      properties:
+        id_tienda: { type: string, format: uuid }
+        codigo: { type: string }
+        nombre: { type: string }
+        id_empresa: { $ref: '#/components/schemas/EmpresaId' }
+        id_zona: { type: string, format: uuid }
+        ubicacion: { $ref: '#/components/schemas/UbicacionTienda' }
+        dotacion_minima_asesores: { type: integer, minimum: 0, description: "SOLO LECTURA, fuente RMS (RN-MAES-05)." }
+        fecha_vigencia_dotacion: { type: string, format: date, nullable: true }
+        estado_operativo: { $ref: '#/components/schemas/EstadoTienda' }
+        origen: { $ref: '#/components/schemas/OrigenDato' }
+        rms_sync_at: { type: string, format: date-time, nullable: true, description: "Ultima sincronizacion RMS (monitoreo antiguedad)." }
+    EditarTiendaRequest:
+      type: object
+      description: Solo atributos enriquecidos por Nova. La dotacion minima NO es editable.
+      properties:
+        ubicacion: { $ref: '#/components/schemas/UbicacionTienda' }
+        id_zona: { type: string, format: uuid }
+        estado_operativo: { $ref: '#/components/schemas/EstadoTienda' }
+        fecha_efecto_estado: { type: string, format: date }
+    PaginaTiendas:
+      allOf:
+        - $ref: '#/components/schemas/Pagina'
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Tienda' }
+    Puesto:
+      type: object
+      properties:
+        id_puesto: { type: string, format: uuid }
+        codigo: { type: string }
+        nombre: { type: string }
+        genera_ratios_senior: { type: boolean }
+        habilitado_senior: { type: boolean, description: "Consistente con ASCE_PUESTOS_HABILITADOS_SENIOR." }
+        origen: { $ref: '#/components/schemas/OrigenDato' }
+    Rol:
+      type: object
+      properties:
+        id_rol: { $ref: '#/components/schemas/RolId' }
+        nombre: { type: string }
+        nivel_autoridad: { type: integer, description: "Para compatibilidad de delegacion/suplencia (RN-SEGU-28/31)." }
+        ambito_permitido: { type: string, enum: [CENTRAL, EMPRESA, ZONA, TIENDA] }
+        estado: { $ref: '#/components/schemas/EstadoCatalogo' }
+    Permiso:
+      type: object
+      properties:
+        id_permiso: { type: string, format: uuid }
+        clave: { type: string, example: "APRO.TAREA.APROBAR" }
+        modulo: { $ref: '#/components/schemas/Modulo' }
+        accion: { type: string, enum: [CREAR, LEER, EDITAR, ELIMINAR, ENVIAR, APROBAR, RECHAZAR, AUTORIZAR, EXPORTAR, CONFIGURAR] }
+    Feriado:
+      type: object
+      properties:
+        id_feriado: { type: string, format: uuid }
+        fecha: { type: string, format: date }
+        descripcion: { type: string }
+        alcance: { type: string, enum: [NACIONAL, LOCAL] }
+        origen: { type: string, enum: [REGIONAL_OFICIAL, MANUAL_ADM] }
+        empresas_aplicables:
+          type: array
+          items: { $ref: '#/components/schemas/EmpresaId' }
+        compensable: { type: boolean }
+        ambitos:
+          type: array
+          description: Obligatorio >=1 si alcance=LOCAL (RN-MAES-01).
+          items:
+            type: object
+            properties:
+              tipo_ambito: { type: string, enum: [ZONA, TIENDA] }
+              id_ambito: { type: string, format: uuid }
+        vigencia_desde: { type: string, format: date }
+        vigencia_hasta: { type: string, format: date, nullable: true }
+    CrearFeriadoRequest:
+      type: object
+      required: [fecha, descripcion, alcance, empresas_aplicables, vigencia_desde]
+      properties:
+        fecha: { type: string, format: date }
+        descripcion: { type: string }
+        alcance: { type: string, enum: [NACIONAL, LOCAL] }
+        empresas_aplicables:
+          type: array
+          items: { $ref: '#/components/schemas/EmpresaId' }
+        compensable: { type: boolean, default: true }
+        ambitos:
+          type: array
+          items:
+            type: object
+            properties:
+              tipo_ambito: { type: string, enum: [ZONA, TIENDA] }
+              id_ambito: { type: string, format: uuid }
+        vigencia_desde: { type: string, format: date }
+    Parametro:
+      type: object
+      properties:
+        id_parametro: { type: string, format: uuid }
+        clave: { type: string, description: "Clave logica derivada (ADR-004)." }
+        modulo: { $ref: '#/components/schemas/Modulo' }
+        flujo: { type: string, nullable: true }
+        nivel: { type: string, nullable: true }
+        nombre_parametro: { type: string }
+        ambito: { $ref: '#/components/schemas/AmbitoParam' }
+        id_empresa: { $ref: '#/components/schemas/EmpresaId' }
+        tipo_dato: { $ref: '#/components/schemas/TipoDato' }
+        unidad: { type: string, nullable: true }
+        valor: { description: "Soporta ENTERO/DECIMAL/BOOLEAN/LISTA/RANGO (JSON)." }
+        es_impacto_negocio: { type: boolean }
+        criticidad_consumo: { $ref: '#/components/schemas/Criticidad' }
+        vigencia_desde: { type: string, format: date }
+        vigencia_hasta: { type: string, format: date, nullable: true }
+    ParametroValor:
+      type: object
+      description: Vista de consumo del servicio de configuracion (lookup vigente).
+      properties:
+        clave: { type: string }
+        tipo_dato: { $ref: '#/components/schemas/TipoDato' }
+        unidad: { type: string, nullable: true }
+        valor: {}
+        criticidad_consumo: { $ref: '#/components/schemas/Criticidad' }
+        vigencia_desde: { type: string, format: date }
+    CrearParametroRequest:
+      type: object
+      required: [modulo, nombre_parametro, tipo_dato, valor, criticidad_consumo, vigencia_desde]
+      properties:
+        modulo: { $ref: '#/components/schemas/Modulo' }
+        flujo: { type: string, nullable: true }
+        nivel: { type: string, nullable: true }
+        nombre_parametro: { type: string }
+        ambito: { $ref: '#/components/schemas/AmbitoParam' }
+        id_empresa: { $ref: '#/components/schemas/EmpresaId' }
+        id_ambito: { type: string, format: uuid }
+        tipo_dato: { $ref: '#/components/schemas/TipoDato' }
+        unidad: { type: string }
+        valor: {}
+        es_impacto_negocio: { type: boolean, default: false }
+        criticidad_consumo: { $ref: '#/components/schemas/Criticidad' }
+        justificacion: { type: string, description: "Obligatoria si es_impacto_negocio (RN-MAES-17)." }
+        vigencia_desde: { type: string, format: date }
+    PaginaParametros:
+      allOf:
+        - $ref: '#/components/schemas/Pagina'
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Parametro' }
+    RangoFechas:
+      type: object
+      properties:
+        desde: { type: string, format: date }
+        hasta: { type: string, format: date }
+
+    Pagina:
+      type: object
+      properties:
+        page: { type: integer }
+        page_size: { type: integer }
+        total: { type: integer }
+    Problem:
+      type: object
+      description: Error estandar RFC 7807 (problem+json).
+      properties:
+        type: { type: string, format: uri, default: "about:blank" }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        codigo_negocio: { type: string }
+      required: [title, status]

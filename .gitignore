@@ -1,0 +1,7 @@
+# Credenciales y configuracion local - NUNCA subir
+.env
+*.cred.xml
+*.cred
+
+# Logs
+log_orquestador_*.txt

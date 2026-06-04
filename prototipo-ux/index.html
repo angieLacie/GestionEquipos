@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nova — Prototipo UX/UI (Fase 1)</title>
+<style>
+  /* =========================================================
+     TOKENS — design-system-nova.md v1.0 (fuente única de verdad)
+     ========================================================= */
+  :root {
+    /* Neutros y semánticos */
+    --bg-canvas:#F4F6F8; --bg-surface:#FFFFFF; --bg-subtle:#ECEFF3; --bg-inset:#E2E7ED;
+    --border-default:#D5DBE2; --border-strong:#AEB8C4;
+    --text-primary:#1B2733; --text-secondary:#5A6472; --text-disabled:#97A0AD; --text-inverse:#FFFFFF;
+    /* Feedback */
+    --success-fg:#1E7A46; --success-bg:#E4F4EA;
+    --warning-fg:#9A6B00; --warning-bg:#FBF1D9;
+    --danger-fg:#B3261E;  --danger-bg:#FBE7E5;
+    --info-fg:#1F5FA6;    --info-bg:#E6EEF7;
+    --neutral-fg:#5A6472; --neutral-bg:#ECEFF3;
+    /* Celdas de calendario */
+    --cal-descanso:#DCE9F7; --cal-cobertura:#E5E0F5; --cal-compFeriado:#FCEBD6;
+    --cal-compDNG:#F7E6F0; --cal-tipoVenta:#DBF0EC; --cal-sugerencia:#FFF8DC;
+    /* Radios / elevación / foco */
+    --radius-sm:4px; --radius-md:8px; --radius-full:999px;
+    --elev-1:0 1px 2px rgba(0,0,0,.08); --elev-2:0 4px 12px rgba(0,0,0,.12); --elev-3:0 12px 32px rgba(0,0,0,.18);
+    --focus-ring:0 0 0 3px rgba(31,95,166,.45);
+    /* Espaciado base 4px */
+    --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s8:48px;
+    /* Marca — theme Cadena (default) */
+    --brand-primary:#1F5FA6; --brand-hover:#19507F; --brand-onPrimary:#FFFFFF; --brand-accent:#0E9AA8;
+    --font-base:Inter,"Segoe UI",system-ui,sans-serif;
+    --font-mono:"JetBrains Mono",Consolas,monospace;
+  }
+  /* Theme Lukers (morado) */
+  body[data-empresa="lukers"]{
+    --brand-primary:#7A3FA0; --brand-hover:#663485; --brand-accent:#C0568A;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{font-family:var(--font-base); background:var(--bg-canvas); color:var(--text-primary); font-size:14px; line-height:1.5;}
+
+  /* ---------- Top bar ---------- */
+  .topbar{display:flex; align-items:center; gap:var(--s4); height:56px; padding:0 var(--s5);
+    background:var(--brand-primary); color:var(--brand-onPrimary); box-shadow:var(--elev-1); position:sticky; top:0; z-index:20;}
+  .topbar .logo{font-weight:600; font-size:20px; letter-spacing:.5px;}
+  .empresa-tag{display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:var(--radius-full);
+    background:rgba(255,255,255,.18); font-size:12px; font-weight:600;}
+  .topbar .spacer{flex:1;}
+  .switch{display:flex; background:rgba(255,255,255,.15); border-radius:var(--radius-full); padding:3px;}
+  .switch button{border:0; background:transparent; color:var(--brand-onPrimary); padding:5px 14px; border-radius:var(--radius-full);
+    cursor:pointer; font-size:12px; font-weight:600; opacity:.7;}
+  .switch button.active{background:var(--brand-onPrimary); color:var(--brand-primary); opacity:1;}
+  .avatar{width:32px;height:32px;border-radius:var(--radius-full); background:var(--brand-accent); color:#fff;
+    display:flex;align-items:center;justify-content:center; font-weight:600; font-size:12px;}
+
+  /* ---------- Layout ---------- */
+  .shell{display:flex; min-height:calc(100vh - 56px);}
+  .nav{width:230px; background:var(--bg-surface); border-right:1px solid var(--border-default); padding:var(--s4) var(--s2); flex-shrink:0;}
+  .nav .group{font-size:11px; text-transform:uppercase; color:var(--text-secondary); font-weight:600; letter-spacing:.6px; padding:var(--s3) var(--s3) var(--s2);}
+  .nav a{display:flex; align-items:center; gap:var(--s3); padding:10px var(--s3); border-radius:var(--radius-md); color:var(--text-primary);
+    text-decoration:none; font-weight:500; cursor:pointer; margin-bottom:2px;}
+  .nav a:hover{background:var(--bg-subtle);}
+  .nav a.active{background:var(--info-bg); color:var(--info-fg); font-weight:600;}
+  .nav a .ico{width:18px; text-align:center;}
+  .main{flex:1; padding:var(--s5); overflow:auto;}
+
+  /* ---------- Generic ---------- */
+  h1.screen{font-size:24px; font-weight:600; margin:0 0 var(--s2);}
+  .sub{color:var(--text-secondary); margin:0 0 var(--s5);}
+  .view{display:none;} .view.active{display:block;}
+
+  .btn{border:1px solid transparent; border-radius:var(--radius-md); padding:9px 16px; font-weight:600; font-size:14px;
+    cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:8px; min-height:40px;}
+  .btn:focus-visible{outline:none; box-shadow:var(--focus-ring);}
+  .btn.primary{background:var(--brand-primary); color:var(--brand-onPrimary);}
+  .btn.primary:hover{background:var(--brand-hover);}
+  .btn.secondary{background:var(--bg-surface); color:var(--brand-primary); border-color:var(--border-strong);}
+  .btn.ghost{background:transparent; color:var(--text-secondary);}
+  .btn.danger{background:var(--danger-bg); color:var(--danger-fg); border-color:var(--danger-fg);}
+  .btn.sm{padding:5px 10px; min-height:30px; font-size:12px;}
+
+  .badge{display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:var(--radius-full);
+    font-size:12px; font-weight:600; white-space:nowrap;}
+  .b-success{background:var(--success-bg); color:var(--success-fg);}
+  .b-warning{background:var(--warning-bg); color:var(--warning-fg);}
+  .b-danger{background:var(--danger-bg); color:var(--danger-fg);}
+  .b-info{background:var(--info-bg); color:var(--info-fg);}
+  .b-neutral{background:var(--neutral-bg); color:var(--neutral-fg);}
+
+  .banner{display:flex; align-items:center; gap:var(--s3); padding:var(--s3) var(--s4); border-radius:var(--radius-md);
+    margin-bottom:var(--s4); font-weight:500; border:1px solid transparent;}
+  .banner.warn{background:var(--warning-bg); color:var(--warning-fg); border-color:#E9D08A;}
+  .banner.info{background:var(--info-bg); color:var(--info-fg); border-color:#Bcd3ee;}
+  .banner.danger{background:var(--danger-bg); color:var(--danger-fg); border-color:#E9B7B2;}
+
+  .card{background:var(--bg-surface); border:1px solid var(--border-default); border-radius:var(--radius-md); box-shadow:var(--elev-1);}
+  .kpis{display:grid; grid-template-columns:repeat(4,1fr); gap:var(--s4); margin-bottom:var(--s5);}
+  .kpi{padding:var(--s4);}
+  .kpi .num{font-size:30px; font-weight:600; line-height:1.1;}
+  .kpi .lbl{color:var(--text-secondary); font-size:12px; margin-top:4px;}
+  .kpi .num.ok{color:var(--info-fg);} .kpi .num.bad{color:var(--danger-fg);}
+
+  /* ---------- Filtros ---------- */
+  .filters{display:flex; flex-wrap:wrap; gap:var(--s3); align-items:flex-end; padding:var(--s4); margin-bottom:var(--s4);}
+  .field{display:flex; flex-direction:column; gap:4px;}
+  .field label{font-size:12px; font-weight:500; color:var(--text-secondary);}
+  .field select,.field input{padding:8px 10px; border:1px solid var(--border-default); border-radius:var(--radius-sm);
+    background:var(--bg-surface); font-family:inherit; font-size:14px; min-width:130px;}
+  .field select:focus,.field input:focus{outline:none; box-shadow:var(--focus-ring); border-color:var(--brand-primary);}
+
+  /* ---------- Calendario del Rol ---------- */
+  .cal-wrap{overflow-x:auto; border:1px solid var(--border-default); border-radius:var(--radius-md); background:var(--bg-surface);}
+  table.cal{border-collapse:collapse; width:100%; font-size:13px; min-width:920px;}
+  table.cal th,table.cal td{border:1px solid var(--border-default); padding:8px; text-align:center;}
+  table.cal thead th{background:var(--bg-subtle); font-weight:600; position:sticky; top:0;}
+  table.cal th.fixed,table.cal td.fixed{position:sticky; left:0; background:var(--bg-surface); text-align:left; z-index:2;}
+  table.cal th.fixed{background:var(--bg-subtle);}
+  .col-puesto{left:120px !important;} .col-personal{left:200px !important;}
+  th.feriado{background:var(--warning-bg); color:var(--warning-fg);}
+  .emp{font-weight:600;} .emp .meta{display:block; font-weight:400; font-size:11px; color:var(--text-secondary);}
+  .tag-new{display:inline-block; background:var(--info-bg); color:var(--info-fg); font-size:10px; padding:1px 6px; border-radius:var(--radius-full); margin-left:4px;}
+  .ratio.ok{color:var(--info-fg); font-weight:600;} .ratio.bad{color:var(--danger-fg); font-weight:600;}
+  td.cell{cursor:pointer; height:46px; font-weight:600; position:relative;}
+  td.cell:hover{box-shadow:inset 0 0 0 2px var(--brand-primary);}
+  td.free{background:var(--bg-subtle); color:var(--text-disabled); font-weight:400;}
+  td.locked{background:var(--bg-inset); cursor:not-allowed; color:var(--text-disabled);}
+  td.c-DL{background:var(--cal-descanso); color:#1B4D7E;}
+  td.c-CT{background:var(--cal-cobertura); color:#4B3A78;}
+  td.c-CF{background:var(--cal-compFeriado); color:#8A4B12;}
+  td.c-CD{background:var(--cal-compDNG); color:#8A2E66;}
+  td.c-TV{background:var(--cal-tipoVenta); color:#1A6157;}
+  td.c-SUG{background:var(--cal-sugerencia); border:1px dashed var(--warning-fg); color:#7A5A00;}
+  .asis{position:absolute; bottom:2px; right:4px; font-size:10px; color:var(--success-fg);}
+  tfoot td{background:var(--bg-subtle); font-family:var(--font-mono); font-weight:600;}
+  tfoot td.over{color:var(--danger-fg);}
+
+  .legend{display:flex; flex-wrap:wrap; gap:var(--s3); margin:var(--s4) 0; font-size:12px;}
+  .legend .li{display:flex; align-items:center; gap:6px;}
+  .legend .sw{width:16px;height:16px;border-radius:3px; border:1px solid var(--border-default);}
+
+  /* ---------- Aprobaciones split ---------- */
+  .split{display:grid; grid-template-columns:340px 1fr; gap:var(--s4);}
+  .task{padding:var(--s3) var(--s4); border-bottom:1px solid var(--border-default); cursor:pointer;}
+  .task:hover{background:var(--bg-subtle);} .task.sel{background:var(--info-bg);}
+  .task .crit{display:inline-block;width:9px;height:9px;border-radius:50%; margin-right:6px;}
+  .task .t-title{font-weight:600;}
+  .task .t-meta{font-size:12px; color:var(--text-secondary); margin-top:2px;}
+  .detail{padding:var(--s5);}
+  .timeline{list-style:none; padding:0; margin:var(--s3) 0;}
+  .timeline li{padding:8px 0 8px var(--s5); border-left:2px solid var(--border-strong); position:relative; margin-left:6px;}
+  .timeline li::before{content:""; position:absolute; left:-7px; top:12px; width:12px;height:12px;border-radius:50%; background:var(--brand-primary);}
+  .field-block{margin:var(--s4) 0;}
+  textarea{width:100%; padding:10px; border:1px solid var(--border-default); border-radius:var(--radius-sm); font-family:inherit; resize:vertical;}
+
+  /* ---------- Kiosco ---------- */
+  .kiosk{max-width:420px; margin:0 auto; background:#0E1A26; color:#fff; border-radius:16px; padding:var(--s6); text-align:center; box-shadow:var(--elev-3);}
+  .kiosk .k-head{font-size:18px; font-weight:600; letter-spacing:1px;}
+  .kiosk .k-clock{font-size:30px; font-weight:600; margin:var(--s3) 0 var(--s5); font-family:var(--font-mono);}
+  .kiosk .fp{width:110px;height:110px;border-radius:50%; margin:0 auto var(--s4); border:3px solid var(--brand-accent);
+    display:flex; align-items:center; justify-content:center; font-size:54px;}
+  .kiosk .k-msg{padding:var(--s4); border-radius:var(--radius-md); font-size:18px; font-weight:600; margin-top:var(--s4);}
+  .k-ok{background:var(--success-bg); color:var(--success-fg);}
+  .k-warn{background:var(--warning-bg); color:var(--warning-fg);}
+  .k-danger{background:var(--danger-bg); color:var(--danger-fg);}
+
+  /* ---------- Notificación nativa Windows ---------- */
+  .win-toast{width:340px; background:#2B2B2B; color:#fff; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.45);
+    padding:14px 16px; font-size:13px; border:1px solid #3A3A3A; position:relative;}
+  .win-toast .w-app{display:flex; align-items:center; gap:8px; font-size:11px; color:#C9C9C9; margin-bottom:8px;}
+  .win-toast .w-app .w-ico{width:16px;height:16px;border-radius:3px; background:var(--brand-primary); display:inline-block;}
+  .win-toast .w-title{font-weight:600; margin-bottom:4px;}
+  .win-toast .w-x{position:absolute; top:10px; right:12px; color:#9A9A9A; cursor:pointer;}
+  .win-toast .w-actions{display:flex; gap:8px; margin-top:10px;}
+  .win-toast .w-btn{flex:1; background:#3D3D3D; border:0; color:#fff; padding:7px; border-radius:5px; font-family:inherit; font-size:12px; cursor:pointer;}
+  .win-bar{background:#1F1F1F; border-radius:0 0 8px 8px; height:34px; margin-top:14px; display:flex; align-items:center; padding:0 10px; gap:10px; color:#C9C9C9; font-size:11px;}
+  .win-bar .w-start{width:18px;height:18px; background:linear-gradient(135deg,#2d8cf0,#1e5fa6); border-radius:3px;}
+  .win-desktop{background:linear-gradient(135deg,#0a3d62,#1e5fa6); border-radius:10px; padding:var(--s4); min-height:230px; position:relative; display:flex; justify-content:flex-end; align-items:flex-end;}
+
+  /* ---------- Tablas genéricas ---------- */
+  table.data{border-collapse:collapse; width:100%; font-size:13px; background:var(--bg-surface);}
+  table.data th,table.data td{border-bottom:1px solid var(--border-default); padding:10px var(--s3); text-align:left;}
+  table.data thead th{background:var(--bg-subtle); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.4px; color:var(--text-secondary);}
+  .num-cell{font-family:var(--font-mono);}
+
+  /* ---------- Maqueta de teléfono ---------- */
+  .phones{display:flex; flex-wrap:wrap; gap:var(--s6); align-items:flex-start;}
+  .phone-wrap{width:300px;}
+  .phone-wrap > h4{text-align:center; margin:0 0 var(--s3);}
+  .phone{width:300px; height:620px; background:#0E1A26; border-radius:34px; padding:12px; box-shadow:var(--elev-3); position:relative;}
+  .phone .notch{position:absolute; top:14px; left:50%; transform:translateX(-50%); width:120px; height:22px; background:#0E1A26; border-radius:0 0 14px 14px; z-index:5;}
+  .screen-m{background:var(--bg-canvas); border-radius:24px; height:100%; overflow:hidden; display:flex; flex-direction:column;}
+  .m-top{background:var(--brand-primary); color:#fff; padding:26px var(--s4) var(--s3); font-weight:600; display:flex; align-items:center; gap:10px; font-size:15px;}
+  .m-top .back{font-size:18px; cursor:pointer;}
+  .m-body{padding:var(--s4); overflow-y:auto; flex:1; font-size:13px;}
+  .m-body h5{margin:0 0 4px; font-size:15px;}
+  .m-card{background:var(--bg-surface); border:1px solid var(--border-default); border-radius:var(--radius-md); padding:var(--s3); margin-bottom:var(--s3);}
+  .m-row{display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border-default); font-size:13px;}
+  .m-row:last-child{border-bottom:0;}
+  .m-foot{padding:var(--s3) var(--s4); border-top:1px solid var(--border-default); background:var(--bg-surface);}
+  .m-btn{width:100%; border:0; border-radius:var(--radius-md); padding:13px; font-weight:600; font-size:15px; font-family:inherit; cursor:pointer; min-height:46px;}
+  .m-btn.primary{background:var(--brand-primary); color:#fff;}
+  .m-btn.danger{background:var(--danger-bg); color:var(--danger-fg);}
+  .m-dropzone{border:2px dashed var(--border-strong); border-radius:var(--radius-md); padding:var(--s5); text-align:center; color:var(--text-secondary); background:var(--bg-surface);}
+  .m-code{font-family:var(--font-mono); font-size:32px; letter-spacing:6px; text-align:center; color:var(--brand-primary); font-weight:600; background:var(--info-bg); border-radius:var(--radius-md); padding:var(--s4); margin:var(--s3) 0;}
+  .m-selfie{width:120px;height:120px;border-radius:50%; margin:var(--s4) auto; background:var(--bg-inset); display:flex; align-items:center; justify-content:center; font-size:46px; border:3px dashed var(--brand-primary);}
+
+  .note{font-size:12px; color:var(--text-secondary); margin-top:var(--s4); font-style:italic;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:var(--s5);}
+  @media(max-width:1100px){ .kpis{grid-template-columns:repeat(2,1fr);} .split{grid-template-columns:1fr;} .grid2{grid-template-columns:1fr;} }
+</style>
+</head>
+<body data-empresa="cadena">
+
+  <header class="topbar">
+    <span class="logo">NOVA</span>
+    <span class="empresa-tag" id="empresaTag">● CADENA</span>
+    <span class="spacer"></span>
+    <div class="switch" role="group" aria-label="Empresa / theme">
+      <button id="btnCadena" class="active" onclick="setEmpresa('cadena')">Cadena</button>
+      <button id="btnLukers" onclick="setEmpresa('lukers')">Lukers</button>
+    </div>
+    <span style="font-size:13px;opacity:.9">GZ · M. Soto</span>
+    <span class="avatar">MS</span>
+  </header>
+
+  <div class="shell">
+    <nav class="nav" aria-label="Navegación principal">
+      <div class="group">Operación diaria</div>
+      <a class="active" data-view="rol" onclick="go('rol')"><span class="ico">📅</span> Rol de Personal</a>
+      <a data-view="aprob" onclick="go('aprob')"><span class="ico">✅</span> Aprobaciones <span class="badge b-danger sm" style="margin-left:auto;padding:0 8px">3</span></a>
+      <a data-view="marca" onclick="go('marca')"><span class="ico">🖐️</span> Marcaciones</a>
+      <a data-view="descansos" onclick="go('descansos')"><span class="ico">🛌</span> Descansos</a>
+      <a data-view="ascenso" onclick="go('ascenso')"><span class="ico">▲</span> Ascenso Senior</a>
+      <div class="group">App móvil</div>
+      <a data-view="movil" onclick="go('movil')"><span class="ico">📱</span> Móvil (colaborador / GZ)</a>
+      <div class="group">Catálogo</div>
+      <a data-view="badges" onclick="go('badges')"><span class="ico">🏷️</span> Estados &amp; Badges</a>
+    </nav>
+
+    <main class="main">
+
+      <!-- ============ ROL DE PERSONAL ============ -->
+      <section id="view-rol" class="view active">
+        <h1 class="screen">Rol de Personal — Programación semanal</h1>
+        <p class="sub">CU-01..05 · Calendario domingo→sábado · ciclo GZ → GG → GT</p>
+
+        <div class="banner warn">⟳ <strong>Versión en revisión.</strong> La programación vigente sigue activa. Días pasados bloqueados.</div>
+
+        <div class="kpis">
+          <div class="card kpi"><div class="num">82%</div><div class="lbl">% tiendas con rol completo</div></div>
+          <div class="card kpi"><div class="num ok">101.2%</div><div class="lbl">Ratio promedio Seniors</div></div>
+          <div class="card kpi"><div class="num bad">4</div><div class="lbl">Cajas bloqueadas (POS)</div></div>
+          <div class="card kpi"><div class="num">hoy 11:59</div><div class="lbl">Plazo de envío a GG</div></div>
+        </div>
+
+        <div class="card filters" role="search" aria-label="Filtros de programación">
+          <div class="field"><label>Año</label><select><option>2026</option></select></div>
+          <div class="field"><label>Semana</label><select><option>Semana 27 · dom 28-JUN – sáb 04-JUL</option></select></div>
+          <div class="field"><label>Empresa</label><select id="selEmpresa" onchange="setEmpresa(this.value)"><option value="cadena">Cadena</option><option value="lukers">Lukers</option></select></div>
+          <div class="field"><label>Zona</label><select><option>Lima Sur</option><option>Lima Norte</option></select></div>
+          <div class="field"><label>Tienda</label><select><option>T-Lima01</option><option>T-Lima02</option></select></div>
+          <div class="field"><label>Puesto</label><select><option>Seniors</option><option>Asesores</option><option>Sastres</option></select></div>
+          <span class="spacer" style="flex:1"></span>
+          <button class="btn secondary sm">Historial</button>
+          <button class="btn secondary sm">Excel</button>
+          <button class="btn primary" onclick="alert('Validación previa: cuota OK, completitud OK → Enviar a Gerencia General')">Enviar a Aprobación</button>
+        </div>
+
+        <div class="cal-wrap">
+          <table class="cal">
+            <thead>
+              <tr>
+                <th class="fixed">Tienda</th>
+                <th class="fixed col-puesto">Puesto</th>
+                <th class="fixed col-personal">Personal</th>
+                <th>DOM<br>28-JUN</th><th>LUN<br>29</th><th>MAR<br>30</th>
+                <th class="feriado">MIÉ ★<br>01-JUL</th><th>JUE<br>02</th><th>VIE<br>03</th><th>SÁB<br>04</th>
+                <th>Ratios</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="fixed">T-Lima01</td><td class="fixed col-puesto">Senior</td>
+                <td class="fixed col-personal emp">A. Pérez<span class="meta">Asesor · Senior</span></td>
+                <td class="cell c-DL" title="Descanso Laboral">DL</td>
+                <td class="cell free">+</td>
+                <td class="cell c-CT" title="Cobertura de Tienda → genera Encargatura">CT</td>
+                <td class="cell c-CF" title="Compensación feriado laborado">CF</td>
+                <td class="cell free">+</td>
+                <td class="cell free">+</td>
+                <td class="cell free">+</td>
+                <td><span class="ratio ok">101.2%</span></td>
+              </tr>
+              <tr>
+                <td class="fixed"></td><td class="fixed col-puesto">Senior</td>
+                <td class="fixed col-personal emp">L. Quispe<span class="meta">Promotor · Senior</span><span class="tag-new">Nuevo</span></td>
+                <td class="cell free">+</td>
+                <td class="cell c-DL">DL</td>
+                <td class="cell free"><span class="asis">✓</span>+</td>
+                <td class="cell c-CD" title="Compensación descanso no gozado">CD</td>
+                <td class="cell free">+</td>
+                <td class="cell c-SUG" title="Sugerencia del sistema (editable)">✦ DL</td>
+                <td class="cell free">+</td>
+                <td><span class="ratio bad">96.7%</span></td>
+              </tr>
+              <tr>
+                <td class="fixed"></td><td class="fixed col-puesto">Asesor</td>
+                <td class="fixed col-personal emp">J. Ramos<span class="meta">Asesor part-time</span></td>
+                <td class="cell locked" title="No se puede modificar días pasados">🔒</td>
+                <td class="cell c-DL">DL</td>
+                <td class="cell free">+</td>
+                <td class="cell free">+</td>
+                <td class="cell c-TV" title="Cobertura por Tipo de Venta (solo Lukers)">TV</td>
+                <td class="cell free">+</td>
+                <td class="cell c-DL">DL</td>
+                <td>—</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td class="fixed" colspan="3" style="text-align:right">Cuota aprox. por asesor →</td>
+                <td>S/2.1k</td><td>S/2.0k</td><td>S/2.4k</td><td class="over">S/3.2k ⚠</td><td>S/1.9k</td><td>S/2.2k</td><td>S/2.6k</td><td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div class="legend">
+          <span class="li"><span class="sw" style="background:var(--cal-descanso)"></span> DL · Descanso Laboral</span>
+          <span class="li"><span class="sw" style="background:var(--cal-cobertura)"></span> CT · Cobertura de Tienda</span>
+          <span class="li"><span class="sw" style="background:var(--cal-compFeriado)"></span> CF · Comp. feriado</span>
+          <span class="li"><span class="sw" style="background:var(--cal-compDNG)"></span> CD · Comp. descanso no gozado</span>
+          <span class="li"><span class="sw" style="background:var(--cal-tipoVenta)"></span> TV · Tipo de venta (Lukers)</span>
+          <span class="li"><span class="sw" style="background:var(--cal-sugerencia);border-style:dashed"></span> ✦ Sugerencia del sistema</span>
+          <span class="li"><span class="sw" style="background:var(--bg-inset)"></span> 🔒 Día pasado</span>
+        </div>
+        <p class="note">Ratios ≥100% en azul / &lt;100% en rojo, siempre con el valor numérico (nunca solo color — WCAG 1.4.1). La cuota que supera S/3,000 (Cadena) bloquea el envío.</p>
+      </section>
+
+      <!-- ============ APROBACIONES ============ -->
+      <section id="view-aprob" class="view">
+        <h1 class="screen">Bandeja de Aprobaciones</h1>
+        <p class="sub">Bandeja única transversal · ordenada por urgencia de SLA · ámbito por rol (GZ: su zona)</p>
+
+        <div class="card filters">
+          <div class="field"><label>Tipo de flujo</label><select><option>Todos</option><option>Rol semanal</option><option>LSGH/LCGH</option><option>Ascenso</option></select></div>
+          <div class="field"><label>Módulo</label><select><option>Todos</option></select></div>
+          <div class="field"><label>Antigüedad</label><select><option>Cualquiera</option></select></div>
+          <div class="field"><label>Criticidad</label><select><option>Todas</option></select></div>
+        </div>
+
+        <div class="split">
+          <div class="card" style="overflow:hidden">
+            <div class="task sel" onclick="selTask(this,0)">
+              <div class="t-title"><span class="crit" style="background:var(--warning-fg)"></span>Rol semanal · Zona Lima Sur</div>
+              <div class="t-meta">Solicita: GZ M. Soto · Ingresó hace 3 h</div>
+              <div class="t-meta"><span class="badge b-warning">SLA: vence hoy 10:00</span></div>
+            </div>
+            <div class="task" onclick="selTask(this,1)">
+              <div class="t-title"><span class="crit" style="background:var(--info-fg)"></span>LSGH · J. Ramos (T-Lima01)</div>
+              <div class="t-meta">Solicita: GZ M. Soto · Ingresó ayer</div>
+              <div class="t-meta"><span class="badge b-info">SLA: 1 día hábil restante</span></div>
+            </div>
+            <div class="task" onclick="selTask(this,2)">
+              <div class="t-title"><span class="crit" style="background:var(--danger-fg)"></span>Ascenso Senior · A. Pérez</div>
+              <div class="t-meta">Solicita: GZ M. Soto · Ingresó 28-MAY</div>
+              <div class="t-meta"><span class="badge b-danger">⏱ VENCIDA · SLA superado</span></div>
+            </div>
+          </div>
+
+          <div class="card detail" id="aprobDetail">
+            <!-- rellenado por JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ MARCACIONES ============ -->
+      <section id="view-marca" class="view">
+        <h1 class="screen">Marcaciones biométricas</h1>
+        <p class="sub">3 componentes: dispositivo biométrico (kiosco) · agente Windows (alertas nativas) · módulo web (GT / AV)</p>
+
+        <div class="banner info">ℹ <strong>Arquitectura:</strong> la marcación ocurre en el <strong>dispositivo biométrico físico</strong> de la tienda (no en Windows ni en web). El <strong>agente Windows</strong> instalado en las máquinas de tienda solo lanza <strong>alertas nativas</strong> de inasistencia, que abren el módulo web del GT.</div>
+
+        <div class="grid2">
+          <div>
+            <h3 style="margin-top:0">1 · Dispositivo biométrico (kiosco de tienda)</h3>
+            <div class="kiosk">
+              <div class="k-head">NOVA · Tienda T-Lima01</div>
+              <div class="k-clock">10:58 a.m.<br><span style="font-size:14px;font-weight:400">Lun 30-JUN</span></div>
+              <div class="fp">🖐️</div>
+              <div>Coloque su dedo en el lector</div>
+              <div class="k-msg k-ok">✓ Entrada registrada — A. Pérez, 10:58 a.m.</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:var(--s4)">
+              <button class="btn secondary sm" onclick="kioskMsg('k-ok','✓ Salida registrada — L. Quispe. Jornada cerrada.')">Salida OK</button>
+              <button class="btn secondary sm" onclick="kioskMsg('k-danger','✕ Marcación no permitida. Tiene descanso activo. Comuníquese con su GZ.')">Programación activa</button>
+              <button class="btn secondary sm" onclick="kioskMsg('k-warn','⚠ No reconocimos su huella. Intente de nuevo.')">Huella no reconocida</button>
+            </div>
+          </div>
+          <div>
+            <h3 style="margin-top:0">2 · Agente Windows (servicio en la PC de tienda)</h3>
+            <div class="win-desktop">
+              <div class="win-toast" role="alert">
+                <span class="w-x">✕</span>
+                <div class="w-app"><span class="w-ico"></span> NOVA · Agente de tienda</div>
+                <div class="w-title">2 empleados sin marcación — T-Lima01</div>
+                <div>J. Ramos y C. Díaz no registraron entrada en su turno teórico.</div>
+                <div class="w-actions">
+                  <button class="w-btn" onclick="go('marca');document.getElementById('gestionInasist').scrollIntoView({behavior:'smooth'})">Gestionar ahora</button>
+                  <button class="w-btn">Posponer</button>
+                </div>
+              </div>
+              <div class="win-bar"><span class="w-start"></span> ▢ 🔍 📁 &nbsp;&nbsp; <span style="margin-left:auto">ESP · 11:02 · Lun 30/06</span></div>
+            </div>
+            <p class="note">Notificación nativa de Windows lanzada por el agente local. Clic en "Gestionar ahora" abre el módulo web filtrado por tienda y fecha. Criticidad MEDIA (alcance-nova.md).</p>
+          </div>
+        </div>
+
+        <h3 id="gestionInasist">3 · Módulo web — Gestión de inasistencia · T-Lima01 · Lun 30-JUN</h3>
+        <div class="card" style="overflow:hidden">
+          <table class="data">
+            <thead><tr><th>Empleado</th><th>Cargo</th><th>Turno teórico</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>J. Ramos</td><td>Asesor</td><td class="num-cell">09:00–18:00</td>
+                <td><span class="badge b-neutral">○ Sin entrada</span></td>
+                <td><button class="btn danger sm">Registrar Falta</button> <button class="btn secondary sm" onclick="go('descansos')">Registrar Descanso</button></td>
+              </tr>
+              <tr>
+                <td>C. Díaz</td><td>Promotor</td><td class="num-cell">10:00–19:00</td>
+                <td><span class="badge b-neutral">○ Sin entrada</span></td>
+                <td><button class="btn danger sm">Registrar Falta</button> <button class="btn secondary sm" onclick="go('descansos')">Registrar Descanso</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">Si el empleado marca mientras el GT mira la lista, la fila desaparece (aria-live, tiempo real). AV puede además corregir marcaciones de la semana en curso con motivo obligatorio (auditado).</p>
+      </section>
+
+      <!-- ============ DESCANSOS ============ -->
+      <section id="view-descansos" class="view">
+        <h1 class="screen">Descansos y Compensaciones</h1>
+        <p class="sub">Sin calendario propio: los descansos laborales y compensaciones se registran <strong>desde el calendario del Rol</strong>. Este módulo gestiona licencias, flujo médico, LSGH/LCGH (firma) y el consolidado de zona.</p>
+
+        <div class="banner info">ℹ Para programar un <strong>Descanso Laboral</strong> o una <strong>Compensación</strong>, use el selector de celda en <a onclick="go('rol')" style="text-decoration:underline;cursor:pointer">Rol de Personal</a>. Aquí se administran licencias y el seguimiento.</div>
+
+        <div class="kpis">
+          <div class="card kpi"><div class="num">18</div><div class="lbl">Descansos esta semana</div></div>
+          <div class="card kpi"><div class="num bad">5</div><div class="lbl">Compensaciones por vencer</div></div>
+          <div class="card kpi"><div class="num">3</div><div class="lbl">Médicos pendientes Bienestar</div></div>
+          <div class="card kpi"><div class="num">2</div><div class="lbl">LSGH/LCGH por firmar</div></div>
+        </div>
+
+        <div class="card filters">
+          <div class="field"><label>Tienda</label><select><option>T-Lima01</option><option>Todas (zona)</option></select></div>
+          <div class="field"><label>Empleado</label><input placeholder="Buscar…" /></div>
+          <div class="field"><label>Tipo</label><select><option>Todos</option><option>Descanso laboral</option><option>Compensación</option><option>Descanso médico</option><option>LSGH</option><option>LCGH</option></select></div>
+          <div class="field"><label>Estado</label><select><option>Todos</option></select></div>
+          <span class="spacer" style="flex:1"></span>
+          <button class="btn secondary sm">Consolidado de zona · Excel</button>
+          <button class="btn primary" onclick="alert('Modal: empleado · tipo de licencia · fechas · documentos · comentarios (oblig. LSGH/LCGH)')">+ Registrar licencia</button>
+        </div>
+
+        <div class="card" style="overflow:hidden">
+          <table class="data">
+            <thead><tr><th>Empleado</th><th>Tipo</th><th>Fechas</th><th>Origen / saldo</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>A. Pérez</td><td>Descanso Laboral</td><td class="num-cell">DOM 28-JUN</td><td>—</td>
+                <td><span class="badge b-info">● Programado</span></td>
+                <td><button class="btn ghost sm">Editar</button><button class="btn ghost sm">Anular</button></td>
+              </tr>
+              <tr>
+                <td>L. Quispe</td><td>Compensación (DNG)</td><td class="num-cell">MIÉ 01-JUL</td><td>Origen: 14-JUN</td>
+                <td><span class="badge b-warning">✎ Modificado</span></td>
+                <td><button class="btn ghost sm">Editar</button><button class="btn ghost sm">Anular</button></td>
+              </tr>
+              <tr>
+                <td>J. Ramos</td><td>Descanso médico</td><td class="num-cell">30-JUN – 02-JUL</td><td>2 documentos</td>
+                <td><span class="badge b-warning">… Enviado a Bienestar (SLA 2 días)</span></td>
+                <td><button class="btn ghost sm">Ver sustento</button></td>
+              </tr>
+              <tr>
+                <td>C. Díaz</td><td>LSGH</td><td class="num-cell">03-JUL – 05-JUL</td><td>Aprobada por GG</td>
+                <td><span class="badge b-info">✍ Pendiente de firma (app móvil)</span></td>
+                <td><button class="btn ghost sm">Reenviar firma</button></td>
+              </tr>
+              <tr>
+                <td>M. Torres</td><td>Compensación feriado</td><td class="num-cell">—</td><td>Origen: 01-MAY · sin fecha</td>
+                <td><span class="badge b-neutral">○ Saldo pendiente</span></td>
+                <td><button class="btn ghost sm">Programar</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid2" style="margin-top:var(--s5)">
+          <div class="card" style="padding:var(--s4)">
+            <h4 style="margin-top:0">App móvil del colaborador — subir sustento médico</h4>
+            <div style="max-width:280px;margin:0 auto;border:1px solid var(--border-default);border-radius:18px;padding:var(--s4);background:var(--bg-surface)">
+              <strong>Descanso médico</strong>
+              <p class="t-meta" style="color:var(--text-secondary);margin:6px 0">Fechas: 30-JUN – 02-JUL</p>
+              <div style="border:1px dashed var(--border-strong);border-radius:var(--radius-sm);padding:var(--s4);text-align:center;color:var(--text-secondary)">+ Adjuntar archivo</div>
+              <div style="margin-top:8px"><span class="badge b-warning">… Enviado a Bienestar</span></div>
+              <button class="btn primary" style="width:100%;margin-top:var(--s3)">Enviar a Bienestar</button>
+            </div>
+          </div>
+          <div class="card" style="padding:var(--s4)">
+            <h4 style="margin-top:0">Flujo de firma electrónica (LSGH/LCGH)</h4>
+            <ul class="timeline">
+              <li>GZ solicita licencia · comentarios obligatorios</li>
+              <li>GG aprueba en bandeja de <a onclick="go('aprob')" style="text-decoration:underline;cursor:pointer">Aprobaciones</a></li>
+              <li>Documento → Firma Electrónica Nova</li>
+              <li>Empleado firma en app (selfie + GPS + código por correo)</li>
+              <li>Escritura en RMS + migración OFIPLAN → Ejecutado</li>
+            </ul>
+            <p class="note">Si no firma en el plazo (3 días háb. + 24 h de gracia) se bloquea el beneficio y se notifica al GZ.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ ASCENSO ============ -->
+      <section id="view-ascenso" class="view">
+        <h1 class="screen">Ascenso Senior — Resolución (GG)</h1>
+        <p class="sub">Panel de cumplimiento 6 meses (obligatorio) · segregación de funciones</p>
+        <div class="card detail" style="max-width:880px">
+          <div style="display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap">
+            <span class="badge b-warning">… Pendiente de Aprobación</span>
+            <strong style="font-size:18px">Ascenso Senior · A. Pérez (T-Lima01)</strong>
+          </div>
+          <p class="t-meta" style="color:var(--text-secondary)">Candidato: A. Pérez · Asesor · Cadena · Solicitante: GZ M. Soto · 28-MAY 09:14 · <span class="badge b-warning">SLA: vence en 2 días hábiles</span></p>
+
+          <div class="banner info">ℹ Snapshot capturado el 28-MAY 09:14 · <button class="btn ghost sm" style="text-decoration:underline">Actualizar historial</button></div>
+
+          <h4 style="margin-bottom:var(--s2)">Historial de cumplimiento — últimos 6 meses</h4>
+          <div class="card" style="overflow:hidden">
+            <table class="data">
+              <thead><tr><th>Mes</th><th>% Cuota</th><th>% Senior</th></tr></thead>
+              <tbody>
+                <tr><td>DIC</td><td class="num-cell"><span class="ratio bad">98.4 🔴</span></td><td class="num-cell" style="color:var(--text-secondary)">Sin historial</td></tr>
+                <tr><td>ENE</td><td class="num-cell"><span class="ratio ok">101.2 🔵</span></td><td class="num-cell"><span class="ratio ok">100.5 🔵</span></td></tr>
+                <tr><td>FEB</td><td class="num-cell"><span class="ratio ok">104.8 🔵</span></td><td class="num-cell"><span class="ratio ok">102.1 🔵</span></td></tr>
+                <tr><td>MAR</td><td class="num-cell"><span class="ratio ok">100.1 🔵</span></td><td class="num-cell"><span class="ratio bad">97.6 🔴</span></td></tr>
+                <tr><td>ABR</td><td class="num-cell"><span class="ratio ok">106.3 🔵</span></td><td class="num-cell"><span class="ratio ok">101.0 🔵</span></td></tr>
+                <tr><td>MAY</td><td class="num-cell"><span class="ratio ok">103.0 🔵</span></td><td class="num-cell"><span class="ratio bad">99.1 🔴</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="note">⚠ Dato sensible (desempeño). No hay umbral automático: la decisión es del GG con base en este panel. En Lukers se añaden columnas % Asesoría y % Tesoro.</p>
+
+          <div class="field-block">
+            <label style="font-weight:600">Comentarios (opcional)</label>
+            <textarea rows="2" placeholder="Comentario de la decisión…"></textarea>
+          </div>
+          <div style="display:flex;gap:var(--s3);justify-content:flex-end">
+            <button class="btn danger" onclick="alert('Se abre Motivo del rechazo (obligatorio).')">Rechazar</button>
+            <button class="btn primary" onclick="alert('Operación atómica con RMS → flag SENIOR = SI')">Aprobar ascenso</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ MÓVIL ============ -->
+      <section id="view-movil" class="view">
+        <h1 class="screen">App móvil — colaborador y GZ en campo</h1>
+        <p class="sub">Pantallas mobile-first (bp.xs 320 / bp.sm 768) · tap targets ≥ 44px · texto base 16px</p>
+        <div class="phones">
+
+          <!-- 1. Firma electrónica -->
+          <div class="phone-wrap">
+            <h4>Firma electrónica (colaborador)</h4>
+            <div class="phone"><div class="notch"></div><div class="screen-m">
+              <div class="m-top"><span class="back">‹</span> Firmar documento</div>
+              <div class="m-body">
+                <div class="m-card">
+                  <h5>Adenda de licencia LSGH</h5>
+                  <div class="m-row"><span>Colaborador</span><strong>C. Díaz</strong></div>
+                  <div class="m-row"><span>Periodo</span><strong>03 – 05 JUL</strong></div>
+                  <div class="m-row"><span>Plazo de firma</span><span class="badge b-warning">vence en 2 días</span></div>
+                </div>
+                <div class="m-selfie">🤳</div>
+                <p style="text-align:center;color:var(--text-secondary)">Captura selfie + ubicación GPS</p>
+                <div class="m-card">
+                  <label style="font-size:12px;color:var(--text-secondary)">Código enviado a tu correo</label>
+                  <div class="m-code">4 7 2 9</div>
+                </div>
+              </div>
+              <div class="m-foot"><button class="m-btn primary" onclick="alert('Firmado: selfie + GPS + código → escritura en RMS')">Firmar documento</button></div>
+            </div></div>
+          </div>
+
+          <!-- 2. Sustento médico -->
+          <div class="phone-wrap">
+            <h4>Subir sustento médico (colaborador)</h4>
+            <div class="phone"><div class="notch"></div><div class="screen-m">
+              <div class="m-top"><span class="back">‹</span> Descanso médico</div>
+              <div class="m-body">
+                <div class="m-card">
+                  <div class="m-row"><span>Fechas</span><strong>30-JUN – 02-JUL</strong></div>
+                  <div class="m-row"><span>Estado</span><span class="badge b-warning">… Enviado a Bienestar</span></div>
+                </div>
+                <h5 style="margin-top:var(--s4)">Documentos de sustento</h5>
+                <div class="m-dropzone">📎<br>+ Adjuntar archivo<br><small>foto o PDF del certificado</small></div>
+                <div class="m-card" style="margin-top:var(--s3)">
+                  <div class="m-row"><span>📄 certificado.pdf</span><span style="color:var(--success-fg)">✓</span></div>
+                  <div class="m-row"><span>🖼️ foto-receta.jpg</span><span style="color:var(--success-fg)">✓</span></div>
+                </div>
+                <div class="banner info" style="margin-top:var(--s3)">SLA Bienestar: 2 días hábiles</div>
+              </div>
+              <div class="m-foot"><button class="m-btn primary">Enviar a Bienestar</button></div>
+            </div></div>
+          </div>
+
+          <!-- 3. Código zonal GZ -->
+          <div class="phone-wrap">
+            <h4>Emitir código zonal (GZ)</h4>
+            <div class="phone"><div class="notch"></div><div class="screen-m">
+              <div class="m-top"><span class="back">‹</span> Código de autorización</div>
+              <div class="m-body">
+                <div class="m-card">
+                  <label style="font-size:12px;color:var(--text-secondary)">Empleado</label>
+                  <div><strong>A. Pérez</strong> · Asesor · T-Lima01</div>
+                </div>
+                <div class="m-card">
+                  <div class="m-row"><span>Tienda destino</span><strong>T-Lima01</strong></div>
+                  <div class="m-row"><span>Fecha(s)</span><strong>30-JUN</strong></div>
+                  <div class="m-row"><span>Motivo</span><strong>Cobertura urgente</strong></div>
+                </div>
+                <div class="m-code">9 1 K 4 2</div>
+                <div class="m-card">
+                  <div class="m-row"><span>Vigencia</span><strong>hoy hasta 23:59</strong></div>
+                  <div class="m-row"><span>Usos</span><strong>1 entrada + 1 salida</strong></div>
+                  <div class="m-row"><span>Estado</span><span class="badge b-success">✓ Activa</span></div>
+                </div>
+                <p style="text-align:center;color:var(--text-secondary)">Comunique este código al empleado por su canal.</p>
+              </div>
+              <div class="m-foot" style="display:flex;gap:8px">
+                <button class="m-btn danger" style="flex:1">Cancelar</button>
+                <button class="m-btn primary" style="flex:1" onclick="alert('Código copiado')">Copiar código</button>
+              </div>
+            </div></div>
+          </div>
+
+          <!-- 4. Aprobar / Ascenso -->
+          <div class="phone-wrap">
+            <h4>Resolver Ascenso Senior (GG)</h4>
+            <div class="phone"><div class="notch"></div><div class="screen-m">
+              <div class="m-top"><span class="back">‹</span> Ascenso Senior</div>
+              <div class="m-body">
+                <div class="m-card">
+                  <span class="badge b-warning">… Pendiente de Aprobación</span>
+                  <h5 style="margin-top:8px">A. Pérez · T-Lima01</h5>
+                  <div class="m-row"><span>Solicita</span><strong>GZ M. Soto</strong></div>
+                  <div class="m-row"><span>SLA</span><span class="badge b-warning">2 días háb.</span></div>
+                </div>
+                <h5>Cumplimiento 6 meses</h5>
+                <div class="m-card">
+                  <div class="m-row"><span>ENE</span><span class="ratio ok">101.2 🔵</span></div>
+                  <div class="m-row"><span>FEB</span><span class="ratio ok">104.8 🔵</span></div>
+                  <div class="m-row"><span>MAR</span><span class="ratio bad">97.6 🔴</span></div>
+                  <div class="m-row"><span>ABR</span><span class="ratio ok">106.3 🔵</span></div>
+                  <div class="m-row"><span>MAY</span><span class="ratio bad">99.1 🔴</span></div>
+                </div>
+              </div>
+              <div class="m-foot" style="display:flex;gap:8px">
+                <button class="m-btn danger" style="flex:1">Rechazar</button>
+                <button class="m-btn primary" style="flex:1" onclick="alert('Aprobar → RMS SENIOR = SI')">Aprobar</button>
+              </div>
+            </div></div>
+          </div>
+
+        </div>
+        <p class="note">El calendario del Rol NO es prioritario en móvil (solo consulta por colaborador en cards). La edición intensiva se reserva a escritorio. Estas 4 pantallas son las designadas mobile-first por el design system.</p>
+      </section>
+
+      <!-- ============ BADGES ============ -->
+      <section id="view-badges" class="view">
+        <h1 class="screen">Catálogo de estados &amp; badges</h1>
+        <p class="sub">Transversal · todo badge combina color + ícono + texto (WCAG 1.4.1)</p>
+        <div class="grid2">
+          <div class="card" style="padding:var(--s4)">
+            <h4 style="margin-top:0">Rol</h4>
+            <p style="display:flex;flex-wrap:wrap;gap:8px">
+              <span class="badge b-neutral">✎ En Edición</span>
+              <span class="badge b-info">➤ Enviado a GG</span>
+              <span class="badge b-success">✓ Aprobado por GG</span>
+              <span class="badge b-danger">✕ Rechazado</span>
+              <span class="badge b-warning">⟳ Versión en revisión</span>
+            </p>
+            <h4>Marcación</h4>
+            <p style="display:flex;flex-wrap:wrap;gap:8px">
+              <span class="badge b-neutral">○ Sin marcación</span>
+              <span class="badge b-info">→ Entrada</span>
+              <span class="badge b-success">✓ Jornada cerrada</span>
+              <span class="badge b-danger">! Falta</span>
+              <span class="badge b-warning">🔒 Bloqueado</span>
+              <span class="badge b-warning">⏱ Salida tardía</span>
+            </p>
+          </div>
+          <div class="card" style="padding:var(--s4)">
+            <h4 style="margin-top:0">Aprobación</h4>
+            <p style="display:flex;flex-wrap:wrap;gap:8px">
+              <span class="badge b-info">… En curso</span>
+              <span class="badge b-warning">↑ Escalada</span>
+              <span class="badge b-success">✓ Aprobada</span>
+              <span class="badge b-danger">✕ Rechazada</span>
+              <span class="badge b-neutral">⊘ Cancelada</span>
+            </p>
+            <h4>Ascenso</h4>
+            <p style="display:flex;flex-wrap:wrap;gap:8px">
+              <span class="badge b-warning">… Pendiente</span>
+              <span class="badge b-danger">⏱ Vencida</span>
+              <span class="badge b-success">✓ Aprobada</span>
+              <span class="badge b-danger">✕ Rechazada</span>
+              <span class="badge b-neutral">⊘ Cerrada por cambio externo</span>
+            </p>
+            <h4>Descanso</h4>
+            <p style="display:flex;flex-wrap:wrap;gap:8px">
+              <span class="badge b-info">● Programado</span>
+              <span class="badge b-warning">✎ Modificado</span>
+              <span class="badge b-warning">… Pendiente</span>
+              <span class="badge b-success">✓ Ejecutado</span>
+              <span class="badge b-neutral">✕ Anulado</span>
+            </p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+<script>
+  function setEmpresa(emp){
+    document.body.dataset.empresa = emp;
+    document.getElementById('empresaTag').textContent = (emp==='lukers'?'● LUKERS':'● CADENA');
+    document.getElementById('btnCadena').classList.toggle('active', emp==='cadena');
+    document.getElementById('btnLukers').classList.toggle('active', emp==='lukers');
+    var sel = document.getElementById('selEmpresa'); if(sel) sel.value = emp;
+  }
+  function go(view){
+    document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active');});
+    document.getElementById('view-'+view).classList.add('active');
+    document.querySelectorAll('.nav a').forEach(function(a){a.classList.toggle('active', a.dataset.view===view);});
+    document.querySelector('.main').scrollTop = 0;
+  }
+
+  var tasks = [
+    {badge:'<span class="badge b-warning">⟳ Versión en revisión</span>', title:'Rol semanal · Zona Lima Sur',
+     meta:'Solicitante: GZ M. Soto · Ingresó hace 3 h · SLA vence hoy 10:00',
+     resumen:'Resumen del rol semanal de la zona: 6 tiendas · 82% completas · 1 día supera cuota (MIÉ S/3.2k).',
+     hist:['N1 · GZ M. Soto envió · hoy 06:55','N2 · GG (pendiente) — usted']},
+    {badge:'<span class="badge b-info">… En curso</span>', title:'LSGH · J. Ramos (T-Lima01)',
+     meta:'Solicitante: GZ M. Soto · Ingresó ayer · SLA 1 día hábil',
+     resumen:'Licencia sin goce de haber · J. Ramos · 03–05 JUL · documentos adjuntos (2).',
+     hist:['N1 · GZ M. Soto solicitó · ayer 15:20','N2 · GG (pendiente) — usted']},
+    {badge:'<span class="badge b-danger">⏱ Pendiente (Vencida)</span>', title:'Ascenso Senior · A. Pérez',
+     meta:'Solicitante: GZ M. Soto · Ingresó 28-MAY · SLA vencida hace 2 h',
+     resumen:'Candidato A. Pérez · panel de cumplimiento 6 meses disponible (ver módulo Ascenso).',
+     hist:['N1 · GZ M. Soto solicitó · 28-MAY 09:14','N2 · GG (pendiente) — usted']}
+  ];
+  function selTask(el,i){
+    document.querySelectorAll('#view-aprob .task').forEach(function(t){t.classList.remove('sel');});
+    el.classList.add('sel');
+    var t = tasks[i];
+    document.getElementById('aprobDetail').innerHTML =
+      '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">'+t.badge+'<strong style="font-size:18px">'+t.title+'</strong></div>'+
+      '<p style="color:var(--text-secondary)">'+t.meta+'</p>'+
+      '<h4>Resumen del objeto</h4><p>'+t.resumen+'</p>'+
+      '<h4>Historial del flujo</h4><ul class="timeline">'+t.hist.map(function(h){return '<li>'+h+'</li>';}).join('')+'</ul>'+
+      '<div class="field-block"><label style="font-weight:600">Motivo (obligatorio en rechazo)</label>'+
+      '<textarea rows="2" placeholder="Comentario…"></textarea></div>'+
+      '<div style="display:flex;gap:12px;justify-content:flex-end">'+
+      '<button class="btn danger" onclick="alert(\'Rechazo: motivo obligatorio → REINICIO del flujo.\')">Rechazar</button>'+
+      '<button class="btn primary" onclick="alert(\'Aprobar → callback al módulo → sale de la bandeja.\')">Aprobar</button></div>';
+  }
+  function kioskMsg(cls,txt){
+    var m = document.querySelector('.kiosk .k-msg');
+    m.className = 'k-msg '+cls; m.textContent = txt;
+  }
+  selTask(document.querySelector('#view-aprob .task'),0);
+</script>
+</body>
+</html>

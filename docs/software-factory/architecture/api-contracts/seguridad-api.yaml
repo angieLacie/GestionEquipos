@@ -1,0 +1,1230 @@
+openapi: 3.1.0
+info:
+  title: Nova - Servicio de Seguridad / Accesos (RBAC con ambito)
+  version: "1.1.0"
+  description: |
+    Contrato del modulo de Seguridad/Accesos de Nova (bounded context `segu`).
+    Construido desde cero (modulo 10, Fase 0). Cubre: gestion de usuarios, credenciales y
+    sesion (login), recuperacion de contrasena por codigo OTP de 6 digitos (autoservicio),
+    asignacion rol-ambito (scoped RBAC), jerarquia organizacional,
+    delegacion y suplencia, los servicios de resolucion consumidos por Aprobaciones
+    (resolver_aprobador, resolver_superior_jerarquico, validar_segregacion,
+    consultar_delegacion_suplencia), el servicio de enforcement (autorizar) y la auditoria de accesos.
+
+    Alineado a: ENT-MOD-SEGU-001 v1.1, modelo-datos-fase0.md (esquema `segu`), ADR-001 (auth SSO/local),
+    ADR-002 (Argon2id), ADR-005 (fallo seguro), arquitectura-nova.md, reconciliacion-ux.md (P-10/C-06).
+
+    v1.1: agrega el flujo de recuperacion de contrasena por OTP (CU-SEGU-10, RN-SEGU-32 a 39):
+    solicitar codigo -> verificar codigo -> establecer nueva contrasena. Endpoints no autenticados,
+    anti-enumeracion (respuesta indistinguible), OTP nunca expuesto, politica SEGU_OTP_* / SEGU_PWD_*.
+
+    Notas de cumplimiento: identidades y credenciales son DATO SENSIBLE; las contrasenas nunca se
+    exponen ni se retornan. El acceso a usuarios/asignaciones se restringe por ambito de rol y se audita.
+    Ejemplos con datos ficticios.
+  contact:
+    name: Arquitectura Nova
+servers:
+  - url: "{baseUrl}/v1"
+    variables:
+      baseUrl:
+        default: https://api.nova.example/segu
+        description: Base URL del servicio (variable de entorno; sin host real)
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Autenticacion
+    description: Login, sesion y credenciales (CU-SEGU-02, CU-SEGU-08)
+  - name: Recuperacion de contrasena
+    description: Autoservicio de recuperacion por codigo OTP de 6 digitos (CU-SEGU-10, RN-SEGU-32 a 39)
+  - name: Usuarios
+    description: CRUD y estados de usuario (CU-SEGU-01, CU-SEGU-09)
+  - name: Roles y ambito
+    description: Asignacion usuario-rol-ambito (CU-SEGU-03)
+  - name: Jerarquia
+    description: Jerarquia organizacional para escalamiento (RN-SEGU-18)
+  - name: Delegacion y suplencia
+    description: Delegacion y suplencia de facultades (CU-SEGU-06, CU-SEGU-07)
+  - name: Resolucion (Aprobaciones)
+    description: Servicios consumidos por el motor de Aprobaciones (CU-SEGU-04)
+  - name: Autorizacion
+    description: Enforcement de permiso+ambito (CU-SEGU-05)
+  - name: Auditoria
+    description: Consulta de auditoria de accesos (CU-SEGU-09)
+
+paths:
+
+  # ----------------------- AUTENTICACION -----------------------
+  /auth/login:
+    post:
+      tags: [Autenticacion]
+      summary: Iniciar sesion (login local o inicio de flujo SSO)
+      description: |
+        Login con usuario/contrasena (metodo LOCAL) o devolucion de redireccion al IdP si el metodo es SSO (ADR-001).
+        Valida estado del usuario, expiracion y bloqueo (RN-SEGU-12), fuerza cambio de contrasena si aplica
+        (RN-SEGU-11) y solicita MFA si el rol lo exige (RN-SEGU-14). Registra el evento en auditoria.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              local:
+                value:
+                  nombre_usuario: "gz.msoto"
+                  password: "********"
+                  canal: "WEB"
+      responses:
+        '200':
+          description: Login exitoso; devuelve token y contexto de seguridad.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '202':
+          description: Se requiere un paso adicional (cambio de contrasena obligatorio o MFA).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginChallenge'
+        '401':
+          description: Credenciales invalidas (intento contabilizado, RN-SEGU-12).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '423':
+          description: Usuario bloqueado por intentos fallidos o desactivado (RN-SEGU-12/22).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /auth/sso/callback:
+    get:
+      tags: [Autenticacion]
+      summary: Callback OIDC del IdP (ADR-001)
+      description: Recibe el codigo de autorizacion del IdP, mapea la identidad federada al usuario de Nova y emite el contexto de seguridad.
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema: { type: string }
+        - name: state
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Identidad federada mapeada; token emitido.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+
+  /auth/logout:
+    post:
+      tags: [Autenticacion]
+      summary: Cerrar la sesion actual
+      responses:
+        '204': { description: Sesion cerrada y auditada. }
+
+  /auth/contexto:
+    get:
+      tags: [Autenticacion]
+      summary: Obtener el contexto de seguridad del usuario autenticado
+      description: Roles, ambito consolidado y permisos efectivos (CU-SEGU-02 paso 7). Consumido por web/movil para filtrar vistas (p. ej. GT solo su tienda).
+      responses:
+        '200':
+          description: Contexto de seguridad vigente.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContextoSeguridad' }
+
+  /usuarios/me/password:
+    put:
+      tags: [Autenticacion]
+      summary: Cambiar la propia contrasena (CU-SEGU-08)
+      description: Exige contrasena actual; valida politica (RN-SEGU-10) y no-reuso del historial. Nunca devuelve la contrasena.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CambioPasswordRequest' }
+      responses:
+        '204': { description: Contrasena actualizada y auditada (sin exponer el valor). }
+        '422':
+          description: La contrasena no cumple la politica (RN-SEGU-10).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  # ----------------------- RECUPERACION DE CONTRASENA (OTP) -----------------------
+  /auth/password-recovery/request:
+    post:
+      tags: [Recuperacion de contrasena]
+      summary: Solicitar codigo OTP de recuperacion (CU-SEGU-10, RN-SEGU-32)
+      description: |
+        Inicia la recuperacion de contrasena por autoservicio. ANTI-ENUMERACION (RN-SEGU-32): responde
+        siempre 202 con el mismo cuerpo generico y comportamiento indistinguible, exista o no el correo.
+        Solo si el correo corresponde a un usuario ACTIVO con metodo LOCAL se genera y envia un OTP numerico
+        de SEGU_OTP_LONGITUD digitos (6 por defecto), hasheado, con vigencia SEGU_OTP_TTL_MIN (RN-SEGU-33/34).
+        Cada nueva solicitud invalida el OTP anterior no usado (RN-SEGU-37). Evento RECUP_PWD_SOLICITUD (RN-SEGU-39).
+        El OTP NUNCA se devuelve en la respuesta.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecoveryRequest' }
+            examples:
+              solicitud:
+                value:
+                  correo: "j.perez@example.com"
+                  canal: "WEB"
+      responses:
+        '202':
+          description: Respuesta generica indistinguible (anti-enumeracion, RN-SEGU-32). No revela si el correo existe.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryRequestResponse' }
+              examples:
+                generica:
+                  value:
+                    mensaje: "Si el correo esta registrado, enviaremos un codigo de verificacion."
+                    correo_enmascarado: "j****@e****.com"
+                    reenvio_disponible_en_seg: 60
+        '429':
+          description: Demasiadas solicitudes (rate-limiting de borde / enfriamiento SEGU_OTP_COOLDOWN_MIN, RN-SEGU-35).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /auth/password-recovery/verify:
+    post:
+      tags: [Recuperacion de contrasena]
+      summary: Verificar codigo OTP (CU-SEGU-10, RN-SEGU-35)
+      description: |
+        Verifica el codigo de 6 digitos contra el OTP vigente del usuario. Controla TTL (RN-SEGU-34),
+        intentos maximos SEGU_OTP_MAX_INTENTOS (RN-SEGU-35) y uso unico (RN-SEGU-37). Si es valido, devuelve un
+        token de un solo uso de corta vigencia requerido para establecer la nueva contrasena. Evento
+        RECUP_PWD_VERIFICACION (RN-SEGU-39). El codigo nunca se devuelve.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecoveryVerifyRequest' }
+            examples:
+              verificacion:
+                value:
+                  correo: "j.perez@example.com"
+                  codigo: "482915"
+      responses:
+        '200':
+          description: Codigo valido; se emite token de un solo uso.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryVerifyResponse' }
+              examples:
+                ok:
+                  value:
+                    reset_token: "ot_9f3c...uso-unico"
+                    expira_en_seg: 300
+        '422':
+          description: Codigo incorrecto, expirado o ya usado (CU-SEGU-10 E1/E2/E3, RN-SEGU-34/35/37).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '429':
+          description: Maximo de intentos superado; codigo invalidado y enfriamiento SEGU_OTP_COOLDOWN_MIN (RN-SEGU-35).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /auth/password-recovery/resend:
+    post:
+      tags: [Recuperacion de contrasena]
+      summary: Reenviar el codigo OTP (CU-SEGU-10 A1, RN-SEGU-36)
+      description: |
+        Reenvia el codigo solo tras SEGU_OTP_REENVIO_ESPERA_SEG segundos y hasta SEGU_OTP_MAX_REENVIOS veces por
+        solicitud. Cada reenvio invalida el codigo anterior y emite uno nuevo con su propio TTL (RN-SEGU-36/37).
+        Mantiene la respuesta generica anti-enumeracion (RN-SEGU-32).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecoveryRequest' }
+      responses:
+        '202':
+          description: Respuesta generica indistinguible; nuevo codigo emitido si corresponde.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryRequestResponse' }
+        '429':
+          description: Reenvio antes del tiempo de espera o limite SEGU_OTP_MAX_REENVIOS alcanzado (CU-SEGU-10 E5, RN-SEGU-36).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /auth/password-recovery/reset:
+    post:
+      tags: [Recuperacion de contrasena]
+      summary: Establecer nueva contrasena con el token de recuperacion (CU-SEGU-10, RN-SEGU-38)
+      description: |
+        Establece la nueva contrasena usando el token de un solo uso de la verificacion. Valida la politica
+        SEGU_PWD_* reutilizando RN-SEGU-10 (RN-SEGU-38). Tras el cambio: requiere_cambio = false, reinicia
+        intentos de login, cierra sesiones activas y NO inicia sesion automaticamente (redirige al login).
+        Invalida el OTP y el token (RN-SEGU-37). Evento RECUP_PWD_CAMBIO (RN-SEGU-39). No devuelve la contrasena.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecoveryResetRequest' }
+            examples:
+              reset:
+                value:
+                  reset_token: "ot_9f3c...uso-unico"
+                  password_nueva: "********"
+      responses:
+        '204': { description: Contrasena actualizada; sesiones cerradas; sin inicio de sesion automatico; auditado (sin exponer valores). }
+        '401':
+          description: Token de recuperacion invalido, expirado o ya usado (RN-SEGU-37).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422':
+          description: La nueva contrasena no cumple la politica SEGU_PWD_* (CU-SEGU-10 E4, RN-SEGU-38/10).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  # ----------------------- USUARIOS -----------------------
+  /usuarios:
+    get:
+      tags: [Usuarios]
+      summary: Listar usuarios (restringido por ambito del consultor, RN-SEGU-24)
+      parameters:
+        - { name: rol, in: query, schema: { $ref: '#/components/schemas/RolId' } }
+        - { name: id_empresa, in: query, schema: { $ref: '#/components/schemas/EmpresaId' } }
+        - { name: id_zona, in: query, schema: { type: string, format: uuid } }
+        - { name: id_tienda, in: query, schema: { type: string, format: uuid } }
+        - { name: estado, in: query, schema: { $ref: '#/components/schemas/EstadoUsuario' } }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Pagina de usuarios.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginaUsuarios' }
+    post:
+      tags: [Usuarios]
+      summary: Crear usuario y vincularlo al empleado de RMS (CU-SEGU-01)
+      description: |
+        Permiso SEGU.USUARIO.CREAR. Para tipo PERSONAL valida que el empleado este ACTIVO en RMS (RN-SEGU-02)
+        y que no exista otro usuario ACTIVO vinculado al mismo codigo (RN-SEGU-03). Genera credencial inicial
+        con cambio obligatorio (RN-SEGU-11). Nova no almacena datos personales como fuente de verdad (RN-SEGU-26).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CrearUsuarioRequest' }
+            examples:
+              personal:
+                value:
+                  tipo_usuario: "PERSONAL"
+                  codigo_empleado_rms: "EMP00045"
+                  nombre_usuario: "gz.msoto"
+                  correo_contacto: "m.soto@example.com"
+      responses:
+        '201':
+          description: Usuario creado y auditado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Usuario' }
+        '409':
+          description: Ya existe un usuario ACTIVO para ese codigo de empleado (RN-SEGU-03).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422':
+          description: Empleado no ACTIVO en RMS u otro fallo de validacion (RN-SEGU-02).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /usuarios/{idUsuario}:
+    parameters:
+      - $ref: '#/components/parameters/IdUsuario'
+    get:
+      tags: [Usuarios]
+      summary: Obtener un usuario con sus roles, ambito y permisos efectivos (RN-SEGU-07)
+      responses:
+        '200':
+          description: Usuario con detalle consolidado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UsuarioDetalle' }
+        '404':
+          description: No encontrado.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+    patch:
+      tags: [Usuarios]
+      summary: Editar datos del usuario (correo, metodo de autenticacion, MFA)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EditarUsuarioRequest' }
+      responses:
+        '200':
+          description: Usuario actualizado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Usuario' }
+
+  /usuarios/{idUsuario}/estado:
+    parameters:
+      - $ref: '#/components/parameters/IdUsuario'
+    put:
+      tags: [Usuarios]
+      summary: Activar / desactivar / bloquear usuario (baja logica)
+      description: La desactivacion por baja de empleado en RMS es automatica (RN-SEGU-22); este endpoint es para gestion manual del ADM.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [estado]
+              properties:
+                estado: { $ref: '#/components/schemas/EstadoUsuario' }
+                motivo: { type: string }
+      responses:
+        '200':
+          description: Estado actualizado y auditado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Usuario' }
+
+  /usuarios/{idUsuario}/credencial/reset:
+    parameters:
+      - $ref: '#/components/parameters/IdUsuario'
+    post:
+      tags: [Autenticacion]
+      summary: Restablecer credencial de un usuario (ADM, CU-SEGU-08)
+      description: Permiso SEGU.CREDENCIAL.RESTABLECER. Genera credencial temporal con cambio obligatorio (RN-SEGU-11). No devuelve el valor.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204': { description: Credencial restablecida; notificacion enviada; cambio auditado. }
+
+  /usuarios/{idUsuario}/sesiones:
+    parameters:
+      - $ref: '#/components/parameters/IdUsuario'
+    get:
+      tags: [Autenticacion]
+      summary: Listar sesiones activas del usuario (RN-SEGU-15)
+      responses:
+        '200':
+          description: Sesiones activas.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Sesion' }
+    delete:
+      tags: [Autenticacion]
+      summary: Cerrar todas las sesiones activas del usuario (cierre por ADM, RN-SEGU-15)
+      responses:
+        '204': { description: Sesiones cerradas. }
+
+  # ----------------------- ROLES Y AMBITO -----------------------
+  /usuarios/{idUsuario}/asignaciones:
+    parameters:
+      - $ref: '#/components/parameters/IdUsuario'
+    get:
+      tags: [Roles y ambito]
+      summary: Listar asignaciones rol-ambito del usuario
+      responses:
+        '200':
+          description: Asignaciones vigentes y programadas.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AsignacionRolAmbito' }
+    post:
+      tags: [Roles y ambito]
+      summary: Asignar un rol con ambito a un usuario (CU-SEGU-03)
+      description: |
+        Permiso SEGU.ROL.ASIGNAR + SEGU.AMBITO.ASIGNAR. Valida coherencia ambito-rol (RN-SEGU-05),
+        multi-zona para R-GZ (RN-SEGU-06) y que tiendas/zonas existan y sean vigentes en Maestros (RN-SEGU-09).
+        Para alto privilegio (R-ADM, R-GG) o ampliacion de ambito exige justificacion (RN-SEGU-08).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CrearAsignacionRequest' }
+            examples:
+              gz_multizona:
+                summary: GZ con dos zonas (multi-zona, RN-SEGU-06)
+                value:
+                  id_rol: "R-GZ"
+                  tipo_ambito: "ZONA"
+                  id_empresa: "CADENA"
+                  id_zonas: ["3f1c...zonaA", "8a2d...zonaB"]
+                  vigencia_desde: "2026-06-01"
+              gg_alto_privilegio:
+                summary: GG (alto privilegio, justificacion obligatoria, RN-SEGU-08)
+                value:
+                  id_rol: "R-GG"
+                  tipo_ambito: "CENTRAL"
+                  justificacion: "Designacion de Gerencia General zona macro-sur"
+                  vigencia_desde: "2026-06-01"
+      responses:
+        '201':
+          description: Asignacion creada y auditada (auditoria reforzada si alto privilegio).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AsignacionRolAmbito' }
+        '422':
+          description: Ambito incoherente con el rol o falta justificacion (RN-SEGU-05/08).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /asignaciones/{idAsignacion}:
+    parameters:
+      - { name: idAsignacion, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      tags: [Roles y ambito]
+      summary: Revocar (fin de vigencia) una asignacion (CU-SEGU-03 A1)
+      responses:
+        '204': { description: Asignacion revocada; los modulos dejan de considerarla; auditado. }
+
+  # ----------------------- JERARQUIA -----------------------
+  /jerarquia/nodos:
+    get:
+      tags: [Jerarquia]
+      summary: Listar nodos de jerarquia (RN-SEGU-18)
+      parameters:
+        - { name: id_rol, in: query, schema: { $ref: '#/components/schemas/RolId' } }
+        - { name: tipo_ambito, in: query, schema: { $ref: '#/components/schemas/TipoAmbito' } }
+      responses:
+        '200':
+          description: Nodos de jerarquia.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/NodoJerarquia' }
+    post:
+      tags: [Jerarquia]
+      summary: Crear/editar un nodo de jerarquia (SEGU.JERARQUIA.EDITAR)
+      description: Mantenida explicitamente (VAC-SEGU-11). Validacion anti-ciclo aplicativa.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NodoJerarquia' }
+      responses:
+        '201':
+          description: Nodo creado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NodoJerarquia' }
+
+  # ----------------------- DELEGACION Y SUPLENCIA -----------------------
+  /delegaciones:
+    get:
+      tags: [Delegacion y suplencia]
+      summary: Listar delegaciones (propias o, para ADM, de cualquiera)
+      parameters:
+        - { name: id_titular, in: query, schema: { type: string, format: uuid } }
+        - { name: estado, in: query, schema: { $ref: '#/components/schemas/EstadoVigencia' } }
+      responses:
+        '200':
+          description: Delegaciones.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Delegacion' }
+    post:
+      tags: [Delegacion y suplencia]
+      summary: Crear una delegacion temporal (CU-SEGU-06)
+      description: |
+        Valida compatibilidad de rol del delegado (RN-SEGU-28) y vigencia. REQUIERE VALIDACION COMPLIANCE
+        para facultades de aprobacion. Aprobaciones la consume via /resolucion (RN-SEGU-20).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CrearDelegacionRequest' }
+            examples:
+              por_tipo_flujo:
+                value:
+                  id_delegado: "a1b2...usuario"
+                  alcance: "TIPOS_FLUJO"
+                  detalle_alcance: { tipos_flujo: ["FL_DESC_MEDICO"] }
+                  tipo_ambito: "CENTRAL"
+                  vigencia_desde: "2026-06-03"
+                  vigencia_hasta: "2026-06-03"
+      responses:
+        '201':
+          description: Delegacion creada y notificada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Delegacion' }
+        '422':
+          description: Delegado con rol incompatible (RN-SEGU-28).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /delegaciones/{idDelegacion}/revocar:
+    parameters:
+      - { name: idDelegacion, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [Delegacion y suplencia]
+      summary: Revocar una delegacion antes de su fin (CU-SEGU-06 A1, RN-SEGU-29)
+      responses:
+        '204': { description: Revocada; la facultad vuelve al titular de inmediato. }
+
+  /suplencias:
+    get:
+      tags: [Delegacion y suplencia]
+      summary: Listar suplencias (base GG Suplente R-GG-SUP)
+      parameters:
+        - { name: id_rol_titular, in: query, schema: { $ref: '#/components/schemas/RolId' } }
+        - { name: estado, in: query, schema: { $ref: '#/components/schemas/EstadoVigencia' } }
+      responses:
+        '200':
+          description: Suplencias.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Suplencia' }
+    post:
+      tags: [Delegacion y suplencia]
+      summary: Designar un suplente para un rol titular (CU-SEGU-07)
+      description: |
+        Permiso SEGU.SUPLENCIA.DESIGNAR. Valida compatibilidad de rol (RN-SEGU-31). Base del GG Suplente de
+        Ascenso (RN-ASCE-19): el R-GG-SUP resuelve cuando el GG es el solicitante. REQUIERE VALIDACION COMPLIANCE.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CrearSuplenciaRequest' }
+            examples:
+              gg_suplente:
+                value:
+                  id_rol_titular: "R-GG"
+                  id_usuario_suplente: "c3d4...usuario"
+                  tipo_ambito: "CENTRAL"
+                  vigencia_desde: "2026-06-01"
+                  vigencia_hasta: "2026-12-31"
+      responses:
+        '201':
+          description: Suplencia designada y auditada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Suplencia' }
+
+  # ----------------------- RESOLUCION (consumido por APROBACIONES) -----------------------
+  /resolucion/aprobador:
+    post:
+      tags: [Resolucion (Aprobaciones)]
+      summary: Resolver el/los aprobador(es) de un nivel (CU-SEGU-04, RN-SEGU-16)
+      description: |
+        Servicio critico consumido por el motor de Aprobaciones (resuelve VAC-APRO-01). Dado una regla de
+        resolucion y un contexto (empresa/zona/tienda/solicitante), devuelve aprobador(es) titular(es),
+        aprobador(es) efectivo(s) incluyendo delegado/suplente vigente (RN-SEGU-20), y el superior jerarquico
+        para escalamiento (RN-SEGU-18). Aplica segregacion de funciones si el nivel lo exige (RN-SEGU-19).
+        Si no hay aprobador resoluble devuelve APROBADOR_NO_RESOLUBLE (RN-SEGU-17).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResolverAprobadorRequest' }
+            examples:
+              jerarquia_por_zona:
+                summary: Resolver GG de la zona del rol semanal (FL_ROL)
+                value:
+                  regla_resolucion: "JERARQUIA_POR_ZONA"
+                  rol_objetivo: "R-GG"
+                  contexto:
+                    id_empresa: "CADENA"
+                    id_zona: "3f1c...zonaA"
+                    id_solicitante: "9a8b...gz"
+                  aplicar_segregacion: false
+              ascenso_segregacion:
+                summary: Resolver aprobador de ascenso excluyendo al solicitante (RN-ASCE-18)
+                value:
+                  regla_resolucion: "ROL_FIJO"
+                  rol_objetivo: "R-GG"
+                  contexto:
+                    id_empresa: "CADENA"
+                    id_zona: "3f1c...zonaA"
+                    id_solicitante: "7f7f...gg"
+                  aplicar_segregacion: true
+      responses:
+        '200':
+          description: Aprobadores resueltos (puede ser vacio si no resoluble).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResolverAprobadorResponse' }
+              examples:
+                resuelto:
+                  value:
+                    estado: "RESUELTO"
+                    aprobadores_titulares: [{ id_usuario: "1a1a...gg", id_rol: "R-GG", en_calidad_de: "TITULAR" }]
+                    aprobadores_efectivos: [{ id_usuario: "1a1a...gg", id_rol: "R-GG", en_calidad_de: "TITULAR" }]
+                    superior_jerarquico: { id_usuario: "0f0f...gg-superior", id_rol: "R-GG" }
+                no_resoluble:
+                  value:
+                    estado: "APROBADOR_NO_RESOLUBLE"
+                    aprobadores_titulares: []
+                    aprobadores_efectivos: []
+                    motivo: "No hay usuario con R-GG y ambito que cubra la zona del contexto."
+                con_suplente:
+                  summary: Auto-solicitud GG resuelta por R-GG-SUP (RN-ASCE-19)
+                  value:
+                    estado: "RESUELTO"
+                    aprobadores_titulares: []
+                    aprobadores_efectivos: [{ id_usuario: "5c5c...gg-sup", id_rol: "R-GG-SUP", en_calidad_de: "SUPLENTE" }]
+
+  /resolucion/superior:
+    post:
+      tags: [Resolucion (Aprobaciones)]
+      summary: Resolver el superior jerarquico para escalamiento (RN-SEGU-18)
+      description: Devuelve el superior del rol/ambito dado (GT->GZ->GG->maxima autoridad). Usado por escalamiento por SLA (RN-APRO-18).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResolverSuperiorRequest' }
+      responses:
+        '200':
+          description: Superior jerarquico.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AprobadorResuelto' }
+
+  /resolucion/segregacion:
+    post:
+      tags: [Resolucion (Aprobaciones)]
+      summary: Validar segregacion de funciones (RN-SEGU-19)
+      description: Indica si el solicitante debe ser excluido del conjunto de aprobadores; soporta RN-APRO-12 y RN-ASCE-18.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id_solicitante, candidatos]
+              properties:
+                id_solicitante: { type: string, format: uuid }
+                candidatos:
+                  type: array
+                  items: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Candidatos habilitados tras segregacion.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  habilitados:
+                    type: array
+                    items: { type: string, format: uuid }
+                  excluido_solicitante: { type: boolean }
+
+  /resolucion/delegacion-suplencia:
+    get:
+      tags: [Resolucion (Aprobaciones)]
+      summary: Consultar delegados/suplentes vigentes para un titular y tipo de flujo (RN-SEGU-20)
+      parameters:
+        - { name: id_titular, in: query, required: true, schema: { type: string, format: uuid } }
+        - { name: tipo_flujo, in: query, schema: { type: string, example: "FL_ASCE" } }
+        - { name: fecha, in: query, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: Delegados/suplentes efectivos vigentes.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AprobadorResuelto' }
+
+  # ----------------------- AUTORIZACION (enforcement) -----------------------
+  /autorizacion/verificar:
+    post:
+      tags: [Autorizacion]
+      summary: Verificar si un usuario puede ejecutar una accion sobre un ambito (CU-SEGU-05)
+      description: |
+        Enforcement permiso+ambito (RN-SEGU-21/22). Devuelve PERMITIDO/DENEGADO. Aplica fallo seguro (ADR-005,
+        VAC-SEGU-13): el consumidor debe denegar por defecto en escritura/aprobacion si el servicio no responde.
+        Los DENEGADO sobre acciones criticas se auditan (RN-SEGU-23).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AutorizarRequest' }
+            examples:
+              gz_envia_rol:
+                value:
+                  id_usuario: "9a8b...gz"
+                  permiso: "ROLP.ROL.ENVIAR"
+                  ambito: { tipo_ambito: "TIENDA", id_tienda: "tt01...tienda" }
+      responses:
+        '200':
+          description: Resultado del enforcement.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AutorizarResponse' }
+              examples:
+                permitido: { value: { resultado: "PERMITIDO" } }
+                denegado_ambito: { value: { resultado: "DENEGADO", motivo: "AMBITO_FUERA_DE_ALCANCE" } }
+
+  # ----------------------- AUDITORIA -----------------------
+  /auditoria/accesos:
+    get:
+      tags: [Auditoria]
+      summary: Consultar auditoria de accesos y cambios (CU-SEGU-09, RN-SEGU-25)
+      description: Restringida por ambito del consultor (RN-SEGU-24). Exportacion auditada.
+      parameters:
+        - { name: evento, in: query, schema: { $ref: '#/components/schemas/EventoAuditoria' } }
+        - { name: id_actor, in: query, schema: { type: string, format: uuid } }
+        - { name: desde, in: query, schema: { type: string, format: date-time } }
+        - { name: hasta, in: query, schema: { type: string, format: date-time } }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Pagina de eventos de auditoria.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginaAuditoria' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token JWT emitido por Nova tras login local u OIDC (ADR-001).
+
+  parameters:
+    IdUsuario:
+      name: idUsuario
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Clave de idempotencia para operaciones de escritura criticas (ADR-003).
+      schema: { type: string, maxLength: 200 }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PageSize:
+      name: page_size
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+
+  schemas:
+    # ---- Tipos base / enums alineados al esquema segu/maes ----
+    EmpresaId:
+      type: string
+      enum: [CADENA, LUKERS]
+    RolId:
+      type: string
+      description: Clave natural de maes.rol_catalogo.
+      enum: [R-ADM, R-GG, R-GG-SUP, R-GZ, R-GT, R-AV, R-AR, R-BIEN, R-SENIOR, R-EMP]
+    TipoUsuario:
+      type: string
+      enum: [PERSONAL, TECNICO_CENTRAL]
+    EstadoUsuario:
+      type: string
+      enum: [PENDIENTE_ASIGNACION, ACTIVO, BLOQUEADO, DESACTIVADO]
+    MetodoAuth:
+      type: string
+      enum: [LOCAL, SSO]
+    TipoAmbito:
+      type: string
+      enum: [CENTRAL, EMPRESA, ZONA, TIENDA]
+    EstadoVigencia:
+      type: string
+      enum: [VIGENTE, PROGRAMADA, REVOCADA, EXPIRADA]
+    CalidadActuacion:
+      type: string
+      enum: [TITULAR, DELEGADO, SUPLENTE]
+    EventoAuditoria:
+      type: string
+      enum: [LOGIN_OK, LOGIN_FALLIDO, LOGOUT, BLOQUEO, DESBLOQUEO, ALTA_USUARIO, EDIT_USUARIO, BAJA_USUARIO, ASIGNA_ROL, REVOCA_ROL, CAMBIO_AMBITO, CAMBIO_JERARQUIA, DELEGACION, REVOCA_DELEGACION, SUPLENCIA, CAMBIO_CREDENCIAL, RECUP_PWD_SOLICITUD, RECUP_PWD_VERIFICACION, RECUP_PWD_CAMBIO, RECUP_PWD_BLOQUEO, DENEGACION_ACCESO, EXPORTACION]
+
+    Ambito:
+      type: object
+      description: Acotacion empresa/zona/tienda de una operacion o asignacion.
+      properties:
+        tipo_ambito: { $ref: '#/components/schemas/TipoAmbito' }
+        id_empresa: { $ref: '#/components/schemas/EmpresaId' }
+        id_zona: { type: string, format: uuid }
+        id_tienda: { type: string, format: uuid }
+
+    # ---- Autenticacion ----
+    LoginRequest:
+      type: object
+      required: [nombre_usuario, password, canal]
+      properties:
+        nombre_usuario: { type: string }
+        password: { type: string, format: password, writeOnly: true }
+        canal: { type: string, enum: [WEB, APP_MOVIL] }
+    LoginResponse:
+      type: object
+      properties:
+        access_token: { type: string }
+        token_type: { type: string, default: Bearer }
+        expires_in: { type: integer, description: Segundos. }
+        id_sesion: { type: string, format: uuid }
+        contexto: { $ref: '#/components/schemas/ContextoSeguridad' }
+    LoginChallenge:
+      type: object
+      properties:
+        challenge: { type: string, enum: [CAMBIO_PASSWORD_OBLIGATORIO, MFA_REQUERIDO, SSO_REDIRECT] }
+        redirect_url: { type: string, description: Presente si SSO_REDIRECT (ADR-001). }
+        mensaje: { type: string }
+    CambioPasswordRequest:
+      type: object
+      required: [password_nueva]
+      properties:
+        password_actual: { type: string, format: password, writeOnly: true }
+        password_nueva: { type: string, format: password, writeOnly: true }
+
+    # ---- Recuperacion de contrasena por OTP (CU-SEGU-10) ----
+    RecoveryRequest:
+      type: object
+      required: [correo]
+      properties:
+        correo: { type: string, format: email, description: "Correo de contacto. DATO SENSIBLE. No se confirma su existencia (RN-SEGU-32)." }
+        canal: { type: string, enum: [WEB, APP_MOVIL], default: WEB }
+    RecoveryRequestResponse:
+      type: object
+      description: Respuesta generica indistinguible (anti-enumeracion, RN-SEGU-32). Nunca incluye el codigo OTP.
+      properties:
+        mensaje: { type: string, example: "Si el correo esta registrado, enviaremos un codigo de verificacion." }
+        correo_enmascarado: { type: string, example: "j****@e****.com", description: "Enmascarado solo con fines de UX; no confirma existencia." }
+        reenvio_disponible_en_seg: { type: integer, description: "SEGU_OTP_REENVIO_ESPERA_SEG (RN-SEGU-36)." }
+    RecoveryVerifyRequest:
+      type: object
+      required: [correo, codigo]
+      properties:
+        correo: { type: string, format: email }
+        codigo: { type: string, pattern: '^[0-9]{6}$', description: "Codigo OTP de 6 digitos (SEGU_OTP_LONGITUD, RN-SEGU-33). writeOnly.", writeOnly: true }
+    RecoveryVerifyResponse:
+      type: object
+      description: Token de un solo uso para establecer la nueva contrasena (RN-SEGU-37). El codigo OTP nunca se devuelve.
+      properties:
+        reset_token: { type: string, description: "Token de un solo uso, de corta vigencia. Requerido en /reset." }
+        expira_en_seg: { type: integer }
+    RecoveryResetRequest:
+      type: object
+      required: [reset_token, password_nueva]
+      properties:
+        reset_token: { type: string, description: "Token de un solo uso de la verificacion (RN-SEGU-37)." }
+        password_nueva: { type: string, format: password, writeOnly: true, description: "Sujeta a politica SEGU_PWD_* (RN-SEGU-38/10)." }
+    ContextoSeguridad:
+      type: object
+      description: Roles, ambito consolidado y permisos efectivos (RN-SEGU-07).
+      properties:
+        id_usuario: { type: string, format: uuid }
+        nombre_usuario: { type: string }
+        roles:
+          type: array
+          items: { $ref: '#/components/schemas/RolId' }
+        permisos_efectivos:
+          type: array
+          items: { type: string, example: "ROLP.ROL.APROBAR" }
+        ambito_consolidado:
+          type: array
+          items: { $ref: '#/components/schemas/Ambito' }
+    Sesion:
+      type: object
+      properties:
+        id_sesion: { type: string, format: uuid }
+        canal: { type: string, enum: [WEB, APP_MOVIL] }
+        fecha_inicio: { type: string, format: date-time }
+        ultima_actividad: { type: string, format: date-time }
+        expira_en: { type: string, format: date-time }
+        estado: { type: string, enum: [ACTIVA, EXPIRADA, CERRADA] }
+
+    # ---- Usuarios ----
+    Usuario:
+      type: object
+      properties:
+        id_usuario: { type: string, format: uuid }
+        nombre_usuario: { type: string }
+        tipo_usuario: { $ref: '#/components/schemas/TipoUsuario' }
+        codigo_empleado_rms: { type: string, description: "DATO SENSIBLE. Solo vinculo; no es fuente de verdad (RN-SEGU-26)." }
+        correo_contacto: { type: string, format: email, description: "DATO SENSIBLE." }
+        estado: { $ref: '#/components/schemas/EstadoUsuario' }
+        metodo_autenticacion: { $ref: '#/components/schemas/MetodoAuth' }
+        mfa_habilitado: { type: boolean }
+        fecha_alta: { type: string, format: date-time }
+    UsuarioDetalle:
+      allOf:
+        - $ref: '#/components/schemas/Usuario'
+        - type: object
+          properties:
+            asignaciones:
+              type: array
+              items: { $ref: '#/components/schemas/AsignacionRolAmbito' }
+            permisos_efectivos:
+              type: array
+              items: { type: string }
+            ambito_consolidado:
+              type: array
+              items: { $ref: '#/components/schemas/Ambito' }
+    CrearUsuarioRequest:
+      type: object
+      required: [tipo_usuario, nombre_usuario, correo_contacto]
+      properties:
+        tipo_usuario: { $ref: '#/components/schemas/TipoUsuario' }
+        codigo_empleado_rms: { type: string, description: "Obligatorio si tipo_usuario=PERSONAL." }
+        nombre_usuario: { type: string }
+        correo_contacto: { type: string, format: email }
+        metodo_autenticacion: { $ref: '#/components/schemas/MetodoAuth' }
+    EditarUsuarioRequest:
+      type: object
+      properties:
+        correo_contacto: { type: string, format: email }
+        metodo_autenticacion: { $ref: '#/components/schemas/MetodoAuth' }
+        mfa_habilitado: { type: boolean }
+    PaginaUsuarios:
+      allOf:
+        - $ref: '#/components/schemas/Pagina'
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Usuario' }
+
+    # ---- Asignaciones ----
+    AsignacionRolAmbito:
+      type: object
+      properties:
+        id_asignacion: { type: string, format: uuid }
+        id_usuario: { type: string, format: uuid }
+        id_rol: { $ref: '#/components/schemas/RolId' }
+        tipo_ambito: { $ref: '#/components/schemas/TipoAmbito' }
+        id_empresa: { $ref: '#/components/schemas/EmpresaId' }
+        id_tienda: { type: string, format: uuid }
+        id_zonas:
+          type: array
+          description: Multi-zona para R-GZ (RN-SEGU-06).
+          items: { type: string, format: uuid }
+        justificacion: { type: string }
+        vigencia_desde: { type: string, format: date }
+        vigencia_hasta: { type: string, format: date, nullable: true }
+        estado: { $ref: '#/components/schemas/EstadoVigencia' }
+    CrearAsignacionRequest:
+      type: object
+      required: [id_rol, tipo_ambito, vigencia_desde]
+      properties:
+        id_rol: { $ref: '#/components/schemas/RolId' }
+        tipo_ambito: { $ref: '#/components/schemas/TipoAmbito' }
+        id_empresa: { $ref: '#/components/schemas/EmpresaId' }
+        id_tienda: { type: string, format: uuid }
+        id_zonas:
+          type: array
+          items: { type: string, format: uuid }
+        justificacion: { type: string, description: "Obligatoria para R-ADM/R-GG o ampliacion de ambito (RN-SEGU-08)." }
+        vigencia_desde: { type: string, format: date }
+        vigencia_hasta: { type: string, format: date, nullable: true }
+
+    # ---- Jerarquia ----
+    NodoJerarquia:
+      type: object
+      properties:
+        id_nodo: { type: string, format: uuid }
+        id_rol: { $ref: '#/components/schemas/RolId' }
+        tipo_ambito: { $ref: '#/components/schemas/TipoAmbito' }
+        id_ambito: { type: string, format: uuid, nullable: true }
+        id_nodo_superior: { type: string, format: uuid, nullable: true }
+
+    # ---- Delegacion y suplencia ----
+    Delegacion:
+      type: object
+      properties:
+        id_delegacion: { type: string, format: uuid }
+        id_titular: { type: string, format: uuid }
+        id_delegado: { type: string, format: uuid }
+        alcance: { type: string, enum: [ROL_COMPLETO, ACCIONES_ESPECIFICAS, TIPOS_FLUJO] }
+        detalle_alcance: { type: object, additionalProperties: true }
+        tipo_ambito: { $ref: '#/components/schemas/TipoAmbito' }
+        id_ambito: { type: string, format: uuid, nullable: true }
+        vigencia_desde: { type: string, format: date }
+        vigencia_hasta: { type: string, format: date, nullable: true }
+        estado: { $ref: '#/components/schemas/EstadoVigencia' }
+    CrearDelegacionRequest:
+      type: object
+      required: [id_delegado, alcance, tipo_ambito, vigencia_desde]
+      properties:
+        id_delegado: { type: string, format: uuid }
+        alcance: { type: string, enum: [ROL_COMPLETO, ACCIONES_ESPECIFICAS, TIPOS_FLUJO] }
+        detalle_alcance: { type: object, additionalProperties: true }
+        tipo_ambito: { $ref: '#/components/schemas/TipoAmbito' }
+        id_ambito: { type: string, format: uuid }
+        vigencia_desde: { type: string, format: date }
+        vigencia_hasta: { type: string, format: date }
+    Suplencia:
+      type: object
+      properties:
+        id_suplencia: { type: string, format: uuid }
+        id_rol_titular: { $ref: '#/components/schemas/RolId' }
+        id_usuario_titular: { type: string, format: uuid, nullable: true }
+        id_usuario_suplente: { type: string, format: uuid }
+        tipo_ambito: { $ref: '#/components/schemas/TipoAmbito' }
+        id_ambito: { type: string, format: uuid, nullable: true }
+        vigencia_desde: { type: string, format: date }
+        vigencia_hasta: { type: string, format: date, nullable: true }
+        estado: { $ref: '#/components/schemas/EstadoVigencia' }
+    CrearSuplenciaRequest:
+      type: object
+      required: [id_rol_titular, id_usuario_suplente, tipo_ambito, vigencia_desde]
+      properties:
+        id_rol_titular: { $ref: '#/components/schemas/RolId' }
+        id_usuario_titular: { type: string, format: uuid, nullable: true }
+        id_usuario_suplente: { type: string, format: uuid }
+        tipo_ambito: { $ref: '#/components/schemas/TipoAmbito' }
+        id_ambito: { type: string, format: uuid }
+        vigencia_desde: { type: string, format: date }
+        vigencia_hasta: { type: string, format: date }
+
+    # ---- Resolucion (Aprobaciones) ----
+    ContextoResolucion:
+      type: object
+      properties:
+        id_empresa: { $ref: '#/components/schemas/EmpresaId' }
+        id_zona: { type: string, format: uuid }
+        id_tienda: { type: string, format: uuid }
+        id_solicitante: { type: string, format: uuid }
+    ResolverAprobadorRequest:
+      type: object
+      required: [regla_resolucion, contexto]
+      properties:
+        regla_resolucion:
+          type: string
+          enum: [ROL_FIJO, JERARQUIA_POR_ZONA, JERARQUIA_POR_EMPRESA, USUARIO_ESPECIFICO]
+        rol_objetivo: { $ref: '#/components/schemas/RolId' }
+        id_usuario_especifico: { type: string, format: uuid, description: "Si regla=USUARIO_ESPECIFICO." }
+        tipo_flujo: { type: string, example: "FL_ROL" }
+        aplicar_segregacion: { type: boolean, default: false, description: "Excluir al solicitante (RN-SEGU-19)." }
+        contexto: { $ref: '#/components/schemas/ContextoResolucion' }
+    AprobadorResuelto:
+      type: object
+      properties:
+        id_usuario: { type: string, format: uuid }
+        id_rol: { $ref: '#/components/schemas/RolId' }
+        en_calidad_de: { $ref: '#/components/schemas/CalidadActuacion' }
+    ResolverAprobadorResponse:
+      type: object
+      properties:
+        estado: { type: string, enum: [RESUELTO, APROBADOR_NO_RESOLUBLE] }
+        aprobadores_titulares:
+          type: array
+          items: { $ref: '#/components/schemas/AprobadorResuelto' }
+        aprobadores_efectivos:
+          type: array
+          description: Incluye delegados/suplentes vigentes (RN-SEGU-20). Aprobaciones aplica el cuorum.
+          items: { $ref: '#/components/schemas/AprobadorResuelto' }
+        superior_jerarquico: { $ref: '#/components/schemas/AprobadorResuelto' }
+        motivo: { type: string, description: "Presente si APROBADOR_NO_RESOLUBLE (RN-SEGU-17)." }
+    ResolverSuperiorRequest:
+      type: object
+      required: [id_rol, tipo_ambito]
+      properties:
+        id_rol: { $ref: '#/components/schemas/RolId' }
+        tipo_ambito: { $ref: '#/components/schemas/TipoAmbito' }
+        id_ambito: { type: string, format: uuid }
+
+    # ---- Autorizacion ----
+    AutorizarRequest:
+      type: object
+      required: [id_usuario, permiso]
+      properties:
+        id_usuario: { type: string, format: uuid }
+        permiso: { type: string, example: "APRO.TAREA.APROBAR" }
+        ambito: { $ref: '#/components/schemas/Ambito' }
+    AutorizarResponse:
+      type: object
+      properties:
+        resultado: { type: string, enum: [PERMITIDO, DENEGADO] }
+        motivo: { type: string, enum: [PERMISO_AUSENTE, AMBITO_FUERA_DE_ALCANCE, SERVICIO_NO_DISPONIBLE], nullable: true }
+
+    # ---- Auditoria ----
+    RegistroAuditoria:
+      type: object
+      properties:
+        id_log: { type: string, format: uuid }
+        evento: { $ref: '#/components/schemas/EventoAuditoria' }
+        id_actor: { type: string, format: uuid }
+        id_objeto: { type: string, format: uuid, nullable: true }
+        en_calidad_de: { $ref: '#/components/schemas/CalidadActuacion' }
+        resultado: { type: string, enum: [EXITOSO, FALLIDO, DENEGADO] }
+        detalle: { type: object, additionalProperties: true }
+        fecha_hora: { type: string, format: date-time }
+    PaginaAuditoria:
+      allOf:
+        - $ref: '#/components/schemas/Pagina'
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/RegistroAuditoria' }
+
+    # ---- Comunes ----
+    Pagina:
+      type: object
+      properties:
+        page: { type: integer }
+        page_size: { type: integer }
+        total: { type: integer }
+    Problem:
+      type: object
+      description: Error estandar RFC 7807 (problem+json).
+      properties:
+        type: { type: string, format: uri, default: "about:blank" }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        codigo_negocio: { type: string, description: "Codigo de negocio Nova (p. ej. RN-SEGU-03, APROBADOR_NO_RESOLUBLE)." }
+      required: [title, status]

@@ -1,0 +1,715 @@
+openapi: 3.1.0
+info:
+  title: Nova - Servicio de Aprobaciones (motor de flujos transversal)
+  version: "1.0.0"
+  description: |
+    Contrato del motor de Aprobaciones de Nova (bounded context `apro`). Motor transversal y configurable
+    (Fase 0) consumido por Rol, Descansos (LSGH/LCGH/medico), Encargatura, Traslados, Vacaciones y Ascenso.
+    Cubre: gestion de plantillas/flujos y niveles, creacion de solicitud por el modulo dueno, bandeja unificada
+    de pendientes por aprobador (filtros y orden por urgencia de SLA), detalle de tarea, aprobar/rechazar
+    (comentario obligatorio en rechazo), delegacion (consumida desde Seguridad), historial, y el contrato de
+    callback idempotente hacia el modulo dueno (ADR-003).
+
+    Alineado a: ENT-MOD-APRO-001 v1.0, modelo-datos-fase0.md (esquema `apro`), flujos-ux-transversales.md
+    (T.1-T.4), ADR-003 (outbox/idempotencia), arquitectura-nova.md sec 10 (plazos del Rol via callback).
+
+    El motor resuelve aprobadores consumiendo Seguridad (POST /resolucion/aprobador, ver seguridad-api.yaml);
+    no duplica identidades ni ambito. La estructura de plantillas vive aqui; los VALORES de SLA viven en Maestros
+    (clave_sla, ADR-004). Ejemplos con datos ficticios.
+servers:
+  - url: "{baseUrl}/v1"
+    variables:
+      baseUrl:
+        default: https://api.nova.example/apro
+        description: Base URL del servicio (variable de entorno; sin host real)
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Flujos
+    description: Plantillas de flujo y niveles (CU-APRO-01)
+  - name: Solicitudes
+    description: Ciclo de vida de una solicitud (CU-APRO-02/03/07)
+  - name: Bandeja
+    description: Bandeja unificada de pendientes (CU-APRO-06, RN-APRO-21/23)
+  - name: Historial
+    description: Historial de aprobaciones (CU-APRO-08)
+  - name: Callbacks
+    description: Contrato de callback idempotente al modulo dueno (ADR-003, RN-APRO-14/19)
+
+paths:
+
+  # ----------------------- FLUJOS / PLANTILLAS -----------------------
+  /flujos:
+    get:
+      tags: [Flujos]
+      summary: Listar plantillas de flujo
+      parameters:
+        - { name: codigo, in: query, schema: { $ref: '#/components/schemas/CodigoFlujo' } }
+        - { name: estado, in: query, schema: { type: string, enum: [ACTIVA, INACTIVA] } }
+      responses:
+        '200':
+          description: Plantillas de flujo.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Flujo' }
+    post:
+      tags: [Flujos]
+      summary: Crear/versionar una plantilla de flujo (CU-APRO-01)
+      description: |
+        Permiso APRO.PLANTILLA.CONFIGURAR (ADM). Define niveles, modo, regla de resolucion, cuorum, clave_sla
+        y consecuencia de vencimiento. Si un nivel es AUTOAPROBACION con solicitante=aprobador, se marca
+        requiere_compliance y exige confirmacion (RN-APRO-12).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CrearFlujoRequest' }
+            examples:
+              fl_rol:
+                summary: FL_ROL (plazos gestionados por el Rol; callback BLOQUEAR_CAJAS, ADR-008)
+                value:
+                  codigo: "FL_ROL"
+                  tipo_objeto: "ROL_SEMANAL"
+                  modulo_solicitante: "ROL"
+                  politica_rechazo: "REINICIO_TOTAL"
+                  niveles:
+                    - orden: 1
+                      modo: "APROBACION_JERARQUICA"
+                      regla_resolucion_aprobador: "JERARQUIA_POR_ZONA"
+                      rol_o_usuario_aprobador: "R-GG"
+                      cuorum: "CUALQUIERA"
+                      comentario_aprobacion: "OPCIONAL"
+                      consecuencia_vencimiento: "CALLBACK_MODULO"
+                      accion_callback: "BLOQUEAR_CAJAS"
+              fl_asce:
+                summary: FL_ASCE (segregacion solicitante!=aprobador; R-GG-SUP si auto-solicitud)
+                value:
+                  codigo: "FL_ASCE"
+                  tipo_objeto: "ASCENSO_SENIOR"
+                  modulo_solicitante: "ASCE"
+                  politica_rechazo: "REINICIO_TOTAL"
+                  niveles:
+                    - orden: 1
+                      modo: "APROBACION_JERARQUICA"
+                      regla_resolucion_aprobador: "ROL_FIJO"
+                      rol_o_usuario_aprobador: "R-GG"
+                      cuorum: "CUALQUIERA"
+                      comentario_aprobacion: "OPCIONAL"
+                      clave_sla: "APRO_SLA_FL_ASCE_GG"
+                      consecuencia_vencimiento: "NOTIFICAR"
+      responses:
+        '201':
+          description: Plantilla creada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Flujo' }
+
+  /flujos/{idFlujo}:
+    parameters:
+      - { name: idFlujo, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Flujos]
+      summary: Obtener una plantilla con sus niveles
+      responses:
+        '200':
+          description: Plantilla con niveles.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FlujoDetalle' }
+
+  # ----------------------- SOLICITUDES -----------------------
+  /solicitudes:
+    post:
+      tags: [Solicitudes]
+      summary: Iniciar una solicitud de aprobacion (invocado por el modulo dueno)
+      description: |
+        El modulo dueno inicia el flujo sobre su objeto. El motor resuelve el aprobador del primer nivel
+        consumiendo Seguridad (POST /resolucion/aprobador). Si no es resoluble queda PENDIENTE_RESOLUCION_APROBADOR
+        y se notifica al ADM (RN-SEGU-17 / CU-APRO-02 E1). Idempotente por Idempotency-Key para evitar doble inicio.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CrearSolicitudRequest' }
+            examples:
+              ascenso:
+                value:
+                  codigo_flujo: "FL_ASCE"
+                  tipo_objeto: "ASCENSO_SENIOR"
+                  id_objeto: "asce-2026-000123"
+                  id_solicitante: "9a8b...gz"
+                  id_colaborador_afectado: "emp-0045-uuid"
+                  contexto: { id_empresa: "CADENA", id_zona: "3f1c...zonaA" }
+                  resumen_objeto:
+                    titulo: "Ascenso Senior - A. Perez (T-Lima01)"
+                    datos_clave: { puesto: "Asesor", tienda: "T-Lima01" }
+      responses:
+        '201':
+          description: Solicitud creada (EN_CURSO o PENDIENTE_RESOLUCION_APROBADOR).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Solicitud' }
+        '409':
+          description: Ya existe una solicitud para ese objeto (idempotencia / RN del modulo).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /solicitudes/{idSolicitud}:
+    parameters:
+      - $ref: '#/components/parameters/IdSolicitud'
+    get:
+      tags: [Solicitudes]
+      summary: Detalle de la solicitud y su traza de flujo (T.2, CU-APRO-03)
+      description: Incluye niveles, decisiones, comentarios, delegaciones, escalamientos y callbacks (RN-APRO-25). Acceso por ambito (RN-APRO-23).
+      responses:
+        '200':
+          description: Detalle de la solicitud.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SolicitudDetalle' }
+        '404':
+          description: No encontrada o fuera de ambito.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /solicitudes/{idSolicitud}/cancelar:
+    parameters:
+      - $ref: '#/components/parameters/IdSolicitud'
+    post:
+      tags: [Solicitudes]
+      summary: Cancelar la solicitud (solicitante o modulo, CU-APRO-07)
+      description: Motivo obligatorio (RN-APRO-22). Retira las tareas pendientes de las bandejas.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [motivo]
+              properties:
+                motivo: { type: string, minLength: 1 }
+      responses:
+        '200':
+          description: Solicitud cancelada y auditada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Solicitud' }
+
+  # ----------------------- BANDEJA -----------------------
+  /tareas:
+    get:
+      tags: [Bandeja]
+      summary: Bandeja unificada de pendientes del aprobador autenticado (T.1, RN-APRO-21)
+      description: |
+        Devuelve todas las tareas pendientes del aprobador (incluidas las recibidas por delegacion/suplencia),
+        de todos los modulos. Orden por defecto: urgencia de SLA (vencidas y proximas a vencer primero).
+        Restringido por ambito de rol (RN-APRO-23).
+      parameters:
+        - { name: tipo_flujo, in: query, schema: { $ref: '#/components/schemas/CodigoFlujo' } }
+        - { name: modulo, in: query, schema: { type: string } }
+        - { name: criticidad, in: query, schema: { type: string, enum: [ALTA, MEDIA, BAJA] } }
+        - { name: solo_vencidas, in: query, schema: { type: boolean } }
+        - name: orden
+          in: query
+          schema: { type: string, enum: [URGENCIA_SLA, FECHA_INGRESO], default: URGENCIA_SLA }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Pagina de tareas pendientes.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginaTareas' }
+              examples:
+                bandeja:
+                  value:
+                    page: 1
+                    page_size: 50
+                    total: 3
+                    items:
+                      - id_tarea: "t1-uuid"
+                        id_solicitud: "s1-uuid"
+                        tipo_flujo: "FL_ROL"
+                        titulo: "Rol semanal - Zona Lima Sur"
+                        solicitante_nombre: "GZ M. Soto"
+                        fecha_ingreso: "2026-05-30T06:00:00Z"
+                        fecha_vencimiento_sla: "2026-05-30T15:00:00Z"
+                        sla_estado: "POR_VENCER"
+                        en_calidad_de: "TITULAR"
+                      - id_tarea: "t3-uuid"
+                        id_solicitud: "s3-uuid"
+                        tipo_flujo: "FL_ASCE"
+                        titulo: "Ascenso Senior - A. Perez"
+                        sla_estado: "VENCIDA"
+                        en_calidad_de: "SUPLENTE"
+
+  /tareas/{idTarea}:
+    parameters:
+      - { name: idTarea, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [Bandeja]
+      summary: Detalle de una tarea (T.2)
+      responses:
+        '200':
+          description: Detalle de la tarea con el resumen del objeto y la traza.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TareaDetalle' }
+
+  /tareas/{idTarea}/aprobar:
+    parameters:
+      - { name: idTarea, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [Bandeja]
+      summary: Aprobar la tarea (CU-APRO-03, RN-APRO-07/08/09)
+      description: |
+        Decision de aprobacion del aprobador resuelto (o delegado/suplente). Comentario obligatorio solo si
+        el nivel lo exige. La decision y el evento de outbox se persisten en la MISMA transaccion (ADR-003).
+        Idempotency-Key obligatorio: evita doble decision y doble efecto. Aplica segregacion (el solicitante
+        no puede aprobar; en auto-solicitud de GG solo R-GG-SUP, RN-ASCE-18/19).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DecisionRequest' }
+      responses:
+        '200':
+          description: Tarea aprobada; nivel avanza o solicitud Aprobada; callback encolado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tarea' }
+        '403':
+          description: Segregacion de funciones (solicitante no puede aprobar) o ambito fuera de alcance.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '409':
+          description: La tarea ya fue resuelta por otro aprobador del nivel (concurrencia, CU-APRO-03 E1).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /tareas/{idTarea}/rechazar:
+    parameters:
+      - { name: idTarea, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [Bandeja]
+      summary: Rechazar la tarea con comentario obligatorio (CU-APRO-03, RN-APRO-08/10)
+      description: |
+        El comentario (motivo) es SIEMPRE obligatorio en el rechazo (T.2). Aplica la politica de reenvio del
+        flujo (REINICIO_TOTAL / REINICIO_DESDE_NIVEL). Notifica al solicitante con el motivo. Idempotente.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [comentario]
+              properties:
+                comentario: { type: string, minLength: 1, description: "Motivo del rechazo (obligatorio)." }
+            examples:
+              rechazo:
+                value: { comentario: "El historial de cumplimiento no respalda el ascenso en este periodo." }
+      responses:
+        '200':
+          description: Tarea rechazada; aplicada la politica de reenvio; notificado el solicitante.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tarea' }
+        '422':
+          description: Falta el comentario obligatorio del rechazo.
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /tareas/aprobar-lote:
+    post:
+      tags: [Bandeja]
+      summary: Aprobar varias tareas en lote (PREPARADO; activacion pendiente - VAC-APRO-15 / VUX-T-02)
+      description: |
+        Afordancia preparada por UX (T.4) pero DESACTIVADA hasta decision del PO sobre aprobacion en lote y
+        manejo de comentarios por lote. Documentado en el contrato para que Frontend/Backend lo prevean.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids_tarea]
+              properties:
+                ids_tarea:
+                  type: array
+                  items: { type: string, format: uuid }
+                comentario: { type: string }
+      responses:
+        '200':
+          description: Resultado por tarea.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id_tarea: { type: string, format: uuid }
+                    resultado: { type: string, enum: [APROBADA, ERROR] }
+                    detalle: { type: string }
+        '501':
+          description: Funcionalidad no habilitada (pendiente decision PO VAC-APRO-15).
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  # ----------------------- HISTORIAL -----------------------
+  /historial:
+    get:
+      tags: [Historial]
+      summary: Historial de aprobaciones con filtros y ambito (CU-APRO-08, RN-APRO-23/24)
+      parameters:
+        - { name: tipo_flujo, in: query, schema: { $ref: '#/components/schemas/CodigoFlujo' } }
+        - { name: estado, in: query, schema: { $ref: '#/components/schemas/EstadoSolicitud' } }
+        - { name: id_solicitante, in: query, schema: { type: string, format: uuid } }
+        - { name: id_aprobador, in: query, schema: { type: string, format: uuid } }
+        - { name: desde, in: query, schema: { type: string, format: date } }
+        - { name: hasta, in: query, schema: { type: string, format: date } }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Pagina de solicitudes historicas.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginaSolicitudes' }
+
+  # ----------------------- CALLBACKS (motor -> modulo dueno) -----------------------
+  /callbacks/contrato:
+    get:
+      tags: [Callbacks]
+      summary: Especificacion del contrato de callback hacia el modulo dueno (ADR-003)
+      description: |
+        Documenta (no ejecuta) el contrato que el MOTOR invoca sobre el modulo dueno en cada transicion relevante
+        (APROBADA/RECHAZADA/VENCIDA/ESCALADA/CANCELADA) para que el modulo ejecute su efecto de negocio
+        (BLOQUEAR_CAJAS, ESCRIBIR_SENIOR_RMS, etc.). El motor entrega un CallbackEnvelope con Idempotency-Key
+        estable {id_solicitud}:{id_nivel}:{tipo_transicion}:{accion_callback}; el modulo aplica el efecto de
+        forma idempotente (tabla efecto_callback_aplicado) y responde 200 (aplicado) o 200 con resultado NO_OP
+        si ya estaba aplicado. Si el modulo falla, el motor reintenta con backoff y, agotado, marca
+        FALLIDA_PROPAGACION y alerta al ADM (RN-APRO-14) sin perder la decision.
+      responses:
+        '200':
+          description: Especificacion del envelope de callback (referencia para los modulos consumidores).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CallbackEnvelope' }
+              examples:
+                bloqueo_cajas:
+                  summary: Callback de vencimiento de plazo del Rol (ADR-008)
+                  value:
+                    idempotency_key: "s9:n1:VENCIDA:BLOQUEAR_CAJAS"
+                    id_solicitud: "s9-uuid"
+                    tipo_transicion: "VENCIDA"
+                    accion_callback: "BLOQUEAR_CAJAS"
+                    tipo_objeto: "ROL_SEMANAL"
+                    id_objeto: "rol-2026-w23-zlsur"
+                    payload: { id_zona: "3f1c...zonaA", estado_deseado: "BLOQUEADO" }
+                ascenso_aprobado:
+                  value:
+                    idempotency_key: "s1:n1:APROBADA:ESCRIBIR_SENIOR_RMS"
+                    id_solicitud: "s1-uuid"
+                    tipo_transicion: "APROBADA"
+                    accion_callback: "ESCRIBIR_SENIOR_RMS"
+                    tipo_objeto: "ASCENSO_SENIOR"
+                    id_objeto: "asce-2026-000123"
+                    payload: { codigo_empleado: "EMP00045" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    IdSolicitud:
+      name: idSolicitud
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Clave de idempotencia para escrituras criticas: decisiones de aprobacion, cancelacion, inicio de solicitud (ADR-003).
+      schema: { type: string, maxLength: 200 }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PageSize:
+      name: page_size
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+
+  schemas:
+    CodigoFlujo:
+      type: string
+      enum: [FL_ROL, FL_LSGH, FL_LCGH, FL_DESC_MEDICO, FL_VAC_ANULA, FL_ASCE, FL_ENCA]
+    TipoObjeto:
+      type: string
+      enum: [ROL_SEMANAL, LICENCIA_LSGH, LICENCIA_LCGH, DESCANSO_MEDICO, ANULACION_VACACIONES, ASCENSO_SENIOR, ENCARGATURA]
+    Modulo:
+      type: string
+      enum: [ROL, MARC, DESC, ENCA, TRAS, VAC, ASCE, APROBACIONES, SEGURIDAD, TRANSVERSAL]
+    EstadoSolicitud:
+      type: string
+      enum: [PENDIENTE_RESOLUCION_APROBADOR, EN_CURSO, ESCALADA, APROBADA, RECHAZADA, CANCELADA]
+    EstadoTarea:
+      type: string
+      enum: [PENDIENTE, APROBADA, RECHAZADA, VENCIDA, REASIGNADA, RETIRADA]
+    CalidadActuacion:
+      type: string
+      enum: [TITULAR, DELEGADO, SUPLENTE]
+    SlaEstado:
+      type: string
+      enum: [EN_PLAZO, POR_VENCER, VENCIDA]
+    ModoNivel:
+      type: string
+      enum: [APROBACION_JERARQUICA, AUTORIZACION, AUTOAPROBACION, VALIDACION_AREA]
+    ReglaResolucion:
+      type: string
+      enum: [ROL_FIJO, JERARQUIA_POR_ZONA, JERARQUIA_POR_EMPRESA, USUARIO_ESPECIFICO, REGLA_DEL_MODULO]
+    Cuorum:
+      type: string
+      enum: [TODOS, AL_MENOS_N, CUALQUIERA]
+    Consecuencia:
+      type: string
+      enum: [ESCALAR, NOTIFICAR, CALLBACK_MODULO, NINGUNA]
+    TipoTransicion:
+      type: string
+      enum: [APROBADA, RECHAZADA, VENCIDA, ESCALADA, CANCELADA]
+
+    Contexto:
+      type: object
+      properties:
+        id_empresa: { type: string, enum: [CADENA, LUKERS] }
+        id_zona: { type: string, format: uuid }
+        id_tienda: { type: string, format: uuid }
+
+    Flujo:
+      type: object
+      properties:
+        id_flujo: { type: string, format: uuid }
+        codigo: { $ref: '#/components/schemas/CodigoFlujo' }
+        tipo_objeto: { $ref: '#/components/schemas/TipoObjeto' }
+        modulo_solicitante: { $ref: '#/components/schemas/Modulo' }
+        politica_rechazo: { type: string, enum: [REINICIO_TOTAL, REINICIO_DESDE_NIVEL] }
+        nivel_reinicio: { type: integer, nullable: true }
+        version: { type: integer }
+        estado: { type: string, enum: [ACTIVA, INACTIVA] }
+    Nivel:
+      type: object
+      properties:
+        id_nivel: { type: string, format: uuid }
+        orden: { type: integer }
+        modo: { $ref: '#/components/schemas/ModoNivel' }
+        regla_resolucion_aprobador: { $ref: '#/components/schemas/ReglaResolucion' }
+        rol_o_usuario_aprobador: { type: string }
+        cuorum: { $ref: '#/components/schemas/Cuorum' }
+        cuorum_n: { type: integer, nullable: true }
+        comentario_aprobacion: { type: string, enum: [OPCIONAL, OBLIGATORIO] }
+        clave_sla: { type: string, nullable: true, description: "Clave del SLA en Maestros (ADR-004). Null en FL_ROL (plazos internos, ADR-008)." }
+        consecuencia_vencimiento: { $ref: '#/components/schemas/Consecuencia' }
+        destino_escalamiento: { type: string, nullable: true }
+        accion_callback: { type: string, nullable: true, example: "BLOQUEAR_CAJAS" }
+        requiere_compliance: { type: boolean }
+    FlujoDetalle:
+      allOf:
+        - $ref: '#/components/schemas/Flujo'
+        - type: object
+          properties:
+            niveles:
+              type: array
+              items: { $ref: '#/components/schemas/Nivel' }
+    CrearFlujoRequest:
+      type: object
+      required: [codigo, tipo_objeto, modulo_solicitante, politica_rechazo, niveles]
+      properties:
+        codigo: { $ref: '#/components/schemas/CodigoFlujo' }
+        tipo_objeto: { $ref: '#/components/schemas/TipoObjeto' }
+        modulo_solicitante: { $ref: '#/components/schemas/Modulo' }
+        politica_rechazo: { type: string, enum: [REINICIO_TOTAL, REINICIO_DESDE_NIVEL] }
+        nivel_reinicio: { type: integer }
+        niveles:
+          type: array
+          items: { $ref: '#/components/schemas/NivelInput' }
+    NivelInput:
+      type: object
+      required: [orden, modo, regla_resolucion_aprobador, cuorum]
+      properties:
+        orden: { type: integer }
+        modo: { $ref: '#/components/schemas/ModoNivel' }
+        regla_resolucion_aprobador: { $ref: '#/components/schemas/ReglaResolucion' }
+        rol_o_usuario_aprobador: { type: string }
+        cuorum: { $ref: '#/components/schemas/Cuorum' }
+        cuorum_n: { type: integer }
+        comentario_aprobacion: { type: string, enum: [OPCIONAL, OBLIGATORIO], default: OPCIONAL }
+        clave_sla: { type: string }
+        consecuencia_vencimiento: { $ref: '#/components/schemas/Consecuencia' }
+        destino_escalamiento: { type: string }
+        accion_callback: { type: string }
+
+    Solicitud:
+      type: object
+      properties:
+        id_solicitud: { type: string, format: uuid }
+        codigo_flujo: { $ref: '#/components/schemas/CodigoFlujo' }
+        tipo_objeto: { $ref: '#/components/schemas/TipoObjeto' }
+        id_objeto: { type: string }
+        id_solicitante: { type: string, format: uuid }
+        id_colaborador_afectado: { type: string, format: uuid, nullable: true, description: "Sujeto del flujo. DATO SENSIBLE." }
+        contexto: { $ref: '#/components/schemas/Contexto' }
+        nivel_actual: { type: integer }
+        estado: { $ref: '#/components/schemas/EstadoSolicitud' }
+        fecha_inicio: { type: string, format: date-time }
+        fecha_cierre: { type: string, format: date-time, nullable: true }
+    CrearSolicitudRequest:
+      type: object
+      required: [codigo_flujo, tipo_objeto, id_objeto, id_solicitante]
+      properties:
+        codigo_flujo: { $ref: '#/components/schemas/CodigoFlujo' }
+        tipo_objeto: { $ref: '#/components/schemas/TipoObjeto' }
+        id_objeto: { type: string, description: "Id del objeto en el modulo dueno (ref logica)." }
+        id_solicitante: { type: string, format: uuid }
+        id_colaborador_afectado: { type: string, format: uuid }
+        contexto: { $ref: '#/components/schemas/Contexto' }
+        resumen_objeto:
+          type: object
+          description: Resumen que el modulo dueno aporta para mostrar en el detalle (T.2). Solo lo minimo necesario (privacidad).
+          properties:
+            titulo: { type: string }
+            datos_clave: { type: object, additionalProperties: true }
+    TrazaNivel:
+      type: object
+      properties:
+        orden: { type: integer }
+        modo: { $ref: '#/components/schemas/ModoNivel' }
+        estado: { $ref: '#/components/schemas/EstadoTarea' }
+        id_aprobador_titular: { type: string, format: uuid }
+        id_aprobador_efectivo: { type: string, format: uuid, nullable: true }
+        en_calidad_de: { $ref: '#/components/schemas/CalidadActuacion' }
+        comentario: { type: string, nullable: true }
+        fecha_decision: { type: string, format: date-time, nullable: true }
+    SolicitudDetalle:
+      allOf:
+        - $ref: '#/components/schemas/Solicitud'
+        - type: object
+          properties:
+            resumen_objeto: { type: object, additionalProperties: true }
+            traza:
+              type: array
+              items: { $ref: '#/components/schemas/TrazaNivel' }
+
+    Tarea:
+      type: object
+      properties:
+        id_tarea: { type: string, format: uuid }
+        id_solicitud: { type: string, format: uuid }
+        tipo_flujo: { $ref: '#/components/schemas/CodigoFlujo' }
+        titulo: { type: string }
+        solicitante_nombre: { type: string }
+        fecha_ingreso: { type: string, format: date-time }
+        fecha_vencimiento_sla: { type: string, format: date-time, nullable: true }
+        sla_estado: { $ref: '#/components/schemas/SlaEstado' }
+        estado: { $ref: '#/components/schemas/EstadoTarea' }
+        en_calidad_de: { $ref: '#/components/schemas/CalidadActuacion' }
+    TareaDetalle:
+      allOf:
+        - $ref: '#/components/schemas/Tarea'
+        - type: object
+          properties:
+            solicitud: { $ref: '#/components/schemas/SolicitudDetalle' }
+            comentario_obligatorio_aprobacion: { type: boolean }
+            puede_decidir:
+              type: boolean
+              description: "false si el usuario es el solicitante (segregacion) o esta fuera de ambito (T.2)."
+            motivo_no_puede_decidir:
+              type: string
+              enum: [ES_SOLICITANTE, REQUIERE_GG_SUPLENTE, FUERA_DE_AMBITO]
+              nullable: true
+    PaginaTareas:
+      allOf:
+        - $ref: '#/components/schemas/Pagina'
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Tarea' }
+    PaginaSolicitudes:
+      allOf:
+        - $ref: '#/components/schemas/Pagina'
+        - type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Solicitud' }
+
+    DecisionRequest:
+      type: object
+      properties:
+        comentario: { type: string, description: "Obligatorio solo si el nivel exige comentario en aprobacion." }
+
+    CallbackEnvelope:
+      type: object
+      description: |
+        Envelope que el motor entrega al modulo dueno (ADR-003). El modulo aplica el efecto de forma idempotente
+        usando idempotency_key (tabla efecto_callback_aplicado) y responde el resultado.
+      properties:
+        idempotency_key: { type: string, description: "{id_solicitud}:{id_nivel}:{tipo_transicion}:{accion_callback}" }
+        id_solicitud: { type: string, format: uuid }
+        id_nivel: { type: string, format: uuid, nullable: true }
+        tipo_transicion: { $ref: '#/components/schemas/TipoTransicion' }
+        accion_callback: { type: string, nullable: true, example: "BLOQUEAR_CAJAS" }
+        tipo_objeto: { $ref: '#/components/schemas/TipoObjeto' }
+        id_objeto: { type: string }
+        payload: { type: object, additionalProperties: true }
+    CallbackResultado:
+      type: object
+      description: Respuesta esperada del modulo dueno al callback.
+      properties:
+        idempotency_key: { type: string }
+        resultado: { type: string, enum: [APLICADO, NO_OP, ERROR] }
+        detalle: { type: string }
+
+    Pagina:
+      type: object
+      properties:
+        page: { type: integer }
+        page_size: { type: integer }
+        total: { type: integer }
+    Problem:
+      type: object
+      description: Error estandar RFC 7807 (problem+json).
+      properties:
+        type: { type: string, format: uri, default: "about:blank" }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        codigo_negocio: { type: string, description: "p. ej. RN-APRO-12, SEGREGACION_FUNCIONES, TAREA_YA_RESUELTA." }
+      required: [title, status]
