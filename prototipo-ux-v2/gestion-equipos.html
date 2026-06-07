@@ -301,6 +301,17 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
 .badge-estado.pendiente { background: #fef9c3; color: #854d0e; }
 .badge-estado.revision  { background: #e0e7ff; color: #3730a3; }
 .badge-estado.aprobada  { background: #dcfce7; color: #166534; }
+.badge-estado.culminada { background: #f1f5f9; color: #475569; }
+.badge-estado.anulada   { background: #fee2e2; color: #991b1b; }
+.vac-prog-item { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:5px 0; }
+.vac-prog-item + .vac-prog-item { border-top:1px dashed #eef1f5; }
+.vac-emp-row.has-prog { cursor:pointer; }
+.vac-emp-row.has-prog:hover td { background:#f8faff; }
+.vac-toggle { display:inline-flex; align-items:center; gap:6px; color:#1a1a2e; font-weight:600; }
+.vac-chev { display:inline-block; width:12px; color:#7c3aed; font-size:11px; }
+.vac-sum-badge { background:#fef9c3; color:#854d0e; border-radius:6px; padding:1px 6px; font-size:10px; font-weight:700; }
+.vac-det-cell { padding:0 !important; background:#fafbfc; }
+.vac-det-inner { padding:6px 14px 8px 34px; }
 
 /* ── ACCESOS RÁPIDOS ── */
 .accesos-section { background: #fff; border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
@@ -761,8 +772,8 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
 .dc-btn-cancel:hover { background:#f8fafc; }
 .dc-btn-reg { padding:8px 18px; background:#7c3aed; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px; }
 .dc-btn-reg:hover { background:#6d28d9; }
-@media (max-width:1024px) { .dc-kpi-grid { grid-template-columns:repeat(4,1fr); } .dc-nova { flex-wrap:wrap; } }
-@media (max-width:768px) { .dc-kpi-grid { grid-template-columns:repeat(2,1fr); } .dc-nova { flex-direction:column; align-items:flex-start; } }
+@media (max-width:1024px) { .dc-kpi-grid { grid-template-columns:repeat(4,1fr) !important; } .dc-nova { flex-wrap:wrap; } }
+@media (max-width:768px) { .dc-kpi-grid { grid-template-columns:repeat(2,1fr) !important; } .dc-nova { flex-direction:column; align-items:flex-start; } }
 
 /* ── ALERTAS DE MARCACIONES ── */
 .am-hdr { display:flex; justify-content:space-between; align-items:flex-start; padding:16px 20px 10px; background:#fff; border-bottom:1px solid #f0f1f5; }
@@ -1179,9 +1190,9 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
 /* ── MOBILE OVERLAY ── */
 .sidebar-overlay {
   display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4);
-  z-index: 199; opacity: 0; transition: opacity .25s;
+  z-index: 199; opacity: 0; transition: opacity .25s; pointer-events: none;
 }
-.sidebar-overlay.open { opacity: 1; }
+.sidebar-overlay.open { opacity: 1; pointer-events: auto; }
 
 /* ── TABLET (≤1024px) ── */
 @media (max-width: 1024px) {
@@ -2499,6 +2510,7 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
           <div class="enc-field" style="grid-column:1/-1">
             <label>Estado</label>
             <select id="vac-f-est" class="tbl-select" style="width:100%">
+              <option value="pend">Pendiente de aprobación</option>
               <option value="prog">Programado</option>
               <option value="activa">En curso</option>
               <option value="culm">Culminado</option>
@@ -3113,14 +3125,6 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
       <h1>⬆️ Ascenso Senior</h1>
       <div class="page-actions">
         <button class="btn-primary" onclick="openAscModal()">+ Registrar ascenso</button>
-      </div>
-    </div>
-
-    <div class="tbl-wrap" style="margin:0 0 12px;padding:12px 14px">
-      <div style="font-size:12.5px;color:#475569;line-height:1.5">
-        El ascenso lo inicia <b>Administración de Ventas (AV)</b>. Resuelve <b>Gerencia General (GG)</b>
-        (o GG Suplente R-GG-SUP por segregación). No tiene tienda destino ni rango de fechas: es la
-        promoción al flag Senior con panel obligatorio de cumplimiento de 6 meses.
       </div>
     </div>
 
@@ -4145,10 +4149,12 @@ const _defaultData = {
     {id:6,empleadoId:15,zonal:'Carlos Mendoza',  inicio:'2026-07-14',fin:'2026-07-28',dias:15,anio:'2026',estado:'prog',obs:''},
     {id:7,empleadoId:8, zonal:'Mónica Salinas',  inicio:'2026-03-03',fin:'2026-03-17',dias:15,anio:'2026',estado:'culm',obs:''},
     {id:8,empleadoId:18,zonal:'Carlos Mendoza',  inicio:'2026-03-17',fin:'2026-03-31',dias:15,anio:'2026',estado:'culm',obs:''},
-    {id:9,empleadoId:4, zonal:'Roberto Quispe',  inicio:'2026-08-04',fin:'2026-08-18',dias:15,anio:'2026',estado:'prog',obs:'Pendiente aprobación'},
-    {id:10,empleadoId:20,zonal:'Patricia Huanca',inicio:'2026-09-01',fin:'2026-09-15',dias:15,anio:'2026',estado:'prog',obs:''},
+    {id:9,empleadoId:4, zonal:'Roberto Quispe',  inicio:'2026-08-04',fin:'2026-08-18',dias:15,anio:'2026',estado:'pend',obs:'Pendiente aprobación'},
+    {id:10,empleadoId:20,zonal:'Patricia Huanca',inicio:'2026-09-01',fin:'2026-09-15',dias:15,anio:'2026',estado:'pend',obs:''},
     {id:11,empleadoId:1, zonal:'Roberto Quispe', inicio:'2025-11-04',fin:'2025-11-18',dias:15,anio:'2025',estado:'culm',obs:''},
-    {id:12,empleadoId:6, zonal:'Carlos Mendoza', inicio:'2026-04-01',fin:'2026-04-05',dias:5, anio:'2026',estado:'anul',obs:'Empleado solicitó postergación'}
+    {id:12,empleadoId:6, zonal:'Carlos Mendoza', inicio:'2026-04-01',fin:'2026-04-05',dias:5, anio:'2026',estado:'anul',obs:'Empleado solicitó postergación'},
+    {id:13,empleadoId:4, zonal:'Roberto Quispe',  inicio:'2026-12-01',fin:'2026-12-10',dias:10,anio:'2026',estado:'pend',obs:'Segundo periodo del año'},
+    {id:14,empleadoId:6, zonal:'Carlos Mendoza',  inicio:'2026-10-06',fin:'2026-10-20',dias:15,anio:'2026',estado:'prog',obs:''}
   ],
   rolAsig:{
     1:{'Dom':'-','Lun':'B','Mar':'DL','Mié':'B','Jue':'B','Vie':'CF','Sáb':'-'},
@@ -4210,6 +4216,13 @@ let AD = _load() || JSON.parse(JSON.stringify(_defaultData));
 // ── Migración: detectar formato antiguo de encargaturas (tenían empleadoId) ──
 if(AD.encargaturas?.[0]?.empleadoId !== undefined){
   AD.encargaturas = JSON.parse(JSON.stringify(_defaultData.encargaturas));
+  _save(AD);
+}
+
+// ── Migración: estado 'pend' (aprobación de vacaciones) — corre una vez ──
+if(AD.vacaciones && !AD._migVacPend){
+  [9,10].forEach(id=>{ const v=AD.vacaciones.find(x=>x.id===id); if(v) v.estado='pend'; });
+  AD._migVacPend = true;
   _save(AD);
 }
 // ── Init rolCuota si no existe ──
@@ -4811,7 +4824,7 @@ function renderVac(){
   const avgDias = all.length ? Math.round(all.reduce((s,v)=>s+(v.dias||0),0)/all.length) : 0;
   setK('vac-kpi-dias', avgDias);
 
-  // Filtrar empleados con datos de vacaciones
+  // Una fila por EMPLEADO (sus programaciones se listan en la celda, sin duplicar filas)
   let emps = AD.empleados.filter(e=>{
     if(e.ambito==='central') return false;
     if(busq && !e.nombre.toLowerCase().includes(busq) && !e.cargo.toLowerCase().includes(busq)) return false;
@@ -4819,60 +4832,71 @@ function renderVac(){
     if(tiendaF && tiendaF!=='Todas las tiendas' && e.tienda!==tiendaF) return false;
     return true;
   });
+  emps.sort((a,b)=> (a.zona||'').localeCompare(b.zona||'') || (a.tienda||'').localeCompare(b.tienda||'') || a.nombre.localeCompare(b.nombre));
 
   const ct=document.getElementById('vac-count'); if(ct) ct.textContent=`${emps.length} empleado${emps.length!==1?'s':''}`;
 
   const tb=document.getElementById('vac-tbody'); if(!tb) return;
-  if(!emps.length){
-    tb.innerHTML=`<tr><td colspan="10" style="text-align:center;padding:24px;color:#94a3b8">Sin empleados para los filtros seleccionados</td></tr>`;
-    return;
-  }
 
-  // Actualizar thead para el nuevo formato jerárquico
+  // thead: una fila por empleado
   const thead=tb.closest('table')?.querySelector('thead');
   if(thead){
     thead.innerHTML=`<tr>
-      <th style="text-align:left;padding-left:14px">Trabajador</th>
+      <th style="text-align:left;padding-left:14px">Empleado</th>
       <th style="text-align:left">Puesto</th>
       <th style="text-align:left">Zona</th>
       <th style="text-align:left">Tienda</th>
-      <th style="text-align:center">Días Indemnizables</th>
-      <th style="text-align:center">Días Pendientes</th>
-      <th style="text-align:center;color:#94a3b8">Días Truncos</th>
-      <th style="text-align:center">Días Totales</th>
+      <th style="text-align:left">Programaciones de vacaciones</th>
+      <th style="text-align:center">Total días</th>
       <th style="text-align:center">Mes Obligatorio</th>
-      <th style="text-align:center">Acciones</th>
     </tr>`;
   }
 
-  // Tabla plana ordenada por zona → tienda → nombre
-  emps.sort((a,b)=> (a.zona||'').localeCompare(b.zona||'') || (a.tienda||'').localeCompare(b.tienda||'') || a.nombre.localeCompare(b.nombre));
+  if(!emps.length){
+    tb.innerHTML=`<tr><td colspan="7" style="text-align:center;padding:24px;color:#94a3b8">Sin empleados para los filtros seleccionados</td></tr>`;
+    return;
+  }
 
   let rows='';
   emps.forEach(e=>{
-    const ind = e.diasInd ?? '—';
-    const pend = e.diasPend ?? '—';
-    const trunc = e.diasTrunc ?? '—';
-    const total = (typeof e.diasInd==='number' && typeof e.diasPend==='number') ? e.diasInd+e.diasPend : '—';
+    const vacs = (AD.vacaciones||[]).filter(v=>v.empleadoId===e.id).sort((a,b)=>(a.inicio||'').localeCompare(b.inicio||''));
+    const totalDias = vacs.filter(v=>v.estado!=='anul').reduce((s,v)=>s+(v.dias||0),0);
+    const pendN = vacs.filter(v=>v.estado==='pend').length;
     const obligBadge = _vacMesObligBadge(e.mesOblig||'');
-    const vac = (AD.vacaciones||[]).filter(v=>v.empleadoId===e.id).sort((a,b)=>b.id-a.id)[0];
-    rows+=`<tr>
+    const open = _vacOpen.has(e.id);
+    const resumen = vacs.length
+      ? `<span class="vac-toggle"><span class="vac-chev">${open?'▾':'▸'}</span>${vacs.length} programación${vacs.length!==1?'es':''}${pendN?`<span class="vac-sum-badge">${pendN} pend.</span>`:''}</span>`
+      : '<span style="color:#cbd5e1">— Sin programaciones</span>';
+    rows+=`<tr class="vac-emp-row${vacs.length?' has-prog':''}"${vacs.length?` onclick="toggleVacDet(${e.id})"`:''}>
       <td style="text-align:left;padding-left:14px;font-weight:700;color:#1a1a2e;font-size:12.5px">${e.nombre}</td>
       <td style="text-align:left;font-size:11px;color:#64748b">${e.cargo}</td>
       <td style="text-align:left;font-size:11.5px;color:#475569">${e.zona||'—'}</td>
       <td style="text-align:left;font-size:11.5px;color:#475569">${e.tienda||'—'}</td>
-      <td style="text-align:center;font-weight:600">${ind}</td>
-      <td style="text-align:center;font-weight:600">${pend}</td>
-      <td style="text-align:center;color:#94a3b8;font-size:11px">${trunc}</td>
-      <td style="text-align:center;font-weight:700;color:#1a1a2e">${total}</td>
+      <td style="font-size:11.5px">${resumen}</td>
+      <td style="text-align:center;font-weight:700;color:#1a1a2e">${totalDias||'—'}</td>
       <td style="text-align:center">${obligBadge || '<span style="color:#cbd5e1;font-size:11px">—</span>'}</td>
-      <td><div class="actions-cell" style="justify-content:center">
-        <button class="btn-icon edit" onclick="openVacModal(${vac?vac.id:'null'})" title="Editar programación">✏</button>
-        <button class="btn-icon view" onclick="openVacModal()" title="Nueva programación">＋</button>
-      </div></td>
     </tr>`;
+    if(vacs.length){
+      const det = vacs.map(v=>`
+        <div class="vac-prog-item">
+          <span style="color:#475569;min-width:150px">${_fmtDate(v.inicio)} – ${_fmtDate(v.fin)}</span>
+          <span style="font-size:10px;color:#94a3b8">${v.dias||0}d · Año ${v.anio||'—'}</span>
+          ${_vacEstadoBadge(v.estado)}
+          ${v.estado==='pend' ? `<button class="btn-icon" onclick="aprobarVac(${v.id})" title="Aprobar vacación" style="color:#16a34a">✔</button>` : ''}
+          ${['pend','prog','activa'].includes(v.estado) ? `<button class="btn-icon" onclick="anularVac(${v.id})" title="Anular vacación" style="color:#dc2626">✕</button>` : ''}
+          <button class="btn-icon edit" onclick="openVacModal(${v.id})" title="Editar programación">✏</button>
+        </div>`).join('');
+      rows+=`<tr class="vac-det-row" id="vac-det-${e.id}" style="display:${open?'':'none'}">
+        <td colspan="7" class="vac-det-cell"><div class="vac-det-inner">${det}</div></td>
+      </tr>`;
+    }
   });
   tb.innerHTML=rows;
+}
+let _vacOpen = new Set();
+function toggleVacDet(empId){
+  if(_vacOpen.has(empId)) _vacOpen.delete(empId); else _vacOpen.add(empId);
+  renderVac();
 }
 
 // Calcular días automáticamente
@@ -4941,6 +4965,30 @@ function saveVac(){
   else AD.vacaciones.push(vac);
   _save(AD); closeVacModal(); renderVac();
   _toast(_vacEditId?'Vacación actualizada':'Vacación programada correctamente');
+}
+const _VAC_EST = {
+  pend:  {cls:'pendiente', lbl:'Pendiente'},
+  prog:  {cls:'aprobada',  lbl:'Programada'},
+  activa:{cls:'revision',  lbl:'En curso'},
+  culm:  {cls:'culminada', lbl:'Culminada'},
+  anul:  {cls:'anulada',   lbl:'Anulada'}
+};
+function _vacEstadoBadge(est){
+  const e=_VAC_EST[est]||{cls:'',lbl:est||'—'};
+  return `<span class="badge-estado ${e.cls}">${e.lbl}</span>`;
+}
+function aprobarVac(id){
+  const v=AD.vacaciones.find(x=>x.id===id); if(!v) return;
+  v.estado='prog';
+  _save(AD); renderVac(); _toast('Vacación aprobada — pasa a Programada');
+}
+function anularVac(id){
+  const v=AD.vacaciones.find(x=>x.id===id); if(!v) return;
+  const emp=AD.empleados.find(e=>e.id===v.empleadoId);
+  _confirm('¿Anular esta programación de vacaciones?',
+    emp?`${emp.nombre} · ${_fmtDate(v.inicio)} – ${_fmtDate(v.fin)} (${v.dias} días)`:'Esta acción no se puede deshacer.',
+    ()=>{ v.estado='anul'; _save(AD); renderVac(); _toast('Vacación anulada'); },
+    {okLabel:'Anular', ico:'🚫'});
 }
 function deleteVac(id){
   const v=AD.vacaciones.find(x=>x.id===id);
