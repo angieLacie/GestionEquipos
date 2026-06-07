@@ -1108,15 +1108,15 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
 .dcm-day-active .dcm-day-num{color:#fff}
 .dcm-day-dot{width:5px;height:5px;border-radius:50%;background:#f59e0b;margin:2px auto 0}
 .dcm-day-active .dcm-day-dot{background:rgba(255,255,255,.55)}
-.dcm-type-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.dcm-type-card{border:1.5px solid #e8eaf0;border-radius:10px;padding:11px 13px;cursor:pointer;transition:all .12s;background:#fff}
+.dcm-type-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.dcm-type-card{border:1.5px solid #e8eaf0;border-radius:8px;padding:7px 10px;cursor:pointer;transition:all .12s;background:#fff}
 .dcm-type-card:hover:not(.dcm-type-active){border-color:#c7d2fe;background:#f8f9ff}
 .dcm-type-card.dcm-type-active{border-color:#4f46e5;background:#eef2ff}
-.dcm-type-top{display:flex;align-items:center;gap:7px;margin-bottom:3px}
-.dcm-type-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.dcm-type-name{font-size:13px;font-weight:700;color:#1a1a2e;flex:1}
-.dcm-type-check{font-size:12px;color:#4f46e5;font-weight:800;margin-left:auto}
-.dcm-type-sub{font-size:11px;color:#64748b;padding-left:15px;line-height:1.4}
+.dcm-type-top{display:flex;align-items:center;gap:6px;margin-bottom:1px}
+.dcm-type-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dcm-type-name{font-size:12px;font-weight:700;color:#1a1a2e;flex:1;line-height:1.25}
+.dcm-type-check{font-size:11px;color:#4f46e5;font-weight:800;margin-left:auto}
+.dcm-type-sub{font-size:10px;color:#64748b;padding-left:13px;line-height:1.25}
 .dcm-notes{width:100%;box-sizing:border-box;border:1.5px solid #e8eaf0;border-radius:9px;padding:10px 12px;font-size:13px;color:#374151;resize:vertical;min-height:68px;outline:none;font-family:inherit}
 .dcm-notes:focus{border-color:#4f46e5}
 .btn-del-inline{background:none;border:none;color:#ef4444;font-size:13px;font-weight:600;cursor:pointer;padding:6px 2px;display:flex;align-items:center;gap:5px}
@@ -2430,18 +2430,20 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
       </div>
     </div>
 
-    <!-- Tab switcher -->
-    <div style="margin:0 6px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px">
-      <div class="dc-view-grp" style="display:flex;border:1.5px solid #e8eaf0;border-radius:8px;overflow:hidden;background:#fff">
-        <button id="vac-btn-tabla" class="dc-view-btn active" onclick="vacSwitchView('tabla')">📋 Tabla</button>
-        <button id="vac-btn-resumen" class="dc-view-btn" onclick="vacSwitchView('resumen')">📊 Resumen</button>
-      </div>
-    </div>
 
     <!-- Filtros (solo en vista tabla) -->
     <div id="vac-view-filtros" class="tbl-wrap" style="margin:0 6px 12px;border-radius:10px">
       <div class="tbl-filters" style="flex-wrap:wrap">
         <div class="tbl-search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input id="vac-search" placeholder="Buscar empleado o puesto..." oninput="filterVac()"/></div>
+        <select class="tbl-select" id="vac-f-anio" onchange="vacOnAnioChange()">
+          <option value="">Todos los años</option>
+          <option value="2025">2025</option>
+          <option value="2026">2026</option>
+          <option value="2027">2027</option>
+        </select>
+        <select class="tbl-select" id="vac-f-semana" onchange="filterVac()">
+          <option value="">Todas las semanas</option>
+        </select>
         <select class="tbl-select" id="vac-f-zona" onchange="filterVac()"><option value="">Todas las zonas</option><option>Lima Norte</option><option>Lima Centro</option><option>Lima Sur</option><option>Provincia Norte</option><option>Provincia Sur</option></select>
         <select class="tbl-select" id="vac-f-tienda" onchange="filterVac()"><option value="">Todas las tiendas</option><option>Plaza Norte</option><option>Jockey Plaza</option><option>Mall del Sur</option><option>Mega Plaza</option><option>C.C. Real Plaza</option><option>C.C. El Polo</option><option>Open Plaza Angamos</option><option>Real Plaza Trujillo</option><option>Mall Aventura Arequipa</option></select>
         <button class="btn-primary" onclick="filterVac()">🔍 Buscar</button>
@@ -4510,6 +4512,26 @@ function vacToggleZona(zona){
 }
 
 function filterVac(){ renderVac(); }
+function vacOnAnioChange(){ _vacFillSemanas(); filterVac(); }
+function _vacFillSemanas(){
+  const aSel=document.getElementById('vac-f-anio'), sSel=document.getElementById('vac-f-semana');
+  if(!sSel) return;
+  const prev=sSel.value;
+  const MN=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const anio=parseInt(aSel&&aSel.value)||2026;
+  let d=new Date(anio,0,1); d.setDate(d.getDate()-d.getDay());
+  let opts='<option value="">Todas las semanas</option>';
+  for(let i=0;i<54;i++){
+    const dom=new Date(d); dom.setDate(d.getDate()+i*7);
+    if(dom.getFullYear()!==anio) continue;
+    const fin=new Date(dom); fin.setDate(dom.getDate()+6);
+    const wn=String(_rcobWkNum(dom)).padStart(2,'0');
+    const val=dom.toISOString().slice(0,10);
+    opts+=`<option value="${val}">Sem ${wn} · ${dom.getDate()} ${MN[dom.getMonth()]} – ${fin.getDate()} ${MN[fin.getMonth()]}</option>`;
+  }
+  sSel.innerHTML=opts;
+  if([...sSel.options].some(o=>o.value===prev)) sSel.value=prev;
+}
 
 // ── Vacaciones — switch de vista (Tabla / Resumen) ──
 let _vacView = 'tabla';
@@ -4814,6 +4836,16 @@ function renderVac(){
   const busq=(document.getElementById('vac-search')?.value||'').toLowerCase();
   const zonaF=document.getElementById('vac-f-zona')?.value||'';
   const tiendaF=document.getElementById('vac-f-tienda')?.value||'';
+  const anioF=document.getElementById('vac-f-anio')?.value||'';
+  const semF=document.getElementById('vac-f-semana')?.value||'';  // domingo ISO de la semana
+  // Asegurar opciones de semana cargadas (una vez)
+  const _sSelInit=document.getElementById('vac-f-semana');
+  if(_sSelInit && _sSelInit.options.length<=1) _vacFillSemanas();
+  let wkIni='', wkFin='';
+  if(semF){ const d=new Date(semF+'T00:00:00'); const f=new Date(d); f.setDate(d.getDate()+6); wkIni=semF; wkFin=f.toISOString().slice(0,10); }
+  const _vacMatch = v => (!anioF || String(v.anio)===anioF || (v.inicio||'').slice(0,4)===anioF)
+    && (!semF || ((v.inicio||'') <= wkFin && wkIni <= (v.fin||v.inicio||'')));
+  const _vacFiltroActivo = !!(anioF||semF);
 
   // KPIs (basados en todos los empleados con datos de vacaciones)
   const all=AD.vacaciones;
@@ -4834,8 +4866,6 @@ function renderVac(){
   });
   emps.sort((a,b)=> (a.zona||'').localeCompare(b.zona||'') || (a.tienda||'').localeCompare(b.tienda||'') || a.nombre.localeCompare(b.nombre));
 
-  const ct=document.getElementById('vac-count'); if(ct) ct.textContent=`${emps.length} empleado${emps.length!==1?'s':''}`;
-
   const tb=document.getElementById('vac-tbody'); if(!tb) return;
 
   // thead: una fila por empleado
@@ -4852,14 +4882,12 @@ function renderVac(){
     </tr>`;
   }
 
-  if(!emps.length){
-    tb.innerHTML=`<tr><td colspan="7" style="text-align:center;padding:24px;color:#94a3b8">Sin empleados para los filtros seleccionados</td></tr>`;
-    return;
-  }
-
   let rows='';
+  let shown=0;
   emps.forEach(e=>{
-    const vacs = (AD.vacaciones||[]).filter(v=>v.empleadoId===e.id).sort((a,b)=>(a.inicio||'').localeCompare(b.inicio||''));
+    const vacs = (AD.vacaciones||[]).filter(v=>v.empleadoId===e.id && _vacMatch(v)).sort((a,b)=>(a.inicio||'').localeCompare(b.inicio||''));
+    if(_vacFiltroActivo && !vacs.length) return;  // con filtro año/semana, ocultar empleados sin coincidencias
+    shown++;
     const totalDias = vacs.filter(v=>v.estado!=='anul').reduce((s,v)=>s+(v.dias||0),0);
     const pendN = vacs.filter(v=>v.estado==='pend').length;
     const obligBadge = _vacMesObligBadge(e.mesOblig||'');
@@ -4891,7 +4919,8 @@ function renderVac(){
       </tr>`;
     }
   });
-  tb.innerHTML=rows;
+  const ct=document.getElementById('vac-count'); if(ct) ct.textContent=`${shown} empleado${shown!==1?'s':''}`;
+  tb.innerHTML = rows || `<tr><td colspan="7" style="text-align:center;padding:24px;color:#94a3b8">Sin resultados para los filtros seleccionados</td></tr>`;
 }
 let _vacOpen = new Set();
 function toggleVacDet(empId){
@@ -6552,7 +6581,7 @@ function renderDcTbl(){
                   <span>${emp.nombre}</span>
                 </div>
               </td>
-              <td style="padding:7px 8px">${dcTipoBadge(x.tipo)}</td>
+              <td style="padding:7px 8px">${dcTipoBadge(x.tipo)}${_TIPOS_COMP.includes(x.tipo)?`<div style="font-size:10px;color:#64748b;margin-top:3px;white-space:nowrap">↩ Compensa: ${x.fechaCompensa?_fmtDate(x.fechaCompensa):'<span style="color:#dc2626">sin fecha</span>'}</div>`:''}</td>
               <td style="padding:7px 8px;text-align:center;color:#374151;white-space:nowrap">${_fmtDate(x.fecha)}</td>
               <td style="padding:7px 8px;text-align:center;color:#374151;white-space:nowrap">${x.fechaFin?_fmtDate(x.fechaFin):'—'}</td>
               <td style="padding:7px 8px;text-align:center">${_estBadgeDc(x.estado)}</td>
