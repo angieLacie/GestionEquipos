@@ -2243,6 +2243,11 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
         <button class="rqm-btn rqm-cv"  data-tipo="cobertura-venta"  onclick="rolQuickAssign('cobertura-venta')">CV<div>Cob.Venta</div></button>
       </div>
       <button class="rqm-det" onclick="rolQuickDetalle()">📋 Detalle completo</button>
+      <button class="rqm-det" style="margin-top:5px" onclick="rolQuickMover()">📅 Mover a otra fecha</button>
+      <div id="rqm-move-row" style="display:none;margin-top:7px">
+        <input type="date" id="rqm-move-date" class="tbl-select" style="width:100%;font-size:12px;margin-bottom:6px">
+        <button class="btn-primary" style="width:100%;font-size:12px;padding:5px" onclick="rolQuickMoverConfirm()">Confirmar fecha</button>
+      </div>
     </div>
   </div>
 
@@ -4957,6 +4962,7 @@ function rolShowQuick(empId, date, recId, el){
   _rqmEmpId=empId; _rqmDate=date;
   _rqmRecId=(recId===null||recId==='null')?null:parseInt(recId);
   const menu=document.getElementById('rol-quick-menu'); if(!menu) return;
+  const _mv=document.getElementById('rqm-move-row'); if(_mv) _mv.style.display='none';
   const rect=el.getBoundingClientRect();
   menu.style.top =(rect.bottom+6)+'px';
   menu.style.left=Math.min(rect.left, window.innerWidth-210)+'px';
@@ -4995,6 +5001,26 @@ function rolQuickDetalle(){
   document.getElementById('rol-quick-menu').style.display='none';
   if(_rqmRecId) openDcRegModal(_rqmRecId);
   else openDcRegModal(null,_rqmEmpId,_rqmDate);
+}
+function rolQuickMover(){
+  if(!_rqmRecId){ document.getElementById('rol-quick-menu').style.display='none'; _toast('Este día es laboral — nada que mover','info'); return; }
+  const rec=(AD.descansos||[]).find(x=>x.id===_rqmRecId); if(!rec) return;
+  const inp=document.getElementById('rqm-move-date'); if(inp) inp.value=rec.fecha;
+  const row=document.getElementById('rqm-move-row'); if(row) row.style.display='block';
+}
+function rolQuickMoverConfirm(){
+  const v=document.getElementById('rqm-move-date')?.value;
+  const rec=(AD.descansos||[]).find(x=>x.id===_rqmRecId);
+  if(!v||!rec) return;
+  if(rec.fechaFin){
+    const dur=Math.round((new Date(rec.fechaFin+'T00:00:00')-new Date(rec.fecha+'T00:00:00'))/864e5);
+    if(dur>0){ const nd=new Date(v+'T00:00:00'); nd.setDate(nd.getDate()+dur); rec.fechaFin=nd.toISOString().slice(0,10); }
+  }
+  rec.fecha=v;
+  _save(AD);
+  document.getElementById('rol-quick-menu').style.display='none';
+  renderRol();
+  _toast('Programación movida → '+_fmtDate(v),'success');
 }
 
 // ── Cuota inline editable ───────────────────────────────────────
