@@ -2126,7 +2126,9 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
           <option value="vacaciones">Vacaciones</option>
           <option value="feriado-trab">Feriado trabajado</option>
         </select>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <button class="btn-primary" onclick="filterRol()">🔍 Buscar</button>
+        <button class="btn-sec" onclick="rolLimpiarFiltros()" title="Limpiar filtros">✕ Limpiar</button>
         <div id="rol-btn-programar-wrap" style="position:relative">
           <button class="btn-primary" style="font-size:12px;padding:6px 12px;white-space:nowrap" onclick="rolOpenProgramarMenu(event)">⊞ Programar ▾</button>
           <div class="prog-menu" id="rol-programar-menu">
@@ -2144,7 +2146,7 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
             </div>
           </div>
         </div>
-        <div class="rol-cols-wrap" style="margin-left:auto">
+        <div class="rol-cols-wrap">
           <button class="tbl-select" type="button" onclick="rolToggleColsMenu(event)" style="cursor:pointer;font-weight:600">⚙ Columnas ▾</button>
           <div class="rol-cols-menu" id="rol-cols-menu" onclick="event.stopPropagation()">
             <div class="rol-cols-ttl">Mostrar columnas</div>
@@ -2165,6 +2167,7 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
             <label><input type="checkbox" checked onchange="rolToggleCol('q-s1',this.checked)"> Sem actual %</label>
           </div>
         </div>
+        </div><!-- /right actions -->
       </div>
     </div>
 
@@ -5007,7 +5010,7 @@ function rolToggleColsMenu(ev){
   if(willOpen && ev && ev.currentTarget){
     const r=ev.currentTarget.getBoundingClientRect();
     menu.style.top=(r.bottom+6)+'px';
-    menu.style.left=r.left+'px';
+    menu.style.left=(r.right-menu.offsetWidth)+'px';  // alinear borde derecho con el botón
   }
 }
 // ── Cache de columnas de cuota activas (se actualiza en renderRol) ──
@@ -5171,6 +5174,14 @@ function _rolCuotaVal(empId, field){
 }
 
 function filterRol(){ renderRol(); }
+function rolLimpiarFiltros(){
+  const z=document.getElementById('rol-f-zona'); if(z) z.value='';
+  const t=document.getElementById('rol-f-tienda'); if(t) t.value='';
+  const c=document.getElementById('rol-f-cargo'); if(c) c.value='todos';
+  const tp=document.getElementById('rol-f-tipo'); if(tp) tp.value='';
+  renderRol();
+  _toast('Filtros limpiados','info');
+}
 
 function renderRol(){
   const zonaF   = document.getElementById('rol-f-zona')?.value||'';
@@ -5607,10 +5618,10 @@ function rolOpenProgramarMenu(e){
   // Posición fixed para escapar del overflow:hidden del contenedor (.tbl-wrap)
   const r=btn.getBoundingClientRect();
   m.style.position='fixed';
-  m.style.top=(r.bottom+4)+'px';
-  m.style.left=r.left+'px';
   m.style.right='auto';
   m.style.display='block';
+  m.style.top=(r.bottom+4)+'px';
+  m.style.left=(r.right-m.offsetWidth)+'px';  // alinear borde derecho con el botón
   document.addEventListener('click',()=>{ m.style.display='none'; },{once:true});
 }
 function rolSelProgramarTipo(tipo){
