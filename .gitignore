@@ -5,3 +5,6 @@
 
 # Logs
 log_orquestador_*.txt
+
+# graphify - artefactos generados (grafo, cache, rutas locales)
+graphify-out/

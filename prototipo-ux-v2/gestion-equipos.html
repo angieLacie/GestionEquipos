@@ -2082,6 +2082,15 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
       </div>
     </div>
 
+    <!-- Tabs: Rol semanal / Pendientes -->
+    <div style="margin:0 6px 12px">
+      <div class="dc-view-grp" style="display:inline-flex;border:1.5px solid #e8eaf0;border-radius:8px;overflow:hidden;background:#fff">
+        <button id="rol-tab-grid-btn" class="dc-view-btn active" onclick="rolTab('grid')">📋 Rol semanal</button>
+        <button id="rol-tab-pend-btn" class="dc-view-btn" onclick="rolTab('pend')">📌 Pendientes</button>
+      </div>
+    </div>
+
+    <div id="rol-view-grid">
     <!-- Filtros + Nav semana -->
     <div class="tbl-wrap" style="margin:0 6px 12px;border-radius:10px">
       <div class="rol-wk-bar">
@@ -2191,8 +2200,10 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
       </div>
       <div class="tbl-pagination" id="rol-pag"></div>
     </div>
+    </div><!-- /rol-view-grid -->
 
     <!-- Cuadro Pendientes: Feriados y Descansos no Gozados (accordion) -->
+    <div id="rol-view-pend" style="display:none">
     <div class="rol-pend-box" id="rol-pend-vacaciones-box" style="margin:0 6px 16px">
       <div class="rol-pend-hd">
         <span style="font-size:15px">📋</span>
@@ -2213,6 +2224,7 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
         </table>
       </div>
     </div>
+    </div><!-- /rol-view-pend -->
 
     <!-- Quick tipo picker (se mueve al body en DOMContentLoaded) -->
     <div id="rol-quick-menu" style="display:none">
@@ -2449,11 +2461,6 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
         <button class="btn-primary" onclick="filterVac()">🔍 Buscar</button>
         <span class="tbl-count" id="vac-count">— empleados</span>
       </div>
-    </div>
-
-    <!-- Vista Resumen -->
-    <div id="vac-view-resumen" style="display:none;margin:0 6px 14px" aria-label="Resumen de vacaciones por tienda">
-      <div id="vac-res-content"></div>
     </div>
 
     <!-- Tabla (vista tabla) -->
@@ -4533,283 +4540,6 @@ function _vacFillSemanas(){
   if([...sSel.options].some(o=>o.value===prev)) sSel.value=prev;
 }
 
-// ── Vacaciones — switch de vista (Tabla / Resumen) ──
-let _vacView = 'tabla';
-function vacSwitchView(v){
-  _vacView = v;
-  document.getElementById('vac-btn-tabla').className   = v==='tabla'   ? 'dc-view-btn active' : 'dc-view-btn';
-  document.getElementById('vac-btn-resumen').className = v==='resumen' ? 'dc-view-btn active' : 'dc-view-btn';
-  const filtros = document.getElementById('vac-view-filtros');
-  if (filtros) filtros.style.display = v==='tabla' ? '' : 'none';
-  const tabla = document.getElementById('vac-view-tabla');
-  if (tabla) tabla.style.display = v==='tabla' ? '' : 'none';
-  const resumen = document.getElementById('vac-view-resumen');
-  if (resumen) resumen.style.display = v==='resumen' ? '' : 'none';
-  if(v==='resumen') renderVacResumen();
-}
-
-// ── Vacaciones — vista Resumen (flujo 2 pasos: accordion inline) ──
-let _vacTiendaOpen = null;
-let _vacDetOpen = null;
-
-function vacToggleTienda2(sid) {
-  const panel = document.getElementById('vac-panel-' + sid);
-  const ch = document.getElementById('ch_' + sid);
-  if (!panel) return;
-  const open = panel.style.display !== 'none';
-  // Cerrar todos
-  document.querySelectorAll('[id^="vac-panel-"]').forEach(p => p.style.display = 'none');
-  document.querySelectorAll('[id^="ch_"]').forEach(c => c.textContent = '›');
-  if (!open) {
-    panel.style.display = 'block';
-    if (ch) ch.textContent = '⌄';
-  }
-}
-// Alias para compatibilidad con HTML antiguo si existiese
-function vacToggleTienda(tienda) {
-  const sid = tienda.replace(/[^a-zA-Z0-9]/g,'_');
-  vacToggleTienda2(sid);
-}
-
-function vacToggleDet(eid) {
-  const panel = document.getElementById(eid);
-  const ch = document.getElementById(eid + '_ch');
-  if (!panel) return;
-  const open = panel.style.display !== 'none';
-  document.querySelectorAll('[id^="vd_"]').forEach(p => { if (p.id !== eid+'_ch') p.style.display = 'none'; });
-  document.querySelectorAll('[id$="_ch"]').forEach(c => c.textContent = '›');
-  if (!open) {
-    panel.style.display = 'block';
-    if (ch) ch.textContent = '⌄';
-  }
-}
-// Alias para compatibilidad con HTML antiguo si existiese
-function vacToggleDetalle(empId) {
-  vacToggleDet('vd_' + empId);
-}
-
-function vacDetTab(empId, tabName) {
-  // Cambiar tab activa en el panel de detalle de un empleado
-  const panel = document.getElementById('vac-det-' + empId);
-  if (!panel) return;
-  panel.querySelectorAll('.vac-det-tab').forEach(t => {
-    t.classList.toggle('active', t.dataset.tab === tabName);
-  });
-  panel.querySelectorAll('.vac-det-content').forEach(c => {
-    c.style.display = c.dataset.content === tabName ? '' : 'none';
-  });
-}
-
-function vacFiltrarEmp(input, tienda) {
-  const q = input.value.toLowerCase();
-  const safeId = tienda.replace(/[\s.]/g,'_');
-  const rows = document.querySelectorAll('#vac-panel-' + safeId + ' .vac-res-emp-row');
-  rows.forEach(r => {
-    const det = document.getElementById('vac-det-' + r.dataset.empId);
-    const show = r.textContent.toLowerCase().includes(q);
-    r.style.display = show ? '' : 'none';
-    if (det) det.style.display = 'none'; // cerrar detalles al filtrar
-  });
-  if (!q) _vacDetOpen = null;
-}
-
-function _vacEmpDetHTML(e) {
-  const ind = typeof e.diasInd === 'number' ? e.diasInd : 0;
-  const pend = typeof e.diasPend === 'number' ? e.diasPend : 0;
-  const trunc = typeof e.diasTrunc === 'number' ? e.diasTrunc : 0;
-  const total = ind + pend;
-  // Datos de simulación para tabla Indemnizables
-  const simInd = [
-    {periodo:'2023-2024', fIni:'15/01/2025', fFin:'29/01/2025', dias:15, estado:'Aprobado'},
-  ];
-  const simPend = [
-    {periodo:'2024-2025', fIni:'—', fFin:'—', dias:pend, estado:'Pendiente'},
-  ];
-  const simTrunc = trunc > 0 ? [
-    {periodo:'2022-2023', fIni:'—', fFin:'—', dias:trunc, estado:'Trunco'},
-  ] : [];
-  const simHist = [
-    {periodo:'2022-2023', fIni:'10/02/2024', fFin:'24/02/2024', dias:15, estado:'Tomado'},
-    {periodo:'2023-2024', fIni:'15/01/2025', fFin:'29/01/2025', dias:15, estado:'Tomado'},
-  ];
-
-  function tablaHTML(rows) {
-    if (!rows.length) return '<p style="font-size:12px;color:#94a3b8;padding:8px 0">Sin registros</p>';
-    return `<table class="vac-det-tabla">
-      <thead><tr><th>Período</th><th>F.Inicio</th><th>F.Fin</th><th>Días</th><th>Estado</th></tr></thead>
-      <tbody>${rows.map(r=>`<tr>
-        <td>${r.periodo}</td><td>${r.fIni}</td><td>${r.fFin}</td>
-        <td style="font-weight:700;text-align:center">${r.dias}</td>
-        <td><span class="badge-sm ${r.estado==='Aprobado'||r.estado==='Tomado'?'badge-green':r.estado==='Pendiente'?'badge-yellow':'badge-purple'}">${r.estado}</span></td>
-      </tr>`).join('')}</tbody>
-    </table>`;
-  }
-
-  return `
-    <div class="vac-det-kpis">
-      <div class="vac-det-kpi"><div class="dk-lbl">Indemn.</div><div class="dk-num" style="color:#3b82f6">${ind}</div></div>
-      <div class="vac-det-kpi"><div class="dk-lbl">Pend.</div><div class="dk-num" style="color:#f97316">${pend}</div></div>
-      <div class="vac-det-kpi"><div class="dk-lbl">Truncos</div><div class="dk-num" style="color:#8b5cf6">${trunc}</div></div>
-      <div class="vac-det-kpi"><div class="dk-lbl">Total</div><div class="dk-num" style="color:#22c55e">${total}</div></div>
-    </div>
-    <div class="vac-det-tabs" role="tablist">
-      <button class="vac-det-tab active" data-tab="ind" role="tab" aria-selected="true" onclick="vacDetTab(${e.id},'ind')">Indemnizables</button>
-      <button class="vac-det-tab" data-tab="pend" role="tab" onclick="vacDetTab(${e.id},'pend')">Pendientes</button>
-      <button class="vac-det-tab" data-tab="trunc" role="tab" onclick="vacDetTab(${e.id},'trunc')">Truncos</button>
-      <button class="vac-det-tab" data-tab="hist" role="tab" onclick="vacDetTab(${e.id},'hist')">Historial</button>
-    </div>
-    <div class="vac-det-content" data-content="ind">${tablaHTML(simInd)}</div>
-    <div class="vac-det-content" data-content="pend" style="display:none">${tablaHTML(simPend)}</div>
-    <div class="vac-det-content" data-content="trunc" style="display:none">${tablaHTML(simTrunc)}</div>
-    <div class="vac-det-content" data-content="hist" style="display:none">${tablaHTML(simHist)}</div>
-    <div class="vac-det-acciones">
-      <button class="vac-det-btn" onclick="alert('Programar vacaciones para ${e.nombre.replace(/'/g,'')}')" aria-label="Programar vacaciones">📅 Programar vacaciones</button>
-      <button class="vac-det-btn" onclick="alert('Registrar truncas para ${e.nombre.replace(/'/g,'')}')" aria-label="Registrar truncas">📋 Registrar truncas</button>
-    </div>`;
-}
-
-function _vacFormatNombre(nombre) {
-  const partes = nombre.trim().split(/\s+/);
-  if (partes.length < 2) return nombre;
-  const primerNombre = partes[partes.length - 1];
-  const apellidos = partes.slice(0, partes.length - 1).join(' ');
-  return apellidos + ', ' + primerNombre;
-}
-
-function renderVacResumen() {
-  const cont = document.getElementById('vac-res-content');
-  if (!cont) return;
-
-  const emps = AD.empleados.filter(e => e.ambito !== 'central');
-
-  // Totales globales
-  let totInd=0, totPend=0, totTrunc=0;
-  emps.forEach(e => {
-    totInd += e.diasInd||0;
-    totPend += e.diasPend||0;
-    totTrunc += e.diasTrunc||0;
-  });
-
-  // Agrupar por tienda
-  const byTienda = {};
-  emps.forEach(e => {
-    if (!byTienda[e.tienda]) byTienda[e.tienda] = [];
-    byTienda[e.tienda].push(e);
-  });
-
-  let html = `
-    <div class="vac-res-kpi-grid">
-      <div class="vac-res-kpi"><div class="kpi-lbl">INDEMN.</div><div class="kpi-num" style="color:#3b82f6">${totInd}</div><div class="kpi-ico">📅</div></div>
-      <div class="vac-res-kpi"><div class="kpi-lbl">PENDIENTES</div><div class="kpi-num" style="color:#f97316">${totPend}</div><div class="kpi-ico">⏰</div></div>
-      <div class="vac-res-kpi"><div class="kpi-lbl">TRUNCOS</div><div class="kpi-num" style="color:#8b5cf6">${totTrunc}</div><div class="kpi-ico">📋</div></div>
-      <div class="vac-res-kpi"><div class="kpi-lbl">TOTALES</div><div class="kpi-num" style="color:#16a34a">${totInd+totPend+totTrunc}</div><div class="kpi-ico">👥</div></div>
-    </div>
-    <div class="vac-res-titulo">Resumen por tienda</div>
-  `;
-
-  Object.keys(byTienda).sort().forEach(tienda => {
-    const tEmps = byTienda[tienda];
-    const tInd = tEmps.reduce((s,e)=>s+(e.diasInd||0),0);
-    const tPend = tEmps.reduce((s,e)=>s+(e.diasPend||0),0);
-    const tTrunc = tEmps.reduce((s,e)=>s+(e.diasTrunc||0),0);
-    const tTot = tInd+tPend+tTrunc;
-    const sid = tienda.replace(/[^a-zA-Z0-9]/g,'_');
-
-    // Filas de empleados
-    let empsHtml = `
-      <div id="vac-panel-${sid}" style="display:none;background:#f8fafc;padding:12px;border-top:1px solid #e2e8f0">
-        <div style="display:grid;grid-template-columns:1fr 40px 40px 40px 40px 20px;font-size:10px;font-weight:700;color:#94a3b8;padding:0 4px 8px;text-transform:uppercase">
-          <span>PERSONAL</span><span style="text-align:center">IND.</span><span style="text-align:center">PEND.</span><span style="text-align:center">TRUN.</span><span style="text-align:center">TOT.</span><span></span>
-        </div>
-    `;
-
-    tEmps.forEach(e => {
-      const pal = _pal(e.id);
-      const ini = _ini(e.nombre);
-      const eInd = e.diasInd||0;
-      const ePend = e.diasPend||0;
-      const eTrunc = e.diasTrunc||0;
-      const eTot = eInd+ePend;
-      const eid = 'vd_'+e.id;
-
-      empsHtml += `
-        <div style="border-bottom:1px solid #f1f5f9">
-          <div onclick="vacToggleDet('${eid}')" style="display:grid;grid-template-columns:1fr 40px 40px 40px 40px 20px;align-items:center;padding:10px 4px;cursor:pointer;border-radius:8px" onmouseover="this.style.background='#e0e7ff'" onmouseout="this.style.background=''">
-            <div style="display:flex;align-items:center;gap:8px">
-              <div style="width:36px;height:36px;border-radius:50%;background:${pal.bg};color:${pal.fg};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${ini}</div>
-              <div>
-                <div style="font-size:13px;font-weight:700;color:#1a1a2e">${e.nombre}</div>
-                <div style="font-size:11px;color:#64748b">${e.cargo}</div>
-              </div>
-            </div>
-            <span style="text-align:center;color:#3b82f6;font-weight:700">${eInd}</span>
-            <span style="text-align:center;color:#f97316;font-weight:700">${ePend}</span>
-            <span style="text-align:center;color:#8b5cf6;font-weight:700">${eTrunc}</span>
-            <span style="text-align:center;color:#16a34a;font-weight:700">${eTot}</span>
-            <span id="${eid}_ch" style="color:#94a3b8">›</span>
-          </div>
-          <div id="${eid}" style="display:none;background:#fff;border-radius:10px;margin:4px;padding:14px;border:1.5px solid #e0e7ff">
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
-              <div style="text-align:center"><div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase">INDEMN.</div><div style="font-size:22px;font-weight:800;color:#3b82f6">${eInd}</div></div>
-              <div style="text-align:center"><div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase">PEND.</div><div style="font-size:22px;font-weight:800;color:#f97316">${ePend}</div></div>
-              <div style="text-align:center"><div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase">TRUNCOS</div><div style="font-size:22px;font-weight:800;color:#8b5cf6">${eTrunc}</div></div>
-              <div style="text-align:center"><div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase">TOTAL</div><div style="font-size:22px;font-weight:800;color:#16a34a">${eTot}</div></div>
-            </div>
-            <div style="display:flex;gap:4px;border-bottom:2px solid #f1f5f9;margin-bottom:12px">
-              <span style="font-size:12px;padding:6px 10px;color:#4f46e5;border-bottom:2px solid #4f46e5;font-weight:700;margin-bottom:-2px">Indemnizables</span>
-              <span style="font-size:12px;padding:6px 10px;color:#64748b">Pendientes</span>
-              <span style="font-size:12px;padding:6px 10px;color:#64748b">Truncos</span>
-              <span style="font-size:12px;padding:6px 10px;color:#64748b">Historial</span>
-            </div>
-            <table style="width:100%;border-collapse:collapse;font-size:12px">
-              <tr style="color:#94a3b8;font-weight:700;font-size:10px;text-transform:uppercase">
-                <th style="padding:4px 0;text-align:left">Período</th>
-                <th style="padding:4px 0">F. Inicio</th>
-                <th style="padding:4px 0">F. Fin</th>
-                <th style="padding:4px 0">Días</th>
-                <th style="padding:4px 0">Estado</th>
-              </tr>
-              <tr style="border-top:1px solid #f1f5f9"><td style="padding:6px 0">2024-2025</td><td style="text-align:center">15/05/2025</td><td style="text-align:center">24/05/2025</td><td style="text-align:center;font-weight:700">10</td><td style="text-align:center"><span style="background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">Programada</span></td></tr>
-              <tr style="border-top:1px solid #f1f5f9"><td style="padding:6px 0">2023-2024</td><td style="text-align:center">10/09/2024</td><td style="text-align:center">19/09/2024</td><td style="text-align:center;font-weight:700">10</td><td style="text-align:center"><span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">Tomada</span></td></tr>
-              <tr style="border-top:1px solid #f1f5f9"><td style="padding:6px 0">2022-2023</td><td style="text-align:center">12/06/2023</td><td style="text-align:center">21/06/2023</td><td style="text-align:center;font-weight:700">10</td><td style="text-align:center"><span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">Tomada</span></td></tr>
-            </table>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px">
-              <button style="padding:10px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;font-size:12px;font-weight:600;cursor:pointer" onmouseover="this.style.borderColor='#4f46e5';this.style.color='#4f46e5'" onmouseout="this.style.borderColor='#e2e8f0';this.style.color='#374151'">📅 Programar vacaciones</button>
-              <button style="padding:10px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;font-size:12px;font-weight:600;cursor:pointer" onmouseover="this.style.borderColor='#4f46e5';this.style.color='#4f46e5'" onmouseout="this.style.borderColor='#e2e8f0';this.style.color='#374151'">📋 Registrar truncas</button>
-            </div>
-          </div>
-        </div>
-      `;
-    });
-
-    empsHtml += `</div>`;
-
-    html += `
-      <div style="background:#fff;border-radius:12px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden">
-        <div onclick="vacToggleTienda2('${sid}')" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
-          <div>
-            <div style="font-size:13px;font-weight:800;color:#1a1a2e;text-transform:uppercase">${tienda}</div>
-            <div style="font-size:12px;color:#64748b;margin-top:2px">
-              <span>Indemn. <b style="color:#3b82f6">${tInd}</b></span>
-              <span style="margin:0 8px">Pendientes <b style="color:#f97316">${tPend}</b></span>
-              <span>Truncos <b style="color:#8b5cf6">${tTrunc}</b></span>
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="background:#dcfce7;color:#16a34a;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px">${tTot} total</span>
-            <span id="ch_${sid}" style="color:#94a3b8;font-size:18px">›</span>
-          </div>
-        </div>
-        ${empsHtml}
-      </div>
-    `;
-  });
-
-  cont.innerHTML = html;
-  // Resetear estado
-  _vacTiendaOpen = null;
-  _vacDetOpen = null;
-}
 
 function _vacMesObligBadge(mesOblig){
   if(!mesOblig) return '';
@@ -5277,7 +5007,7 @@ function rolToggleColsMenu(ev){
   if(willOpen && ev && ev.currentTarget){
     const r=ev.currentTarget.getBoundingClientRect();
     menu.style.top=(r.bottom+6)+'px';
-    menu.style.left=(r.right-menu.offsetWidth)+'px';
+    menu.style.left=r.left+'px';
   }
 }
 // ── Cache de columnas de cuota activas (se actualiza en renderRol) ──
@@ -5860,12 +5590,28 @@ function selProgramarTipo(tipo){
 }
 
 // ── Menú "Programar" — Rol de Personal ───────────────────────
+function rolTab(t){
+  const g=document.getElementById('rol-view-grid'), p=document.getElementById('rol-view-pend');
+  if(g) g.style.display = t==='grid'?'':'none';
+  if(p) p.style.display = t==='pend'?'':'none';
+  const gb=document.getElementById('rol-tab-grid-btn'), pb=document.getElementById('rol-tab-pend-btn');
+  if(gb) gb.className='dc-view-btn'+(t==='grid'?' active':'');
+  if(pb) pb.className='dc-view-btn'+(t==='pend'?' active':'');
+}
 function rolOpenProgramarMenu(e){
   e.stopPropagation();
+  const btn=e.currentTarget||document.querySelector('[onclick="rolOpenProgramarMenu(event)"]');
   const m=document.getElementById('rol-programar-menu');
   const visible=m.style.display==='block';
-  m.style.display=visible?'none':'block';
-  if(!visible) document.addEventListener('click',()=>{ m.style.display='none'; },{once:true});
+  if(visible){ m.style.display='none'; return; }
+  // Posición fixed para escapar del overflow:hidden del contenedor (.tbl-wrap)
+  const r=btn.getBoundingClientRect();
+  m.style.position='fixed';
+  m.style.top=(r.bottom+4)+'px';
+  m.style.left=r.left+'px';
+  m.style.right='auto';
+  m.style.display='block';
+  document.addEventListener('click',()=>{ m.style.display='none'; },{once:true});
 }
 function rolSelProgramarTipo(tipo){
   document.getElementById('rol-programar-menu').style.display='none';
