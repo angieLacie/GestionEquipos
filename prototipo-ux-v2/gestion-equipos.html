@@ -948,6 +948,10 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
 /* rol de personal — nuevo layout agrupado */
 .rol-tbl { width:100%; border-collapse:collapse; font-size:12px; }
 .rol-tbl th { padding:6px 4px; font-size:10.5px; font-weight:700; color:#64748b; background:#fafbfc; border-bottom:1px solid #f0f1f5; text-align:center; white-space:nowrap; }
+/* Encabezado fijo (sticky) al navegar dentro de la tabla */
+#rol-tbl thead th { position:sticky; z-index:6; }
+#rol-tbl thead tr:first-child th { top:0; }
+#rol-tbl thead tr#rol-thead-week th { top:var(--rol-h1, 30px); }
 .rol-tbl td { padding:5px 5px; border-bottom:1px solid #f8f9fa; vertical-align:middle; }
 .rol-th-rot { width:32px; padding:4px 0 !important; vertical-align:bottom; }
 .rol-th-rot span { writing-mode:vertical-rl; transform:rotate(180deg); display:inline-block; font-size:10px; font-weight:700; color:#64748b; white-space:nowrap; line-height:1; padding:4px 0; }
@@ -2175,7 +2179,7 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
 
     <!-- Tabla principal agrupada -->
     <div class="tbl-wrap" style="margin:0 6px 14px;padding:0;overflow:hidden">
-      <div style="overflow-x:auto">
+      <div style="overflow:auto;max-height:calc(100vh - 300px)">
         <table class="rol-tbl" id="rol-tbl">
           <thead>
             <tr>
@@ -6171,6 +6175,10 @@ function renderDcCal(){
   });
 
   tbody.innerHTML=rows;
+  // sticky thead: medir alto de la 1ra fila de encabezado para el offset de la 2da
+  const _rt=document.getElementById('rol-tbl');
+  const _r1=_rt&&_rt.querySelector('thead tr');
+  if(_r1 && _r1.offsetHeight>0) _rt.style.setProperty('--rol-h1', _r1.offsetHeight+'px');
 }
 
 // ── Drag & Drop calendar ──
