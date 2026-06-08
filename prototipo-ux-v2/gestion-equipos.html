@@ -655,6 +655,9 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
 .dc-cal-tbl thead tr:nth-child(2) th { top:var(--dc-h1, 24px); }
 .dc-cal-tbl thead th.th-worker { z-index:6; }
 .dc-tbl thead th { position:sticky; top:0; z-index:5; background:#fafbfc; border-bottom:1px solid #f0f1f5; }
+.marc-tbl thead th { position:sticky; top:0; z-index:5; background:#fafbfc; }
+.marc-hora-in{color:#16a34a;font-weight:700;font-family:monospace}
+.marc-hora-out{color:#b91c1c;font-weight:700;font-family:monospace}
 .dc-cal-tbl { border-collapse:collapse; width:100%; table-layout:fixed; }
 .dc-cal-tbl th { padding:5px 4px; font-size:9.5px; font-weight:700; color:#94a3b8; text-align:center; background:#fafbfc; border-bottom:1px solid #f0f1f5; white-space:nowrap; }
 .dc-cal-tbl th.th-today { color:#4f46e5; background:#eef2ff; }
@@ -1647,6 +1650,10 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
     <div class="nav-item" data-tooltip="Reportes" data-perfil="central" onclick="navTo('reportes',this)">
       <span class="nav-icon">📈</span>
       <span class="nav-label">Reportes</span>
+    </div>
+    <div class="nav-item" data-tooltip="Marcaciones" data-perfil="all" onclick="navTo('marcaciones',this)">
+      <span class="nav-icon">🕒</span>
+      <span class="nav-label">Marcaciones</span>
     </div>
     <div class="nav-item" data-tooltip="Flujos de Aprobación" data-perfil="central" onclick="navTo('flujos-aprob',this)">
       <span class="nav-icon">🔀</span>
@@ -3310,6 +3317,59 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
     </div>
   </div>
 
+  <!-- ══ MARCACIONES ══ -->
+  <div class="page" id="page-marcaciones">
+    <div class="dc-pg-hdr">
+      <div class="dc-pg-left">
+        <div class="dc-pg-sub">Bitácora de marcaciones biométricas realizadas en tienda</div>
+        <div class="dc-pg-title">🕒 Marcaciones</div>
+      </div>
+      <div class="dc-pg-right">
+        <span id="marc-last-upd">↻ Última act. hoy</span>
+        <span class="dc-online">● En línea</span>
+      </div>
+    </div>
+    <div class="dc-kpi-grid" style="margin:0 6px 14px;grid-template-columns:repeat(4,1fr)">
+      <div class="dc-kpi"><div class="dc-kpi-label">Total marcaciones</div><div class="dc-kpi-val" id="marc-kpi-total">—</div><div class="dc-kpi-sub">Hoy</div></div>
+      <div class="dc-kpi kpi-green"><div class="dc-kpi-label">Completas</div><div class="dc-kpi-val val-green" id="marc-kpi-comp">—</div><div class="dc-kpi-sub">Ingreso + salida</div></div>
+      <div class="dc-kpi kpi-teal"><div class="dc-kpi-label">En tienda</div><div class="dc-kpi-val" id="marc-kpi-tienda">—</div><div class="dc-kpi-sub">Solo ingreso</div></div>
+      <div class="dc-kpi kpi-crit"><div class="dc-kpi-label">Sin marcación</div><div class="dc-kpi-val val-red" id="marc-kpi-sin">—</div><div class="dc-kpi-sub">Activos sin marcar</div></div>
+    </div>
+    <div class="tbl-wrap" style="margin:0 6px 12px;border-radius:10px">
+      <div class="tbl-filters" style="flex-wrap:wrap">
+        <input id="marc-f-fecha" type="date" class="tbl-select">
+        <select class="tbl-select" id="marc-f-zona" onchange="renderMarc()"><option value="">Todas las zonas</option></select>
+        <select class="tbl-select" id="marc-f-tienda" onchange="renderMarc()"><option value="">Todas las tiendas</option></select>
+        <select class="tbl-select" id="marc-f-estado" onchange="renderMarc()"><option value="">Todos los estados</option><option>Completo</option><option>En tienda</option><option>Sin marcación</option><option>Descanso</option><option>Vacaciones</option></select>
+        <input id="marc-f-search" class="tbl-select" placeholder="🔍 Buscar empleado o DNI" oninput="renderMarc()" style="min-width:200px">
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+          <button class="btn-sec" onclick="renderMarc()">🔍 Buscar</button>
+          <button class="btn-sec" onclick="marcLimpiar()">✕ Limpiar</button>
+          <button class="btn-sec" onclick="marcExportExcel()">📊 Exportar Excel</button>
+        </div>
+      </div>
+    </div>
+    <div class="tbl-wrap" style="margin:0 6px 14px;padding:0;overflow:hidden">
+      <div style="overflow:auto;max-height:calc(100vh - 300px)">
+        <table class="data-table marc-tbl" id="marc-tbl" style="font-size:12.5px;min-width:980px">
+          <thead><tr>
+            <th style="text-align:center;width:42px">#</th>
+            <th style="text-align:left">Empleado</th>
+            <th style="text-align:left">DNI</th>
+            <th style="text-align:left">Puesto</th>
+            <th style="text-align:left">Zona</th>
+            <th style="text-align:left">Tienda</th>
+            <th style="text-align:center">H. Ingreso</th>
+            <th style="text-align:center">H. Salida</th>
+            <th style="text-align:center">Estado</th>
+          </tr></thead>
+          <tbody id="marc-tbody"><tr><td colspan="9" style="text-align:center;padding:24px;color:#94a3b8">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+      <div style="padding:8px 14px;font-size:11px;color:#94a3b8" id="marc-count"></div>
+    </div>
+  </div>
+
   <!-- ══ FLUJOS DE APROBACIÓN ══ -->
   <div class="page" id="page-flujos-aprob">
     <div class="dc-pg-hdr">
@@ -3483,6 +3543,7 @@ function navTo(id, el) {
     'dashboard':   ()=>renderDashboard(),
     'ascensos':    ()=>renderAscensos(),
     'flujos-aprob':()=>renderFlujosAprob(),
+    'marcaciones':()=>renderMarc(),
   };
   if(_pRender[id]) setTimeout(_pRender[id], 0);
 }
@@ -7007,7 +7068,83 @@ document.addEventListener('DOMContentLoaded', ()=>{
   renderDashboard();
   renderReportes();
   renderFlujosAprob();
+  renderMarc();
 });
+
+// ══════════ MARCACIONES ══════════
+const MARC_DATA=[
+ {n:'Huapaya Ruiz, Hugo Sandro',dni:'10066342',p:'Gerente de Tienda',z:'Lima Sur',t:'San Borja',in:'',out:'',est:'Sin marcación'},
+ {n:'García López, María Elena',dni:'47234561',p:'Jefe de Piso',z:'Lima Sur',t:'San Borja',in:'08:01:12 a. m.',out:'05:05:48 p. m.',est:'Completo'},
+ {n:'Torres Sánchez, Elena',dni:'48234567',p:'Supervisora de Sección',z:'Lima Sur',t:'San Borja',in:'07:58:33 a. m.',out:'',est:'En tienda'},
+ {n:'Mendoza Flores, Carlos Raúl',dni:'48765432',p:'Asesor Senior',z:'Lima Sur',t:'San Borja',in:'08:10:05 a. m.',out:'04:58:21 p. m.',est:'Completo'},
+ {n:'Quispe Mamani, Ana Rosa',dni:'45678901',p:'Asesor de Ventas',z:'Lima Sur',t:'San Borja',in:'08:03:50 a. m.',out:'',est:'En tienda'},
+ {n:'Ramos Condori, Luis Miguel',dni:'49123456',p:'Asesor de Ventas',z:'Lima Centro',t:'Jockey Plaza',in:'08:22:09 a. m.',out:'',est:'En tienda'},
+ {n:'Vargas Cruz, Rosa María',dni:'46543210',p:'Secretaria-Cajera',z:'Lima Centro',t:'Jockey Plaza',in:'09:00:41 a. m.',out:'06:12:30 p. m.',est:'Completo'},
+ {n:'Ccopa Huanca, Pedro Jesús',dni:'47890123',p:'Reponedor',z:'Lima Centro',t:'Jockey Plaza',in:'',out:'',est:'Descanso'},
+ {n:'Lozano Ríos, Carla Beatriz',dni:'48012345',p:'Promotora',z:'Lima Norte',t:'Mega Plaza',in:'08:15:17 a. m.',out:'',est:'En tienda'},
+ {n:'Herrera Tello, Marco Antonio',dni:'47654321',p:'Prevención',z:'Lima Norte',t:'Mega Plaza',in:'',out:'',est:'Vacaciones'},
+ {n:'Salazar Quispe, Diego',dni:'45901234',p:'Asesor de Ventas',z:'Lima Norte',t:'Plaza Norte',in:'08:05:00 a. m.',out:'05:30:10 p. m.',est:'Completo'},
+ {n:'Prado Ríos, Lucía',dni:'46012398',p:'Asesor Senior',z:'Lima Centro',t:'Jesús María',in:'08:12:44 a. m.',out:'',est:'En tienda'}
+];
+const _MARC_EST={'Completo':'aprobada','En tienda':'revision','Sin marcación':'anulada','Descanso':'culminada','Vacaciones':'pendiente'};
+function _marcBadge(e){ return `<span class="badge-estado ${_MARC_EST[e]||''}">${e}</span>`; }
+function _marcFillSelects(){
+  const zSel=document.getElementById('marc-f-zona'), tSel=document.getElementById('marc-f-tienda');
+  if(zSel && zSel.options.length<=1){ [...new Set(MARC_DATA.map(m=>m.z))].sort().forEach(z=>zSel.insertAdjacentHTML('beforeend',`<option>${z}</option>`)); }
+  if(tSel && tSel.options.length<=1){ [...new Set(MARC_DATA.map(m=>m.t))].sort().forEach(t=>tSel.insertAdjacentHTML('beforeend',`<option>${t}</option>`)); }
+}
+function renderMarc(){
+  _marcFillSelects();
+  const zonaF=document.getElementById('marc-f-zona')?.value||'';
+  const tiendaF=document.getElementById('marc-f-tienda')?.value||'';
+  const estF=document.getElementById('marc-f-estado')?.value||'';
+  const busq=(document.getElementById('marc-f-search')?.value||'').toLowerCase().trim();
+  const rows=MARC_DATA.filter(m=>{
+    if(zonaF && m.z!==zonaF) return false;
+    if(tiendaF && m.t!==tiendaF) return false;
+    if(estF && m.est!==estF) return false;
+    if(busq && !m.n.toLowerCase().includes(busq) && !m.dni.includes(busq)) return false;
+    return true;
+  });
+  const tb=document.getElementById('marc-tbody'); if(!tb) return;
+  const all=MARC_DATA;
+  const sk=(id,v)=>{const el=document.getElementById(id); if(el) el.textContent=v;};
+  sk('marc-kpi-total', all.filter(m=>m.in).length);
+  sk('marc-kpi-comp', all.filter(m=>m.est==='Completo').length);
+  sk('marc-kpi-tienda', all.filter(m=>m.est==='En tienda').length);
+  sk('marc-kpi-sin', all.filter(m=>m.est==='Sin marcación').length);
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:24px;color:#94a3b8">Sin marcaciones para los filtros</td></tr>'; }
+  else tb.innerHTML=rows.map((m,i)=>`<tr>
+      <td style="text-align:center;color:#94a3b8">${i+1}</td>
+      <td style="text-align:left;font-weight:700;color:#1a1a2e">${m.n}</td>
+      <td style="text-align:left;color:#475569">${m.dni}</td>
+      <td style="text-align:left;color:#64748b">${m.p}</td>
+      <td style="text-align:left;color:#475569">${m.z}</td>
+      <td style="text-align:left;color:#475569">${m.t}</td>
+      <td style="text-align:center">${m.in?`<span class="marc-hora-in">${m.in}</span>`:'<span style="color:#cbd5e1">—</span>'}</td>
+      <td style="text-align:center">${m.out?`<span class="marc-hora-out">${m.out}</span>`:'<span style="color:#cbd5e1">—</span>'}</td>
+      <td style="text-align:center">${_marcBadge(m.est)}</td>
+    </tr>`).join('');
+  const ct=document.getElementById('marc-count'); if(ct) ct.textContent=`${rows.length} marcación${rows.length!==1?'es':''}`;
+}
+function marcLimpiar(){
+  ['marc-f-zona','marc-f-tienda','marc-f-estado','marc-f-search'].forEach(id=>{const el=document.getElementById(id); if(el) el.value='';});
+  renderMarc(); _toast('Filtros limpiados','info');
+}
+function marcExportExcel(){
+  const zonaF=document.getElementById('marc-f-zona')?.value||'', tiendaF=document.getElementById('marc-f-tienda')?.value||'', estF=document.getElementById('marc-f-estado')?.value||'', busq=(document.getElementById('marc-f-search')?.value||'').toLowerCase().trim();
+  const out=[['Marcaciones'],['Empleado','DNI','Puesto','Zona','Tienda','H. Ingreso','H. Salida','Estado']];
+  MARC_DATA.forEach(m=>{
+    if(zonaF && m.z!==zonaF) return; if(tiendaF && m.t!==tiendaF) return; if(estF && m.est!==estF) return;
+    if(busq && !m.n.toLowerCase().includes(busq) && !m.dni.includes(busq)) return;
+    out.push([m.n,m.dni,m.p,m.z,m.t,m.in||'',m.out||'',m.est]);
+  });
+  if(out.length<=2){ _toast('No hay marcaciones para exportar','info'); return; }
+  const csv='﻿'+out.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\r\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download='marcaciones.csv';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  _toast('Exportado a Excel ('+(out.length-2)+' filas)','success');
+}
 
 // ══════════ FLUJOS DE APROBACIÓN ══════════
 const _FA_MODULOS=[
