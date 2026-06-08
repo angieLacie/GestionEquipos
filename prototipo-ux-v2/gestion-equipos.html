@@ -1648,6 +1648,10 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
       <span class="nav-icon">📈</span>
       <span class="nav-label">Reportes</span>
     </div>
+    <div class="nav-item" data-tooltip="Flujos de Aprobación" data-perfil="central" onclick="navTo('flujos-aprob',this)">
+      <span class="nav-icon">🔀</span>
+      <span class="nav-label">Flujos de Aprobación</span>
+    </div>
     <div class="nav-item" data-tooltip="Configuración" data-perfil="central" onclick="navTo('configuracion',this)">
       <span class="nav-icon">⚙️</span>
       <span class="nav-label">Configuración</span>
@@ -3306,6 +3310,59 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
     </div>
   </div>
 
+  <!-- ══ FLUJOS DE APROBACIÓN ══ -->
+  <div class="page" id="page-flujos-aprob">
+    <div class="dc-pg-hdr">
+      <div class="dc-pg-left">
+        <div class="dc-pg-sub">Configuración de niveles de aprobación por módulo o tipo de registro</div>
+        <div class="dc-pg-title">🔀 Flujos de Aprobación</div>
+      </div>
+      <div class="dc-pg-right">
+        <button class="btn-primary" style="border:1.5px solid #4f46e5" onclick="openFlujoModal()">+ Nuevo flujo</button>
+      </div>
+    </div>
+    <div id="fa-wrap" style="margin:0 6px 16px"></div>
+  </div>
+
+  <!-- Modal: flujo -->
+  <div class="enc-ov" id="fa-modal" onclick="if(event.target===this)closeFlujoModal()">
+    <div class="enc-modal" style="width:460px">
+      <div class="enc-modal-hdr" id="fa-modal-title">Nuevo flujo</div>
+      <div class="enc-modal-body" style="display:grid;gap:12px">
+        <div class="enc-field"><label>Módulo / tipo de registro *</label>
+          <select id="fa-f-modulo" class="tbl-select" style="width:100%"></select></div>
+        <div class="enc-field"><label>Nombre del flujo *</label>
+          <input id="fa-f-nombre" class="tbl-select" style="width:100%" placeholder="Ej. Aprobación de Vacaciones"></div>
+        <div class="enc-field"><label>Estado</label>
+          <select id="fa-f-activo" class="tbl-select" style="width:100%"><option value="1">Activo</option><option value="0">Inactivo</option></select></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;padding:13px 20px;border-top:1px solid #f0f1f5">
+        <button class="btn-sec" onclick="closeFlujoModal()">Cancelar</button>
+        <button class="btn-primary" style="border:1.5px solid #4f46e5" onclick="saveFlujo()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: nivel -->
+  <div class="enc-ov" id="fa-nivel-modal" onclick="if(event.target===this)closeNivelModal()">
+    <div class="enc-modal" style="width:430px">
+      <div class="enc-modal-hdr" id="fa-nivel-title">Nivel de aprobación</div>
+      <div class="enc-modal-body" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="enc-field" style="grid-column:1/-1"><label>Rol aprobador *</label>
+          <select id="fa-n-rol" class="tbl-select" style="width:100%"></select></div>
+        <div class="enc-field"><label>SLA (horas)</label>
+          <input id="fa-n-sla" type="number" min="0" class="tbl-select" style="width:100%" value="24"></div>
+        <div class="enc-field"><label>Obligatorio</label>
+          <select id="fa-n-oblig" class="tbl-select" style="width:100%"><option value="1">Sí</option><option value="0">No</option></select></div>
+        <div class="enc-field" style="grid-column:1/-1"><label style="display:flex;align-items:center;gap:8px;font-weight:500"><input type="checkbox" id="fa-n-segr" style="width:15px;height:15px"> Segregación de funciones (solicitante ≠ aprobador)</label></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;padding:13px 20px;border-top:1px solid #f0f1f5">
+        <button class="btn-sec" onclick="closeNivelModal()">Cancelar</button>
+        <button class="btn-primary" style="border:1.5px solid #4f46e5" onclick="saveNivel()">Guardar nivel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ══ MODAL: Compensaciones Pendientes ══ -->
   <div class="rep-ov" id="rep-ov-comp">
     <div class="rep-doc-outer">
@@ -3425,6 +3482,7 @@ function navTo(id, el) {
     'reportes':    ()=>renderReportes(),
     'dashboard':   ()=>renderDashboard(),
     'ascensos':    ()=>renderAscensos(),
+    'flujos-aprob':()=>renderFlujosAprob(),
   };
   if(_pRender[id]) setTimeout(_pRender[id], 0);
 }
@@ -6948,7 +7006,133 @@ document.addEventListener('DOMContentLoaded', ()=>{
   renderDescansos();
   renderDashboard();
   renderReportes();
+  renderFlujosAprob();
 });
+
+// ══════════ FLUJOS DE APROBACIÓN ══════════
+const _FA_MODULOS=[
+  {v:'vacaciones',l:'Vacaciones'},{v:'rol',l:'Rol de Personal'},{v:'descansos',l:'Descansos'},
+  {v:'compensacion',l:'Compensación'},{v:'encargatura',l:'Encargatura'},{v:'ascenso',l:'Ascenso Senior'},
+  {v:'traslado',l:'Traslados'},{v:'marcacion',l:'Marcaciones'}
+];
+const _FA_ROLES=[
+  {v:'R-GZ',l:'Zonal (GZ)'},{v:'R-GG',l:'Gerente General (GG)'},{v:'R-GG-SUP',l:'GG Suplente'},
+  {v:'R-GT',l:'Gerente de Tienda (GT)'},{v:'R-AV',l:'Administración de Ventas (AV)'},{v:'R-RRHH',l:'Recursos Humanos'}
+];
+const _faModLbl=v=>(_FA_MODULOS.find(m=>m.v===v)||{}).l||v;
+const _faRolLbl=v=>(_FA_ROLES.find(r=>r.v===v)||{}).l||v;
+
+function _faSeed(){
+  if(AD.flujosAprobacion) return;
+  AD.flujosAprobacion=[
+    {id:1,modulo:'vacaciones',nombre:'Aprobación de Vacaciones',activo:true,niveles:[{rol:'R-GZ',sla:24,oblig:true,segr:false},{rol:'R-GG',sla:48,oblig:true,segr:true}]},
+    {id:2,modulo:'rol',nombre:'Aprobación del Rol (FL_ROL)',activo:true,niveles:[{rol:'R-GZ',sla:24,oblig:true,segr:false},{rol:'R-GG',sla:48,oblig:true,segr:false},{rol:'R-GT',sla:24,oblig:false,segr:false}]},
+    {id:3,modulo:'ascenso',nombre:'Ascenso a Senior',activo:true,niveles:[{rol:'R-AV',sla:24,oblig:true,segr:false},{rol:'R-GG',sla:48,oblig:true,segr:true}]},
+    {id:4,modulo:'encargatura',nombre:'Encargatura (FL_ENCA)',activo:true,niveles:[{rol:'R-GZ',sla:24,oblig:true,segr:false},{rol:'R-GG',sla:48,oblig:true,segr:false}]}
+  ];
+  _save(AD);
+}
+
+function renderFlujosAprob(){
+  _faSeed();
+  const wrap=document.getElementById('fa-wrap'); if(!wrap) return;
+  const fl=AD.flujosAprobacion||[];
+  if(!fl.length){ wrap.innerHTML='<div style="background:#fff;border:1px solid #f0f1f5;border-radius:10px;padding:32px;text-align:center;color:#94a3b8">Sin flujos configurados. Crea uno con "+ Nuevo flujo".</div>'; return; }
+  let html='';
+  fl.forEach(f=>{
+    const niv=f.niveles||[];
+    const steps=niv.map((n,i)=>`
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e8eaf0;border-radius:8px;background:#fff;min-width:210px">
+        <span style="width:22px;height:22px;border-radius:50%;background:#eef2ff;color:#4f46e5;font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${i+1}</span>
+        <div style="flex:1">
+          <div style="font-size:12.5px;font-weight:700;color:#1a1a2e">${_faRolLbl(n.rol)}</div>
+          <div style="font-size:10px;color:#64748b">SLA ${n.sla||0}h · ${n.oblig?'Obligatorio':'Opcional'}${n.segr?' · 🔒 Segregación':''}</div>
+        </div>
+        <button class="btn-icon edit" onclick="openNivelModal(${f.id},${i})" title="Editar nivel">✏</button>
+        <button class="btn-icon" onclick="faMoveNivel(${f.id},${i},-1)" title="Subir"${i===0?' style="opacity:.3;pointer-events:none"':''}>↑</button>
+        <button class="btn-icon" onclick="faMoveNivel(${f.id},${i},1)" title="Bajar"${i===niv.length-1?' style="opacity:.3;pointer-events:none"':''}>↓</button>
+        <button class="btn-icon delete" onclick="faDeleteNivel(${f.id},${i})" title="Quitar nivel">🗑</button>
+      </div>${i<niv.length-1?'<span style="color:#cbd5e1;font-size:18px">→</span>':''}`).join('');
+    html+=`
+    <div style="background:#fff;border:1px solid #f0f1f5;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.05);margin-bottom:14px;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #f0f1f5;background:#fafbfc">
+        <span style="font-size:13.5px;font-weight:800;color:#1a1a2e">${f.nombre}</span>
+        <span class="badge-sm badge-gray">${_faModLbl(f.modulo)}</span>
+        <span class="badge-estado ${f.activo?'aprobada':'anulada'}" style="cursor:pointer" onclick="faToggleActivo(${f.id})" title="Activar/Inactivar">${f.activo?'Activo':'Inactivo'}</span>
+        <div style="margin-left:auto;display:flex;gap:6px">
+          <button class="btn-icon edit" onclick="openFlujoModal(${f.id})" title="Editar flujo">✏</button>
+          <button class="btn-icon delete" onclick="faDeleteFlujo(${f.id})" title="Eliminar flujo">🗑</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:14px 16px">
+        ${steps||'<span style="color:#94a3b8;font-size:12px">Sin niveles.</span>'}
+        <button class="btn-sec" style="font-size:12px;padding:6px 10px;white-space:nowrap" onclick="openNivelModal(${f.id})">+ Nivel</button>
+      </div>
+    </div>`;
+  });
+  wrap.innerHTML=html;
+}
+
+let _faEditId=null;
+function openFlujoModal(id=null){
+  _faEditId=id;
+  const mSel=document.getElementById('fa-f-modulo');
+  mSel.innerHTML=_FA_MODULOS.map(m=>`<option value="${m.v}">${m.l}</option>`).join('');
+  const f=id?(AD.flujosAprobacion||[]).find(x=>x.id===id):null;
+  document.getElementById('fa-modal-title').textContent=id?'Editar flujo':'Nuevo flujo';
+  mSel.value=f?f.modulo:'vacaciones';
+  document.getElementById('fa-f-nombre').value=f?f.nombre:'';
+  document.getElementById('fa-f-activo').value=f?(f.activo?'1':'0'):'1';
+  document.getElementById('fa-modal').classList.add('open');
+}
+function closeFlujoModal(){ document.getElementById('fa-modal').classList.remove('open'); }
+function saveFlujo(){
+  const modulo=document.getElementById('fa-f-modulo').value;
+  const nombre=document.getElementById('fa-f-nombre').value.trim();
+  const activo=document.getElementById('fa-f-activo').value==='1';
+  if(!nombre){ _toast('Ingresa el nombre del flujo','error'); return; }
+  if(!AD.flujosAprobacion) AD.flujosAprobacion=[];
+  if(_faEditId){ const f=AD.flujosAprobacion.find(x=>x.id===_faEditId); if(f){ f.modulo=modulo; f.nombre=nombre; f.activo=activo; } }
+  else AD.flujosAprobacion.push({id:_nextId(AD.flujosAprobacion),modulo,nombre,activo,niveles:[]});
+  _save(AD); closeFlujoModal(); renderFlujosAprob(); _toast(_faEditId?'Flujo actualizado':'Flujo creado');
+}
+function faToggleActivo(id){ const f=(AD.flujosAprobacion||[]).find(x=>x.id===id); if(!f) return; f.activo=!f.activo; _save(AD); renderFlujosAprob(); }
+function faDeleteFlujo(id){
+  const f=(AD.flujosAprobacion||[]).find(x=>x.id===id); if(!f) return;
+  _confirm('¿Eliminar este flujo de aprobación?',f.nombre,()=>{ AD.flujosAprobacion=AD.flujosAprobacion.filter(x=>x.id!==id); _save(AD); renderFlujosAprob(); _toast('Flujo eliminado'); },{okLabel:'Eliminar',ico:'🗑'});
+}
+
+let _faNivelFlujoId=null, _faNivelIdx=null;
+function openNivelModal(flujoId, idx=null){
+  _faNivelFlujoId=flujoId; _faNivelIdx=(idx===null)?null:idx;
+  const f=(AD.flujosAprobacion||[]).find(x=>x.id===flujoId); if(!f) return;
+  document.getElementById('fa-n-rol').innerHTML=_FA_ROLES.map(r=>`<option value="${r.v}">${r.l}</option>`).join('');
+  const n=(idx!==null)?f.niveles[idx]:null;
+  document.getElementById('fa-nivel-title').textContent=(idx!==null)?'Editar nivel':'Nuevo nivel';
+  document.getElementById('fa-n-rol').value=n?n.rol:'R-GZ';
+  document.getElementById('fa-n-sla').value=n?(n.sla||0):24;
+  document.getElementById('fa-n-oblig').value=n?(n.oblig?'1':'0'):'1';
+  document.getElementById('fa-n-segr').checked=n?!!n.segr:false;
+  document.getElementById('fa-nivel-modal').classList.add('open');
+}
+function closeNivelModal(){ document.getElementById('fa-nivel-modal').classList.remove('open'); }
+function saveNivel(){
+  const f=(AD.flujosAprobacion||[]).find(x=>x.id===_faNivelFlujoId); if(!f) return;
+  const nivel={rol:document.getElementById('fa-n-rol').value,sla:parseInt(document.getElementById('fa-n-sla').value)||0,oblig:document.getElementById('fa-n-oblig').value==='1',segr:document.getElementById('fa-n-segr').checked};
+  if(!f.niveles) f.niveles=[];
+  if(_faNivelIdx!==null) f.niveles[_faNivelIdx]=nivel; else f.niveles.push(nivel);
+  _save(AD); closeNivelModal(); renderFlujosAprob(); _toast('Nivel guardado');
+}
+function faDeleteNivel(flujoId, idx){
+  const f=(AD.flujosAprobacion||[]).find(x=>x.id===flujoId); if(!f||!f.niveles) return;
+  f.niveles.splice(idx,1); _save(AD); renderFlujosAprob(); _toast('Nivel quitado');
+}
+function faMoveNivel(flujoId, idx, dir){
+  const f=(AD.flujosAprobacion||[]).find(x=>x.id===flujoId); if(!f) return;
+  const j=idx+dir; if(j<0||j>=f.niveles.length) return;
+  const t=f.niveles[idx]; f.niveles[idx]=f.niveles[j]; f.niveles[j]=t;
+  _save(AD); renderFlujosAprob();
+}
 </script>
 <script>
 // ── Datos de simulación: Pendientes por empleado ─────────────────────
