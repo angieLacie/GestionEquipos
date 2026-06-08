@@ -2091,6 +2091,7 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
         <button class="rol-wk-btn" onclick="rolNavWk(1)" title="Semana siguiente">›</button>
         <span class="rol-wk-range" id="rol-wk-range">—</span>
         <span class="rol-wk-meta" id="rol-wk-meta"></span>
+        <input id="rol-f-search" oninput="renderRol()" placeholder="🔍 Buscar trabajador" style="margin-left:auto;font-size:12px;padding:5px 10px;border:1px solid #e8eaf0;border-radius:8px;outline:none;background:#fff;min-width:180px">
       </div>
       <div class="tbl-filters" style="flex-wrap:wrap">
         <select class="tbl-select" id="rol-f-anio" onchange="rolOnAnioChange()"></select>
@@ -5240,6 +5241,7 @@ function renderRol(){
   const tiendaF = document.getElementById('rol-f-tienda')?.value||'';
   const cargoF  = document.getElementById('rol-f-cargo')?.value||'';
   const tipoF   = document.getElementById('rol-f-tipo')?.value||'';
+  const busqF   = (document.getElementById('rol-f-search')?.value||'').toLowerCase().trim();
 
   // Al cambiar de filtro de cargo, resetear estado de colapso para que las zonas aparezcan expandidas
   if(_lastCargoF !== cargoF){ _rolCollapsed.clear(); _lastCargoF = cargoF; }
@@ -5367,6 +5369,7 @@ function renderRol(){
     if(zonaF   && e.zona  !==zonaF)   return false;
     if(tiendaF && e.tienda!==tiendaF) return false;
     if(cargoF  && !_rolCatMatch(e,cargoF)) return false;
+    if(busqF && !(e.nombre||'').toLowerCase().includes(busqF) && !(e.cargo||'').toLowerCase().includes(busqF)) return false;
     return true;
   });
 
