@@ -2611,6 +2611,9 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
   <option value="lic-fallecimiento">Lic. por fallecimiento</option>
 </select>
       <select class="tbl-select" id="dc-f-estado" onchange="filterDc()" style="font-size:12px;padding:4px 8px"><option value="">Todos los estados</option><option value="prog">Programado</option><option value="ejec">En ejecución</option><option value="culm">Culminado</option><option value="anul">Anulado</option></select>
+      <button class="btn-sec" style="font-size:12px;padding:6px 12px;white-space:nowrap" onclick="filterDc()">🔍 Buscar</button>
+      <button class="btn-sec" style="font-size:12px;padding:6px 12px;white-space:nowrap" onclick="dcLimpiarFiltros()" title="Limpiar filtros">✕ Limpiar</button>
+      <button class="btn-sec" style="font-size:12px;padding:6px 12px;white-space:nowrap" onclick="dcExportExcel()" title="Exportar a Excel">📊 Exportar Excel</button>
       <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
         <button id="dc-btn-exportar" class="dc-export-btn" style="display:none" onclick="_toast('Exportando datos…')">⬇ Exportar</button>
         <div id="dc-btn-programar-wrap" style="position:relative">
@@ -5927,6 +5930,34 @@ function renderDescansos(){
   else renderDcTbl();
 }
 function filterDc(){ _dcP=1; renderDescansos(); }
+function dcLimpiarFiltros(){
+  ['dc-f-zona','dc-f-tienda','dc-f-tipo','dc-f-estado'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  filterDc(); _toast('Filtros limpiados','info');
+}
+function dcExportExcel(){
+  const zonaF=document.getElementById('dc-f-zona')?.value||'';
+  const tiendaF=document.getElementById('dc-f-tienda')?.value||'';
+  const tipoF=document.getElementById('dc-f-tipo')?.value||'';
+  const estadoF=document.getElementById('dc-f-estado')?.value||'';
+  const empById=id=>AD.empleados.find(e=>e.id===id)||{};
+  const tipoLbl=t=>(_dcTipoInfo[t]||{}).lbl||t;
+  const estLbl=e=>_EST_LBL[e]||e||'';
+  const out=[['Descansos y Compensaciones'],['Empleado','Puesto','Zona','Tienda','Tipo','Inicio','Fin','Estado','Compensa']];
+  (AD.descansos||[]).forEach(d=>{
+    const e=empById(d.empleadoId);
+    if(zonaF && e.zona!==zonaF) return;
+    if(tiendaF && e.tienda!==tiendaF) return;
+    if(tipoF && d.tipo!==tipoF) return;
+    if(estadoF && d.estado!==estadoF) return;
+    out.push([e.nombre||'',e.cargo||'',e.zona||'',e.tienda||'',tipoLbl(d.tipo),d.fecha||'',d.fechaFin||'',estLbl(d.estado),d.fechaCompensa||'']);
+  });
+  if(out.length<=2){ _toast('No hay registros para exportar','info'); return; }
+  const csv='﻿'+out.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='descansos.csv';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  _toast('Exportado a Excel ('+(out.length-2)+' filas)','success');
+}
 
 function dcSwitchView(v){
   _dcView=v;
