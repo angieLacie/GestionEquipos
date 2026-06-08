@@ -2589,7 +2589,16 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
       </div>
     </div>
 
-    <!-- Filtros + Vista toggle -->
+    <!-- Tabs de vista -->
+    <div style="margin:0 6px 10px">
+      <div class="dc-view-grp" style="display:inline-flex">
+        <button id="dc-btn-cal" class="dc-view-btn active" onclick="dcSwitchView('cal')">📅 Calendario</button>
+        <button id="dc-btn-tbl" class="dc-view-btn" onclick="dcSwitchView('tbl')">📋 Tabla</button>
+        <button id="dc-btn-res" class="dc-view-btn" onclick="dcSwitchView('res')">🏪 Resumen</button>
+      </div>
+    </div>
+
+    <!-- Filtros -->
     <div class="dc-filter-bar" style="gap:8px">
       <select class="tbl-select" id="dc-f-zona" onchange="filterDc()" style="font-size:12px;padding:4px 8px"><option value="">Todas las zonas</option></select>
       <select class="tbl-select" id="dc-f-tienda" onchange="filterDc()" style="font-size:12px;padding:4px 8px"><option value="">Todas las tiendas</option></select>
@@ -2628,11 +2637,6 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
               <div><div class="pm-title">Compensación</div><div class="pm-sub">Por feriado o descanso semanal laborado</div></div>
             </div>
           </div>
-        </div>
-        <div class="dc-view-grp">
-          <button id="dc-btn-cal" class="dc-view-btn active" onclick="dcSwitchView('cal')">📅 Calendario</button>
-          <button id="dc-btn-tbl" class="dc-view-btn"        onclick="dcSwitchView('tbl')">📋 Tabla</button>
-          <button id="dc-btn-res" class="dc-view-btn"        onclick="dcSwitchView('res')">🏪 Resumen</button>
         </div>
         <button id="dc-btn-registrar" class="dc-reg-btn" style="display:none" onclick="openDcRegModal()">+ Registrar</button>
       </div>
