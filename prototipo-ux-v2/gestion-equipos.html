@@ -2120,7 +2120,7 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
         <button class="btn-sec" onclick="rolLimpiarFiltros()" title="Limpiar filtros">✕ Limpiar</button>
         <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
         <div id="rol-btn-programar-wrap" style="position:relative">
-          <button class="btn-sec" style="font-size:12px;padding:6px 12px;white-space:nowrap" onclick="rolOpenProgramarMenu(event)">⊞ Programar ▾</button>
+          <button class="btn-sec" style="white-space:nowrap" onclick="rolOpenProgramarMenu(event)">⊞ Programar ▾</button>
           <div class="prog-menu" id="rol-programar-menu">
             <div class="prog-menu-opt" onclick="rolSelProgramarTipo('cobertura-tienda')">
               <span class="pm-ico">🏪</span>
@@ -2138,7 +2138,7 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
         </div>
         <button class="btn-sec" onclick="rolExportExcel()" title="Exportar la tabla a Excel">📊 Exportar Excel</button>
         <div class="rol-cols-wrap">
-          <button class="tbl-select" type="button" onclick="rolToggleColsMenu(event)" style="cursor:pointer;font-weight:600">⚙ Columnas ▾</button>
+          <button class="btn-sec" type="button" onclick="rolToggleColsMenu(event)" style="white-space:nowrap">⚙ Columnas ▾</button>
           <div class="rol-cols-menu" id="rol-cols-menu" onclick="event.stopPropagation()">
             <div class="rol-cols-ttl">Mostrar columnas</div>
             <label><input type="checkbox" checked onchange="rolToggleCol('puesto',this.checked)"> Puesto</label>
@@ -2158,7 +2158,7 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
             <label><input type="checkbox" checked onchange="rolToggleCol('q-s1',this.checked)"> Sem actual %</label>
           </div>
         </div>
-        <button class="btn-primary" onclick="enviarRol()">✉ Enviar a aprobación</button>
+        <button class="btn-primary" onclick="enviarRol()" style="border:1.5px solid #4f46e5">✉ Enviar a aprobación</button>
         </div><!-- /right actions -->
       </div>
     </div>
