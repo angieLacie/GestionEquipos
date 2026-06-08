@@ -2085,14 +2085,6 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
     <div id="rol-view-grid">
     <!-- Filtros + Nav semana -->
     <div class="tbl-wrap" style="margin:0 6px 12px;border-radius:10px">
-      <div class="rol-wk-bar">
-        <button class="rol-wk-btn" onclick="rolNavWk(-1)" title="Semana anterior">‹</button>
-        <button class="rol-wk-today" onclick="rolNavWk(0)">Hoy</button>
-        <button class="rol-wk-btn" onclick="rolNavWk(1)" title="Semana siguiente">›</button>
-        <span class="rol-wk-range" id="rol-wk-range">—</span>
-        <span class="rol-wk-meta" id="rol-wk-meta"></span>
-        <input id="rol-f-search" oninput="renderRol()" placeholder="🔍 Buscar trabajador" style="margin-left:auto;font-size:12px;padding:5px 10px;border:1px solid #e8eaf0;border-radius:8px;outline:none;background:#fff;min-width:180px">
-      </div>
       <div class="tbl-filters" style="flex-wrap:wrap">
         <select class="tbl-select" id="rol-f-zona"><option value="">Todas las zonas</option></select>
         <select class="tbl-select" id="rol-f-tienda"><option value="">Todas las tiendas</option></select>
@@ -2168,6 +2160,14 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
 
     <!-- Tabla principal agrupada -->
     <div class="tbl-wrap" style="margin:0 6px 14px;padding:0;overflow:hidden">
+      <div class="rol-wk-bar">
+        <button class="rol-wk-btn" onclick="rolNavWk(-1)" title="Semana anterior">‹</button>
+        <button class="rol-wk-today" onclick="rolNavWk(0)">Hoy</button>
+        <button class="rol-wk-btn" onclick="rolNavWk(1)" title="Semana siguiente">›</button>
+        <span class="rol-wk-range" id="rol-wk-range">—</span>
+        <span class="rol-wk-meta" id="rol-wk-meta"></span>
+        <input id="rol-f-search" oninput="renderRol()" placeholder="🔍 Buscar trabajador" style="margin-left:auto;font-size:12px;padding:5px 10px;border:1px solid #e8eaf0;border-radius:8px;outline:none;background:#fff;min-width:180px">
+      </div>
       <div style="overflow:auto;max-height:calc(100vh - 300px)">
         <table class="rol-tbl" id="rol-tbl">
           <thead>
