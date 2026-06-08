@@ -368,6 +368,7 @@ body{background:#1a1a2e;display:flex;justify-content:center;align-items:center;m
 .gacc-emps.open{display:block}
 .gacc-emps .arow{padding-left:42px;border-bottom:1px solid #f1f5f9}
 .arow:active,.arow.sel{background:#f7f8fc}
+.sr-range{font-size:9px;color:#94a3b8;margin-top:2px}
 .gacc-chev{color:#94a3b8;font-size:15px;transition:transform .2s;flex-shrink:0}
 .zcard.gacc-on .gacc-chev,.gacc-tienda.gacc-on .gacc-chev{transform:rotate(90deg)}
 .zst{font-size:11px;color:#94a3b8;display:flex;align-items:center;gap:4px}
@@ -3411,24 +3412,24 @@ const _empName=e=>typeof e==='string'?e:e.n;
 const _empSr=e=>typeof e==='object'&&e.sr;
 const GEST_DATA=[
  {z:'LIMA SUR',cob:'78.4%',cls:'a',plant:51,act:40,dm:2,vac:2,lic:0,tiendas:[
-   {t:'SAN BORJA',cob:'75%',cls:'a',plant:28,act:22,dm:1,vac:1,lic:0,emps:[{n:'Ana Torres',sr:true},'Carlos Gómez',{n:'Lucía Prado',sr:true},'Jorge Ruiz']},
-   {t:'V.E.S. SALVADOR',cob:'63%',cls:'r',plant:23,act:18,dm:1,vac:1,lic:0,emps:['María Flores',{n:'Pedro Sánchez',sr:true},'Valeria Castillo']}]},
+   {t:'SAN BORJA',cob:'75%',cls:'a',plant:28,act:22,dm:1,vac:1,lic:0,emps:[{n:'Ana Torres',sr:true,srD:'01/06/2025',srH:'31/05/2026'},'Carlos Gómez',{n:'Lucía Prado',sr:true,srD:'01/03/2025',srH:'28/02/2026'},'Jorge Ruiz']},
+   {t:'V.E.S. SALVADOR',cob:'63%',cls:'r',plant:23,act:18,dm:1,vac:1,lic:0,emps:['María Flores',{n:'Pedro Sánchez',sr:true,srD:'01/09/2025',srH:'31/08/2026'},'Valeria Castillo']}]},
  {z:'LIMA CENTRO',cob:'88.9%',cls:'a',plant:36,act:32,dm:1,vac:1,lic:1,tiendas:[
-   {t:'JOCKEY PLAZA',cob:'88%',cls:'a',plant:20,act:18,dm:1,vac:0,lic:1,emps:['Diego Salazar','Rosa Chávez',{n:'Luis Quispe',sr:true}]},
+   {t:'JOCKEY PLAZA',cob:'88%',cls:'a',plant:20,act:18,dm:1,vac:0,lic:1,emps:['Diego Salazar','Rosa Chávez',{n:'Luis Quispe',sr:true,srD:'01/01/2026',srH:'31/12/2026'}]},
    {t:'JESÚS MARÍA',cob:'80%',cls:'a',plant:16,act:14,dm:0,vac:1,lic:0,emps:['Carmen Díaz','Raúl Vega']}]},
  {z:'LIMA NORTE',cob:'86.5%',cls:'a',plant:37,act:32,dm:6,vac:4,lic:3,tiendas:[
-   {t:'MEGA PLAZA',cob:'90%',cls:'g',plant:20,act:17,dm:3,vac:2,lic:2,emps:[{n:'Sofía Ramos',sr:true},'Hugo Paredes','Nadia Rivas']},
-   {t:'PLAZA NORTE',cob:'82%',cls:'a',plant:17,act:15,dm:3,vac:2,lic:1,emps:['Ana García',{n:'Renzo Talavera',sr:true}]}]},
+   {t:'MEGA PLAZA',cob:'90%',cls:'g',plant:20,act:17,dm:3,vac:2,lic:2,emps:[{n:'Sofía Ramos',sr:true,srD:'01/07/2025',srH:'30/06/2026'},'Hugo Paredes','Nadia Rivas']},
+   {t:'PLAZA NORTE',cob:'82%',cls:'a',plant:17,act:15,dm:3,vac:2,lic:1,emps:['Ana García',{n:'Renzo Talavera',sr:true,srD:'01/04/2025',srH:'31/03/2026'}]}]},
  {z:'PROV. NORTE',cob:'100%',cls:'g',plant:35,act:35,dm:5,vac:2,lic:2,tiendas:[
-   {t:'REAL PLAZA TRUJILLO',cob:'100%',cls:'g',plant:35,act:35,dm:5,vac:2,lic:2,emps:[{n:'Marco Ríos',sr:true},'Jesús Delgado','Lucía Paredes']}]},
+   {t:'REAL PLAZA TRUJILLO',cob:'100%',cls:'g',plant:35,act:35,dm:5,vac:2,lic:2,emps:[{n:'Marco Ríos',sr:true,srD:'01/02/2026',srH:'31/01/2027'},'Jesús Delgado','Lucía Paredes']}]},
  {z:'PROV. SUR',cob:'94.6%',cls:'g',plant:37,act:35,dm:2,vac:1,lic:2,tiendas:[
-   {t:'MALL AVENTURA AREQUIPA',cob:'95%',cls:'g',plant:20,act:19,dm:1,vac:1,lic:1,emps:['Pedro Salcedo',{n:'Rosa Gutiérrez',sr:true}]},
+   {t:'MALL AVENTURA AREQUIPA',cob:'95%',cls:'g',plant:20,act:19,dm:1,vac:1,lic:1,emps:['Pedro Salcedo',{n:'Rosa Gutiérrez',sr:true,srD:'01/05/2025',srH:'30/04/2026'}]},
    {t:'CHINCHA',cob:'78%',cls:'a',plant:17,act:16,dm:1,vac:0,lic:1,emps:['Jorge Ríos','Carmen Huanca']}]},
  {z:'ADAMS',cob:'95.9%',cls:'g',plant:49,act:47,dm:4,vac:0,lic:4,tiendas:[
-   {t:'C.C. EL POLO',cob:'75%',cls:'a',plant:26,act:25,dm:2,vac:0,lic:2,emps:[{n:'Cristian Monteagudo',sr:true},'Susy Rodríguez']},
+   {t:'C.C. EL POLO',cob:'75%',cls:'a',plant:26,act:25,dm:2,vac:0,lic:2,emps:[{n:'Cristian Monteagudo',sr:true,srD:'01/10/2025',srH:'30/09/2026'},'Susy Rodríguez']},
    {t:'SHOP MIRAFLORES',cob:'67%',cls:'r',plant:23,act:22,dm:2,vac:0,lic:2,emps:['Gabriel Suarez','Erika Del Carpio']}]},
  {z:'LUKERS',cob:'84.2%',cls:'a',plant:19,act:16,dm:0,vac:1,lic:1,tiendas:[
-   {t:'MALL DEL SUR',cob:'67%',cls:'r',plant:19,act:16,dm:0,vac:1,lic:1,emps:['Andrea López',{n:'Mauricio Hurtado',sr:true}]}]}
+   {t:'MALL DEL SUR',cob:'67%',cls:'r',plant:19,act:16,dm:0,vac:1,lic:1,emps:['Andrea López',{n:'Mauricio Hurtado',sr:true,srD:'01/08/2025',srH:'31/07/2026'}]}]}
 ];
 const _SVG_SR='<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 3 18 3 22 12 18 21 6 21 2 12"/></svg>';
 const _SVG_TR='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M15 6l6 6-6 6"/></svg>';
@@ -3437,7 +3438,7 @@ function _gEmpRow(e,gi){
   const nm=_empName(e), sr=_empSr(e), grad=_GACC_GRAD[gi%_GACC_GRAD.length], safe=nm.replace(/'/g,"\\'");
   return `<div class="arow" onclick="rowClick(event,this)">
     <div class="aav" style="background:linear-gradient(135deg,${grad})">${_gIni(nm)}</div>
-    <div style="flex:1"><div class="an">${nm}</div>${sr?'<span class="sr-badge" title="Senior"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 3 18 3 22 12 18 21 6 21 2 12"/></svg>Senior</span>':''}</div>
+    <div style="flex:1"><div class="an">${nm}</div>${sr?'<span class="sr-badge" title="Senior"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 3 18 3 22 12 18 21 6 21 2 12"/></svg>Senior</span>'+((e.srD&&e.srH)?`<div class="sr-range">Vigencia: ${e.srD} – ${e.srH}</div>`:''):''}</div>
     <div class="arow-acts">
       <button class="aact aact-sr" onclick="toggleSenior(event,this)" title="Marcar/quitar Senior">${_SVG_SR}</button>
       <button class="aact aact-tr" onclick="openTraslado('${safe}')" title="Traslado">${_SVG_TR}</button>
