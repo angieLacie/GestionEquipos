@@ -2123,6 +2123,7 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
         <button class="btn-sec" onclick="rolLimpiarFiltros()" title="Limpiar filtros">✕ Limpiar</button>
         </div><!-- /buscar+limpiar -->
         <div style="flex-basis:100%;display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+        <button class="btn-sec" onclick="rolExportExcel()" title="Exportar la tabla a Excel">📊 Exportar Excel</button>
         <button class="btn-primary" onclick="enviarRol()">✉ Enviar a aprobación</button>
         <div id="rol-btn-programar-wrap" style="position:relative">
           <button class="btn-primary" style="font-size:12px;padding:6px 12px;white-space:nowrap" onclick="rolOpenProgramarMenu(event)">⊞ Programar ▾</button>
@@ -5195,6 +5196,36 @@ function _rolCuotaVal(empId, field){
 }
 
 function filterRol(){ renderRol(); }
+function rolExportExcel(){
+  const tbl=document.getElementById('rol-tbl'); if(!tbl){ _toast('Tabla no disponible','info'); return; }
+  const wk=(document.getElementById('rol-wk-range')?.textContent||'').trim();
+  const dias=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const out=[];
+  out.push(['Rol de Personal'+(wk?' — '+wk:'')]);
+  out.push(['Zona','Tienda','Puesto','Trabajador',...dias]);
+  let zona='', tienda='';
+  tbl.querySelectorAll('tbody tr').forEach(tr=>{
+    const _clean=s=>s.replace(/\s+/g,' ').trim().replace(/^[▼▶►▲▾\s📍]+/,'').replace(/\s*\d+\s*personas?\s*$/i,'').trim();
+    if(tr.classList.contains('rol-grp-zona')){ zona=_clean(tr.textContent); tienda=''; return; }
+    if(tr.classList.contains('rol-grp-tienda')){ tienda=_clean(tr.textContent); return; }
+    const puesto=(tr.querySelector('.rol-c-puesto')?.textContent||'').trim();
+    const trab=(tr.querySelector('.rol-c-personal')?.textContent||'').trim();
+    if(!trab) return;
+    const days=[...tr.querySelectorAll('td.rol-day-col')].map(td=>{
+      const l=td.querySelector('.dc-clabel'); return l?l.textContent.trim():'Laboral';
+    });
+    out.push([zona,tienda,puesto,trab,...days]);
+  });
+  if(out.length<=2){ _toast('No hay filas para exportar','info'); return; }
+  const csv='﻿'+out.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='rol-personal-'+(wk.replace(/[^0-9a-zA-Z]+/g,'_')||'export')+'.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  _toast('Exportado a Excel ('+(out.length-2)+' filas)','success');
+}
 function rolLimpiarFiltros(){
   const z=document.getElementById('rol-f-zona'); if(z) z.value='';
   const t=document.getElementById('rol-f-tienda'); if(t) t.value='';
