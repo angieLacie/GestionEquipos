@@ -356,6 +356,17 @@ body{background:#1a1a2e;display:flex;justify-content:center;align-items:center;m
 .zbar{height:100%;border-radius:99px;transition:width .4s}
 .zbar.g{background:#22c55e}.zbar.a{background:#f59e0b}.zbar.r{background:#ef4444}
 .zcard-stats{display:flex;gap:14px}
+/* Acordeón Gestión: zona › tienda › empleado en una pantalla */
+.gacc-panel{display:none;background:#f8fafc;border-top:1px solid #e2e8f0}
+.gacc-panel.open{display:block}
+.gacc-tienda{display:flex;align-items:center;gap:8px;padding:11px 16px 11px 24px;background:#eef2ff;border-bottom:1px solid #e0e7ff;cursor:pointer}
+.gacc-tienda .gt-name{flex:1;font-size:12.5px;font-weight:700;color:#3730a3}
+.gacc-tienda .gt-sub{font-size:10px;color:#6366f1;font-weight:600}
+.gacc-emps{display:none;background:#fff;border-bottom:2px solid #c7d2fe}
+.gacc-emps.open{display:block}
+.gacc-emps .arow{padding-left:30px;border-bottom:1px solid #f1f5f9}
+.gacc-chev{color:#94a3b8;font-size:15px;transition:transform .2s;flex-shrink:0}
+.zcard.gacc-on .gacc-chev,.gacc-tienda.gacc-on .gacc-chev{transform:rotate(90deg)}
 .zst{font-size:11px;color:#94a3b8;display:flex;align-items:center;gap:4px}
 .zst b{color:#374151;font-weight:700}
 .zst.dm::before{content:'';width:7px;height:7px;border-radius:50%;background:#ef4444;flex-shrink:0;display:inline-block}
@@ -775,119 +786,7 @@ body{background:#1a1a2e;display:flex;justify-content:center;align-items:center;m
         <div class="sc" style="padding:10px 4px"><div class="sl" style="font-size:8px">LICEN.</div><div class="sv cb" style="font-size:18px">8</div><div class="si" style="font-size:12px">📄</div></div>
       </div>
       <div class="sscroll">
-
-        <div class="zcard" onclick="go('s-gest-zone','LIMA SUR')">
-          <div class="zcard-row">
-            <div class="zcard-info">
-              <div class="zcard-name">LIMA SUR</div>
-              <div class="zcard-sub">51 plantilla · 40 asesores activos</div>
-            </div>
-            <div class="zcard-right"><span class="zcov-bdg a">78.4%</span><span class="zchev">›</span></div>
-          </div>
-          <div class="zbar-outer"><div class="zbar-label"><span class="zbar-lbl">Cobertura</span><span class="zbar-pct">78.4%</span></div><div class="zbar-wrap"><div class="zbar a" style="width:78.4%"></div></div></div>
-          <div class="zcard-stats">
-            <span class="zst dm">DM <b>2</b></span>
-            <span class="zst vac">VAC <b>2</b></span>
-            <span class="zst lic">LIC <b>0</b></span>
-          </div>
-        </div>
-
-        <div class="zcard" onclick="go('s-gest-zone','LIMA CENTRO')">
-          <div class="zcard-row">
-            <div class="zcard-info">
-              <div class="zcard-name">LIMA CENTRO</div>
-              <div class="zcard-sub">36 plantilla · 32 asesores activos</div>
-            </div>
-            <div class="zcard-right"><span class="zcov-bdg a">88.9%</span><span class="zchev">›</span></div>
-          </div>
-          <div class="zbar-outer"><div class="zbar-label"><span class="zbar-lbl">Cobertura</span><span class="zbar-pct">88.9%</span></div><div class="zbar-wrap"><div class="zbar a" style="width:88.9%"></div></div></div>
-          <div class="zcard-stats">
-            <span class="zst dm">DM <b>1</b></span>
-            <span class="zst vac">VAC <b>1</b></span>
-            <span class="zst lic">LIC <b>1</b></span>
-          </div>
-        </div>
-
-        <div class="zcard" onclick="go('s-gest-zone','LIMA NORTE')">
-          <div class="zcard-row">
-            <div class="zcard-info">
-              <div class="zcard-name">LIMA NORTE</div>
-              <div class="zcard-sub">37 plantilla · 32 asesores activos</div>
-            </div>
-            <div class="zcard-right"><span class="zcov-bdg a">86.5%</span><span class="zchev">›</span></div>
-          </div>
-          <div class="zbar-outer"><div class="zbar-label"><span class="zbar-lbl">Cobertura</span><span class="zbar-pct">86.5%</span></div><div class="zbar-wrap"><div class="zbar a" style="width:86.5%"></div></div></div>
-          <div class="zcard-stats">
-            <span class="zst dm">DM <b>6</b></span>
-            <span class="zst vac">VAC <b>4</b></span>
-            <span class="zst lic">LIC <b>3</b></span>
-          </div>
-        </div>
-
-        <div class="zcard" onclick="go('s-gest-zone','PROV. NORTE')">
-          <div class="zcard-row">
-            <div class="zcard-info">
-              <div class="zcard-name">PROV. NORTE</div>
-              <div class="zcard-sub">35 plantilla · 35 asesores activos</div>
-            </div>
-            <div class="zcard-right"><span class="zcov-bdg g">100%</span><span class="zchev">›</span></div>
-          </div>
-          <div class="zbar-outer"><div class="zbar-label"><span class="zbar-lbl">Cobertura</span><span class="zbar-pct">100%</span></div><div class="zbar-wrap"><div class="zbar g" style="width:100%"></div></div></div>
-          <div class="zcard-stats">
-            <span class="zst dm">DM <b>5</b></span>
-            <span class="zst vac">VAC <b>2</b></span>
-            <span class="zst lic">LIC <b>2</b></span>
-          </div>
-        </div>
-
-        <div class="zcard" onclick="go('s-gest-zone','PROV. SUR')">
-          <div class="zcard-row">
-            <div class="zcard-info">
-              <div class="zcard-name">PROV. SUR</div>
-              <div class="zcard-sub">37 plantilla · 35 asesores activos</div>
-            </div>
-            <div class="zcard-right"><span class="zcov-bdg g">94.6%</span><span class="zchev">›</span></div>
-          </div>
-          <div class="zbar-outer"><div class="zbar-label"><span class="zbar-lbl">Cobertura</span><span class="zbar-pct">94.6%</span></div><div class="zbar-wrap"><div class="zbar g" style="width:94.6%"></div></div></div>
-          <div class="zcard-stats">
-            <span class="zst dm">DM <b>2</b></span>
-            <span class="zst vac">VAC <b>1</b></span>
-            <span class="zst lic">LIC <b>2</b></span>
-          </div>
-        </div>
-
-        <div class="zcard" onclick="go('s-gest-zone','ADAMS')">
-          <div class="zcard-row">
-            <div class="zcard-info">
-              <div class="zcard-name">ADAMS</div>
-              <div class="zcard-sub">49 plantilla · 47 asesores activos</div>
-            </div>
-            <div class="zcard-right"><span class="zcov-bdg g">95.9%</span><span class="zchev">›</span></div>
-          </div>
-          <div class="zbar-outer"><div class="zbar-label"><span class="zbar-lbl">Cobertura</span><span class="zbar-pct">95.9%</span></div><div class="zbar-wrap"><div class="zbar g" style="width:95.9%"></div></div></div>
-          <div class="zcard-stats">
-            <span class="zst dm">DM <b>4</b></span>
-            <span class="zst vac">VAC <b>0</b></span>
-            <span class="zst lic">LIC <b>4</b></span>
-          </div>
-        </div>
-
-        <div class="zcard" onclick="go('s-gest-zone','LUKERS')">
-          <div class="zcard-row">
-            <div class="zcard-info">
-              <div class="zcard-name">LUKERS</div>
-              <div class="zcard-sub">19 plantilla · 16 asesores activos</div>
-            </div>
-            <div class="zcard-right"><span class="zcov-bdg a">84.2%</span><span class="zchev">›</span></div>
-          </div>
-          <div class="zbar-outer"><div class="zbar-label"><span class="zbar-lbl">Cobertura</span><span class="zbar-pct">84.2%</span></div><div class="zbar-wrap"><div class="zbar a" style="width:84.2%"></div></div></div>
-          <div class="zcard-stats">
-            <span class="zst dm">DM <b>0</b></span>
-            <span class="zst vac">VAC <b>1</b></span>
-            <span class="zst lic">LIC <b>1</b></span>
-          </div>
-        </div>
-
+        <div id="gest-acc"></div>
       </div>
       <div class="ztot">
         <div>
@@ -3502,6 +3401,82 @@ function toast(msg) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
 }
+// ===== Gestión de Equipos — acordeón zona › tienda › empleado =====
+const _GACC_GRAD=['#f093fb,#f5576c','#4facfe,#00f2fe','#43e97b,#38f9d7','#fa709a,#fee140','#a18cd1,#fbc2eb','#fda085,#f6d365','#89f7fe,#66a6ff','#f6d365,#fda085'];
+const _gIni=n=>n.split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
+const _empName=e=>typeof e==='string'?e:e.n;
+const _empSr=e=>typeof e==='object'&&e.sr;
+const GEST_DATA=[
+ {z:'LIMA SUR',cob:'78.4%',cls:'a',plant:51,act:40,dm:2,vac:2,lic:0,tiendas:[
+   {t:'SAN BORJA',cob:'75%',emps:[{n:'Ana Torres',sr:true},'Carlos Gómez',{n:'Lucía Prado',sr:true},'Jorge Ruiz']},
+   {t:'V.E.S. SALVADOR',cob:'63%',emps:['María Flores',{n:'Pedro Sánchez',sr:true},'Valeria Castillo']}]},
+ {z:'LIMA CENTRO',cob:'88.9%',cls:'a',plant:36,act:32,dm:1,vac:1,lic:1,tiendas:[
+   {t:'JOCKEY PLAZA',cob:'88%',emps:['Diego Salazar','Rosa Chávez',{n:'Luis Quispe',sr:true}]},
+   {t:'JESÚS MARÍA',cob:'80%',emps:['Carmen Díaz','Raúl Vega']}]},
+ {z:'LIMA NORTE',cob:'86.5%',cls:'a',plant:37,act:32,dm:6,vac:4,lic:3,tiendas:[
+   {t:'MEGA PLAZA',cob:'90%',emps:[{n:'Sofía Ramos',sr:true},'Hugo Paredes','Nadia Rivas']},
+   {t:'PLAZA NORTE',cob:'82%',emps:['Ana García',{n:'Renzo Talavera',sr:true}]}]},
+ {z:'PROV. NORTE',cob:'100%',cls:'g',plant:35,act:35,dm:5,vac:2,lic:2,tiendas:[
+   {t:'REAL PLAZA TRUJILLO',cob:'100%',emps:[{n:'Marco Ríos',sr:true},'Jesús Delgado','Lucía Paredes']}]},
+ {z:'PROV. SUR',cob:'94.6%',cls:'g',plant:37,act:35,dm:2,vac:1,lic:2,tiendas:[
+   {t:'MALL AVENTURA AREQUIPA',cob:'95%',emps:['Pedro Salcedo',{n:'Rosa Gutiérrez',sr:true}]},
+   {t:'CHINCHA',cob:'78%',emps:['Jorge Ríos','Carmen Huanca']}]},
+ {z:'ADAMS',cob:'95.9%',cls:'g',plant:49,act:47,dm:4,vac:0,lic:4,tiendas:[
+   {t:'C.C. EL POLO',cob:'75%',emps:[{n:'Cristian Monteagudo',sr:true},'Susy Rodríguez']},
+   {t:'SHOP MIRAFLORES',cob:'67%',emps:['Gabriel Suarez','Erika Del Carpio']}]},
+ {z:'LUKERS',cob:'84.2%',cls:'a',plant:19,act:16,dm:0,vac:1,lic:1,tiendas:[
+   {t:'MALL DEL SUR',cob:'67%',emps:['Andrea López',{n:'Mauricio Hurtado',sr:true}]}]}
+];
+const _SVG_SR='<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 3 18 3 22 12 18 21 6 21 2 12"/></svg>';
+const _SVG_TR='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M15 6l6 6-6 6"/></svg>';
+const _SVG_CV='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="12" y2="17"/></svg>';
+function _gEmpRow(e,gi){
+  const nm=_empName(e), sr=_empSr(e), grad=_GACC_GRAD[gi%_GACC_GRAD.length], safe=nm.replace(/'/g,"\\'");
+  return `<div class="arow" onclick="rowClick(event,this)">
+    <div class="aav" style="background:linear-gradient(135deg,${grad})">${_gIni(nm)}</div>
+    <div style="flex:1"><div class="an">${nm}</div>${sr?'<span class="sr-badge" title="Senior"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 3 18 3 22 12 18 21 6 21 2 12"/></svg>Senior</span>':''}</div>
+    <div class="arow-acts">
+      <button class="aact aact-sr" onclick="toggleSenior(event,this)" title="Marcar/quitar Senior">${_SVG_SR}</button>
+      <button class="aact aact-tr" onclick="openTraslado('${safe}')" title="Traslado">${_SVG_TR}</button>
+      <button class="aact aact-cv" onclick="openConvEnc('${safe}')" title="Conv. Encargatura">${_SVG_CV}</button>
+    </div></div>`;
+}
+function renderGestAcc(){
+  const wrap=document.getElementById('gest-acc'); if(!wrap) return;
+  let gi=0, html='';
+  GEST_DATA.forEach((z,zi)=>{
+    html+=`<div class="zcard gacc-zona" onclick="gestToggleZona(${zi})">
+      <div class="zcard-row">
+        <div class="zcard-info"><div class="zcard-name">${z.z}</div>
+          <div class="zcard-sub">${z.plant} plantilla · ${z.act} activos · ${z.tiendas.length} tienda${z.tiendas.length!==1?'s':''}</div></div>
+        <div class="zcard-right"><span class="zcov-bdg ${z.cls}">${z.cob}</span><span class="gacc-chev">›</span></div>
+      </div>
+      <div class="zcard-stats"><span class="zst dm">DM <b>${z.dm}</b></span><span class="zst vac">VAC <b>${z.vac}</b></span><span class="zst lic">LIC <b>${z.lic}</b></span></div>
+    </div>
+    <div class="gacc-panel" id="gz-${zi}">`;
+    z.tiendas.forEach((t,ti)=>{
+      html+=`<div class="gacc-tienda" onclick="gestToggleTienda(event,${zi},${ti})">
+        <span class="gacc-chev">›</span><span class="gt-name">📍 ${t.t}</span><span class="gt-sub">${t.emps.length} asesores · ${t.cob}</span>
+      </div><div class="gacc-emps" id="gt-${zi}-${ti}">`;
+      t.emps.forEach(e=>{ html+=_gEmpRow(e,gi++); });
+      html+='</div>';
+    });
+    html+='</div>';
+  });
+  wrap.innerHTML=html;
+}
+function gestToggleZona(zi){
+  const p=document.getElementById('gz-'+zi); if(!p) return;
+  const open=p.classList.toggle('open');
+  const card=p.previousElementSibling; if(card) card.classList.toggle('gacc-on',open);
+}
+function gestToggleTienda(ev,zi,ti){
+  if(ev) ev.stopPropagation();
+  const p=document.getElementById('gt-'+zi+'-'+ti); if(!p) return;
+  const open=p.classList.toggle('open');
+  const row=p.previousElementSibling; if(row) row.classList.toggle('gacc-on',open);
+}
+renderGestAcc();
 </script>
 </body>
 </html>
