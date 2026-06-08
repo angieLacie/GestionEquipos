@@ -648,7 +648,12 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
 .dc-cal-right { display:flex; align-items:center; gap:10px; }
 .dc-sug-link { font-size:12px; color:#7c3aed; font-weight:600; cursor:pointer; }
 .dc-search-w { display:flex; align-items:center; gap:5px; padding:5px 10px; border:1.5px solid #e8eaf0; border-radius:8px; font-size:12px; color:#64748b; background:#fff; cursor:pointer; }
-.dc-cal-wrap { overflow-x:auto; }
+.dc-cal-wrap { overflow:auto; max-height:calc(100vh - 330px); }
+/* Cabecera fija al hacer scroll dentro del calendario */
+.dc-cal-tbl thead th { position:sticky; z-index:3; }
+.dc-cal-tbl thead tr:first-child th { top:0; }
+.dc-cal-tbl thead tr:nth-child(2) th { top:var(--dc-h1, 24px); }
+.dc-cal-tbl thead th.th-worker { z-index:6; }
 .dc-cal-tbl { border-collapse:collapse; width:100%; table-layout:fixed; }
 .dc-cal-tbl th { padding:5px 4px; font-size:9.5px; font-weight:700; color:#94a3b8; text-align:center; background:#fafbfc; border-bottom:1px solid #f0f1f5; white-space:nowrap; }
 .dc-cal-tbl th.th-today { color:#4f46e5; background:#eef2ff; }
@@ -6091,6 +6096,10 @@ function renderDcCal(){
           `<span style="font-size:8px;color:#64748b">${dateLbl}</span></th>`;
       }).join('')+
       '</tr>';
+    // offset de la 2da fila del thead = alto de la 1ra (banner)
+    const _r1=thead.querySelector('tr');
+    const _tbl=thead.closest('table');
+    if(_r1 && _tbl && _r1.offsetHeight>0) _tbl.style.setProperty('--dc-h1', _r1.offsetHeight+'px');
   }
 
   // Range label — la SEMANA en curso
