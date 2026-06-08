@@ -2116,11 +2116,9 @@ body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f6fa; colo
           <option value="vacaciones">Vacaciones</option>
           <option value="feriado-trab">Feriado trabajado</option>
         </select>
-        <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
         <button class="btn-primary" onclick="filterRol()">🔍 Buscar</button>
         <button class="btn-sec" onclick="rolLimpiarFiltros()" title="Limpiar filtros">✕ Limpiar</button>
-        </div><!-- /buscar+limpiar -->
-        <div style="flex-basis:100%;display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
         <button class="btn-sec" onclick="rolExportExcel()" title="Exportar la tabla a Excel">📊 Exportar Excel</button>
         <button class="btn-primary" onclick="enviarRol()">✉ Enviar a aprobación</button>
         <div id="rol-btn-programar-wrap" style="position:relative">
