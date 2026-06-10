@@ -70,6 +70,8 @@ dotnet run --project Nova.Bootstrap
 | POST | `/v1/segu/auth/recuperacion/solicitar` | CU-SEGU-10 solicitar OTP (anti-enumeración RN-SEGU-32) | anónimo |
 | POST | `/v1/segu/auth/recuperacion/verificar` | CU-SEGU-10 verificar OTP → token un-uso (RN-SEGU-35/37) | anónimo |
 | POST | `/v1/segu/auth/recuperacion/restablecer` | CU-SEGU-10 nueva contraseña con token (RN-SEGU-38) | anónimo |
+| POST | `/v1/segu/delegaciones` | CU-SEGU-06 delegar facultad (compatibilidad RN-SEGU-28) | Bearer |
+| POST | `/v1/segu/suplencias` | CU-SEGU-07 designar suplente (compatibilidad RN-SEGU-31) | Bearer |
 | GET | `/health` | Liveness | — |
 
 Sesión por **JWT** (HS256); configurar `Jwt:SecretKey` en producción (mín. 32 bytes).
@@ -78,10 +80,11 @@ Sesión por **JWT** (HS256); configurar `Jwt:SecretKey` en producción (mín. 32
 
 ## Pendiente (siguiente)
 
-- Seguridad: normalizar `segu.asignacion_zona` (hoy JSON), jerarquía, delegación/suplencia, store de sesión + cierre en cambio de contraseña (RN-SEGU-38), historial no-reuso de contraseña (RN-SEGU-10), DENY UPDATE/DELETE en tablas de auditoría.
+- Seguridad: normalizar `segu.asignacion_zona` (hoy JSON), store de sesión + cierre en cambio de contraseña (RN-SEGU-38), historial no-reuso de contraseña (RN-SEGU-10), DENY UPDATE/DELETE en tablas de auditoría, anti-ciclo de jerarquía en alta de nodos.
 - Política OTP/PWD: hoy `OtpPolicy` con defaults; migrar a parámetros `SEGU_OTP_*`/`SEGU_PWD_*` de Maestros.
-- Permisos: hoy `PermisoResolverSeed` (catálogo en memoria); migrar a `maes.rol_permiso` cuando exista Maestros.
+- Permisos y niveles de autoridad: hoy `PermisoResolverSeed` y `NivelAutoridadResolverSeed` (catálogos en memoria); migrar a `maes.rol_permiso` / `maes.rol_catalogo` cuando exista Maestros.
 - Notificador de correo real (reemplazar stub).
+- Próximo módulo: **Maestros** (`maes`) — desbloquea los resolvers provisionales.
 - Módulos Maestros (`maes`) y Aprobaciones (`apro`) — requieren cerrar specs EP-01/EP-02 primero.
 - Outbox transaccional + worker (ADR-003).
 - Frontends: `../frontend-web` (React + Vite) y `../frontend-app` (Expo).

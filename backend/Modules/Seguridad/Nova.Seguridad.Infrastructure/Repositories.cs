@@ -66,6 +66,38 @@ internal sealed class CodigoOtpRepository(SeguridadDbContext db) : ICodigoOtpRep
         => await db.CodigosOtp.AddAsync(codigo, ct);
 }
 
+internal sealed class DelegacionRepository(SeguridadDbContext db) : IDelegacionRepository
+{
+    public async Task AgregarAsync(Delegacion delegacion, CancellationToken ct = default)
+        => await db.Delegaciones.AddAsync(delegacion, ct);
+
+    public Task<Delegacion?> ObtenerPorIdAsync(Guid id, CancellationToken ct = default)
+        => db.Delegaciones.FirstOrDefaultAsync(d => d.Id == id, ct);
+}
+
+internal sealed class SuplenciaRepository(SeguridadDbContext db) : ISuplenciaRepository
+{
+    public async Task AgregarAsync(Suplencia suplencia, CancellationToken ct = default)
+        => await db.Suplencias.AddAsync(suplencia, ct);
+
+    public Task<Suplencia?> ObtenerPorIdAsync(Guid id, CancellationToken ct = default)
+        => db.Suplencias.FirstOrDefaultAsync(s => s.Id == id, ct);
+}
+
+internal sealed class NodoJerarquiaRepository(SeguridadDbContext db) : INodoJerarquiaRepository
+{
+    public async Task AgregarAsync(NodoJerarquia nodo, CancellationToken ct = default)
+        => await db.NodosJerarquia.AddAsync(nodo, ct);
+
+    public async Task<NodoJerarquia?> ObtenerSuperiorAsync(Guid idNodo, CancellationToken ct = default)
+    {
+        var nodo = await db.NodosJerarquia.FirstOrDefaultAsync(n => n.Id == idNodo, ct);
+        if (nodo?.IdNodoSuperior is null)
+            return null;
+        return await db.NodosJerarquia.FirstOrDefaultAsync(n => n.Id == nodo.IdNodoSuperior, ct);
+    }
+}
+
 internal sealed class CredencialRepository(SeguridadDbContext db) : ICredencialRepository
 {
     public Task<Credencial?> ObtenerPorUsuarioAsync(Guid idUsuario, CancellationToken ct = default)

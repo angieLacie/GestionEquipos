@@ -19,6 +19,8 @@ public static class SeguridadModule
         services.AddScoped<SolicitarOtpHandler>();
         services.AddScoped<VerificarOtpHandler>();
         services.AddScoped<RestablecerPasswordHandler>();
+        services.AddScoped<DelegarHandler>();
+        services.AddScoped<DesignarSuplenteHandler>();
         return services;
     }
 
@@ -81,6 +83,26 @@ public static class SeguridadModule
             return result.IsSuccess ? Results.NoContent() : ToProblem(result.Error);
         })
         .WithName("RestablecerPassword");
+
+        grupo.MapPost("/delegaciones", async (DelegarRequest req, DelegarHandler handler, CancellationToken ct) =>
+        {
+            var result = await handler.HandleAsync(req, ct);
+            return result.IsSuccess
+                ? Results.Created($"/v1/segu/delegaciones/{result.Value.Id}", result.Value)
+                : ToProblem(result.Error);
+        })
+        .WithName("Delegar")
+        .RequireAuthorization();
+
+        grupo.MapPost("/suplencias", async (DesignarSuplenteRequest req, DesignarSuplenteHandler handler, CancellationToken ct) =>
+        {
+            var result = await handler.HandleAsync(req, ct);
+            return result.IsSuccess
+                ? Results.Created($"/v1/segu/suplencias/{result.Value.Id}", result.Value)
+                : ToProblem(result.Error);
+        })
+        .WithName("DesignarSuplente")
+        .RequireAuthorization();
 
         return app;
     }

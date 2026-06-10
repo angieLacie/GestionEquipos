@@ -24,6 +24,10 @@ public static class DependencyInjection
         services.AddScoped<IAsignacionRolAmbitoRepository, AsignacionRolAmbitoRepository>();
         services.AddScoped<IAuditoriaRepository, AuditoriaRepository>();
         services.AddScoped<ICodigoOtpRepository, CodigoOtpRepository>();
+        services.AddScoped<IDelegacionRepository, DelegacionRepository>();
+        services.AddScoped<ISuplenciaRepository, SuplenciaRepository>();
+        services.AddScoped<INodoJerarquiaRepository, NodoJerarquiaRepository>();
+        services.AddScoped<INivelAutoridadResolver, NivelAutoridadResolverSeed>();
         services.AddSingleton<IPasswordHasher, Argon2PasswordHasher>();
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<IPermisoResolver, PermisoResolverSeed>();

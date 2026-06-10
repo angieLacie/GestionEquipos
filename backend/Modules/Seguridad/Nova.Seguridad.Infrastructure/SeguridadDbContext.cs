@@ -19,6 +19,9 @@ public sealed class SeguridadDbContext(DbContextOptions<SeguridadDbContext> opti
     public DbSet<AsignacionRolAmbito> Asignaciones => Set<AsignacionRolAmbito>();
     public DbSet<AuditoriaSeguridad> Auditoria => Set<AuditoriaSeguridad>();
     public DbSet<CodigoOtp> CodigosOtp => Set<CodigoOtp>();
+    public DbSet<Delegacion> Delegaciones => Set<Delegacion>();
+    public DbSet<Suplencia> Suplencias => Set<Suplencia>();
+    public DbSet<NodoJerarquia> NodosJerarquia => Set<NodoJerarquia>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -28,6 +31,9 @@ public sealed class SeguridadDbContext(DbContextOptions<SeguridadDbContext> opti
         modelBuilder.ApplyConfiguration(new AsignacionRolAmbitoConfiguration());
         modelBuilder.ApplyConfiguration(new AuditoriaSeguridadConfiguration());
         modelBuilder.ApplyConfiguration(new CodigoOtpConfiguration());
+        modelBuilder.ApplyConfiguration(new DelegacionConfiguration());
+        modelBuilder.ApplyConfiguration(new SuplenciaConfiguration());
+        modelBuilder.ApplyConfiguration(new NodoJerarquiaConfiguration());
     }
 }
 
@@ -133,5 +139,59 @@ internal sealed class CredencialConfiguration : IEntityTypeConfiguration<Credenc
         b.Property(c => c.IntentosFallidos).HasColumnName("intentos_fallidos");
         b.Property(c => c.BloqueadoHasta).HasColumnName("bloqueado_hasta");
         b.HasOne<Usuario>().WithOne().HasForeignKey<Credencial>(c => c.IdUsuario).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+internal sealed class DelegacionConfiguration : IEntityTypeConfiguration<Delegacion>
+{
+    public void Configure(EntityTypeBuilder<Delegacion> b)
+    {
+        b.ToTable("delegacion");
+        b.HasKey(d => d.Id);
+        b.Property(d => d.Id).HasColumnName("id_delegacion");
+        b.Property(d => d.IdTitular).HasColumnName("id_titular");
+        b.Property(d => d.IdDelegado).HasColumnName("id_delegado");
+        b.Property(d => d.Alcance).HasColumnName("alcance").HasConversion<string>().HasMaxLength(20);
+        b.Property(d => d.DetalleAlcance).HasColumnName("detalle_alcance"); // JSON
+        b.Property(d => d.TipoAmbito).HasColumnName("tipo_ambito").HasConversion<string>().HasMaxLength(10);
+        b.Property(d => d.IdAmbito).HasColumnName("id_ambito");
+        b.Property(d => d.VigenciaDesde).HasColumnName("vigencia_desde");
+        b.Property(d => d.VigenciaHasta).HasColumnName("vigencia_hasta");
+        b.Property(d => d.Estado).HasColumnName("estado").HasConversion<string>().HasMaxLength(12);
+        b.HasIndex(d => new { d.IdDelegado, d.Estado }).HasDatabaseName("idx_delegacion_delegado_estado");
+    }
+}
+
+internal sealed class SuplenciaConfiguration : IEntityTypeConfiguration<Suplencia>
+{
+    public void Configure(EntityTypeBuilder<Suplencia> b)
+    {
+        b.ToTable("suplencia");
+        b.HasKey(s => s.Id);
+        b.Property(s => s.Id).HasColumnName("id_suplencia");
+        b.Property(s => s.IdRolTitular).HasColumnName("id_rol_titular").HasMaxLength(20).IsRequired();
+        b.Property(s => s.IdUsuarioTitular).HasColumnName("id_usuario_titular");
+        b.Property(s => s.IdUsuarioSuplente).HasColumnName("id_usuario_suplente");
+        b.Property(s => s.TipoAmbito).HasColumnName("tipo_ambito").HasConversion<string>().HasMaxLength(10);
+        b.Property(s => s.IdAmbito).HasColumnName("id_ambito");
+        b.Property(s => s.VigenciaDesde).HasColumnName("vigencia_desde");
+        b.Property(s => s.VigenciaHasta).HasColumnName("vigencia_hasta");
+        b.Property(s => s.Estado).HasColumnName("estado").HasConversion<string>().HasMaxLength(12);
+        b.HasIndex(s => new { s.IdUsuarioSuplente, s.Estado }).HasDatabaseName("idx_suplencia_suplente_estado");
+    }
+}
+
+internal sealed class NodoJerarquiaConfiguration : IEntityTypeConfiguration<NodoJerarquia>
+{
+    public void Configure(EntityTypeBuilder<NodoJerarquia> b)
+    {
+        b.ToTable("nodo_jerarquia");
+        b.HasKey(n => n.Id);
+        b.Property(n => n.Id).HasColumnName("id_nodo");
+        b.Property(n => n.IdRol).HasColumnName("id_rol").HasMaxLength(20).IsRequired();
+        b.Property(n => n.TipoAmbito).HasColumnName("tipo_ambito").HasConversion<string>().HasMaxLength(10);
+        b.Property(n => n.IdAmbito).HasColumnName("id_ambito");
+        b.Property(n => n.IdNodoSuperior).HasColumnName("id_nodo_superior");
+        b.HasOne<NodoJerarquia>().WithMany().HasForeignKey(n => n.IdNodoSuperior).OnDelete(DeleteBehavior.NoAction);
     }
 }
