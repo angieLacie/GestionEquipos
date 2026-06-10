@@ -1,0 +1,119 @@
+:root {
+  --bg: #0f1115;
+  --panel: #181b22;
+  --panel-2: #1f232c;
+  --borde: #2a2f3a;
+  --texto: #e6e9ef;
+  --muted: #9aa3b2;
+  --acento: #4f7cff;
+  --error: #ff6b6b;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--texto);
+}
+
+h1, h2 { margin: 0 0 0.5rem; }
+
+.centro {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.tarjeta {
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.login { width: min(360px, 100%); }
+.login .sub { color: var(--muted); margin: 0 0 1.5rem; }
+
+label {
+  display: block;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+input {
+  width: 100%;
+  margin-top: 0.35rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--panel-2);
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  color: var(--texto);
+  font-size: 0.95rem;
+}
+
+input:focus { outline: 2px solid var(--acento); border-color: transparent; }
+
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  background: var(--acento);
+  color: white;
+}
+
+button:disabled { opacity: 0.6; cursor: default; }
+
+button.link {
+  background: none;
+  color: var(--muted);
+  padding: 0.25rem 0.5rem;
+}
+
+.login button { width: 100%; margin-top: 0.5rem; }
+
+.error { color: var(--error); font-size: 0.85rem; }
+.muted { color: var(--muted); }
+
+.barra {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid var(--borde);
+  background: var(--panel);
+}
+.barra-der { display: flex; align-items: center; gap: 0.75rem; }
+.usuario { color: var(--muted); font-size: 0.9rem; }
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0 1.5rem;
+  border-bottom: 1px solid var(--borde);
+  background: var(--panel);
+}
+.tab {
+  background: none;
+  color: var(--muted);
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  padding: 0.75rem 1rem;
+}
+.tab.activa { color: var(--texto); border-bottom-color: var(--acento); }
+
+.contenido { padding: 1.5rem; max-width: 1000px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+th, td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--borde);
+}
+th { color: var(--muted); font-weight: 600; }

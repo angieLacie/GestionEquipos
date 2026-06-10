@@ -12,6 +12,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "4179", "--directory", "prototipo-ux-v2"],
       "port": 4179
+    },
+    {
+      "name": "nova-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "frontend-web", "run", "dev"],
+      "port": 5173
     }
   ]
 }
