@@ -16,9 +16,8 @@ Sistema de gestión de equipos de tienda (retail Cadena / Lukers, ~100 tiendas).
 ## Estructura
 
 ```
-src/
+backend/                            # (raíz del repo tiene global.json — pin .NET 8)
   Nova.sln
-  global.json                       # pin .NET 8
   BuildingBlocks/
     Nova.SharedKernel/              # Result, Error, Entity (sin dependencias)
   Modules/
@@ -85,4 +84,4 @@ Sesión por **JWT** (HS256); configurar `Jwt:SecretKey` en producción (mín. 32
 - Notificador de correo real (reemplazar stub).
 - Módulos Maestros (`maes`) y Aprobaciones (`apro`) — requieren cerrar specs EP-01/EP-02 primero.
 - Outbox transaccional + worker (ADR-003).
-- Frontends: `apps/web` (React + Vite) y `apps/mobile` (Expo).
+- Frontends: `../frontend-web` (React + Vite) y `../frontend-app` (Expo).
