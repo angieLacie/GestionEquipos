@@ -8,50 +8,67 @@ import {
   listarParametros,
 } from '../lib/maestros'
 
-type Tab = 'empresas' | 'roles' | 'permisos' | 'parametros'
+type Seccion = 'empresas' | 'roles' | 'permisos' | 'parametros'
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'empresas', label: 'Empresas' },
-  { id: 'roles', label: 'Roles' },
-  { id: 'permisos', label: 'Permisos' },
-  { id: 'parametros', label: 'Parámetros' },
+const NAV: { id: Seccion; icono: string; label: string }[] = [
+  { id: 'empresas', icono: '🏢', label: 'Empresas' },
+  { id: 'roles', icono: '🛡️', label: 'Roles' },
+  { id: 'permisos', icono: '🔑', label: 'Permisos' },
+  { id: 'parametros', icono: '⚙️', label: 'Parámetros' },
 ]
 
 export function MaestrosPage() {
-  const [tab, setTab] = useState<Tab>('empresas')
+  const [sec, setSec] = useState<Seccion>('empresas')
   const usuario = useAuth((s) => s.usuario)
   const logout = useAuth((s) => s.logout)
+  const titulo = NAV.find((n) => n.id === sec)!.label
+  const iniciales = (usuario?.nombreUsuario ?? '?').slice(0, 2).toUpperCase()
 
   return (
     <div className="app">
-      <header className="barra">
-        <strong>Nova · Maestros</strong>
-        <div className="barra-der">
-          <span className="usuario">{usuario?.nombreUsuario}</span>
-          <button className="link" onClick={logout}>
-            Salir
-          </button>
+      <aside className="sidebar">
+        <div className="sidebar-brand">
+          <span className="brand-icon">◆</span>
+          <span className="brand-name">Nova · Maestros</span>
         </div>
-      </header>
+        <nav className="nav-menu">
+          {NAV.map((n) => (
+            <button
+              key={n.id}
+              className={n.id === sec ? 'nav-item active' : 'nav-item'}
+              onClick={() => setSec(n.id)}
+            >
+              <span className="nav-icon">{n.icono}</span>
+              <span className="nav-label">{n.label}</span>
+            </button>
+          ))}
+        </nav>
+        <div className="sidebar-footer">
+          <div className="user-avatar-sm">{iniciales}</div>
+          <div className="user-info-sm">
+            <div className="name">{usuario?.nombreUsuario}</div>
+            <div className="role">Administrador</div>
+          </div>
+        </div>
+      </aside>
 
-      <nav className="tabs">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            className={t.id === tab ? 'tab activa' : 'tab'}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+      <div className="main">
+        <header className="topbar">
+          <span className="page-title">{titulo}</span>
+          <div className="topbar-actions">
+            <button className="btn-salir" onClick={logout}>
+              Salir
+            </button>
+          </div>
+        </header>
 
-      <main className="contenido">
-        {tab === 'empresas' && <Empresas />}
-        {tab === 'roles' && <Roles />}
-        {tab === 'permisos' && <Permisos />}
-        {tab === 'parametros' && <Parametros />}
-      </main>
+        <main className="content">
+          {sec === 'empresas' && <Empresas />}
+          {sec === 'roles' && <Roles />}
+          {sec === 'permisos' && <Permisos />}
+          {sec === 'parametros' && <Parametros />}
+        </main>
+      </div>
     </div>
   )
 }
@@ -82,7 +99,9 @@ function Empresas() {
           <tbody>
             {data.map((e) => (
               <tr key={e.codigo}>
-                <td>{e.codigo}</td>
+                <td>
+                  <strong>{e.codigo}</strong>
+                </td>
                 <td>{e.nombre}</td>
                 <td>{e.diaInicioSemana}</td>
                 <td>{e.existeCoberturaTipoVenta ? 'Sí' : 'No'}</td>
@@ -117,7 +136,9 @@ function Roles() {
               .sort((a, b) => b.nivelAutoridad - a.nivelAutoridad)
               .map((r) => (
                 <tr key={r.codigo}>
-                  <td>{r.codigo}</td>
+                  <td>
+                    <strong>{r.codigo}</strong>
+                  </td>
                   <td>{r.nombre}</td>
                   <td>{r.nivelAutoridad}</td>
                   <td>{r.ambitoPermitido}</td>
@@ -148,7 +169,9 @@ function Permisos() {
           <tbody>
             {data.map((p) => (
               <tr key={p.clave}>
-                <td>{p.clave}</td>
+                <td>
+                  <code>{p.clave}</code>
+                </td>
                 <td>{p.modulo}</td>
                 <td>{p.accion}</td>
               </tr>
@@ -184,10 +207,16 @@ function Parametros() {
           <tbody>
             {data.items.map((p) => (
               <tr key={p.id}>
-                <td>{p.clave}</td>
+                <td>
+                  <code>{p.clave}</code>
+                </td>
                 <td>{p.modulo}</td>
                 <td>{p.valor}</td>
-                <td>{p.criticidadConsumo}</td>
+                <td>
+                  <span className={p.criticidadConsumo === 'Bloqueante' ? 'badge bloq' : 'badge degr'}>
+                    {p.criticidadConsumo}
+                  </span>
+                </td>
                 <td>{p.vigenciaDesde}</td>
               </tr>
             ))}
