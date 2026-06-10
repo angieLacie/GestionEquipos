@@ -29,6 +29,7 @@ public static class DependencyInjection
         services.AddScoped<IParametroRepository, ParametroRepository>();
         services.AddScoped<ISemanaCampaniaRepository, SemanaCampaniaRepository>();
         services.AddScoped<IAuditoriaMaestrosRepository, AuditoriaMaestrosRepository>();
+        services.AddScoped<IConfiguracionMaestros, ConfiguracionMaestrosService>();
         services.AddSingleton<IClock, SystemClock>();
 
         return services;

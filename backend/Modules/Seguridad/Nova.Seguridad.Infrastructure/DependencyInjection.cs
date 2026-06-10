@@ -27,10 +27,11 @@ public static class DependencyInjection
         services.AddScoped<IDelegacionRepository, DelegacionRepository>();
         services.AddScoped<ISuplenciaRepository, SuplenciaRepository>();
         services.AddScoped<INodoJerarquiaRepository, NodoJerarquiaRepository>();
-        services.AddScoped<INivelAutoridadResolver, NivelAutoridadResolverSeed>();
+        // RBAC y jerarquía resueltos contra la superficie pública de Maestros (Fase 0 cableada).
+        services.AddScoped<INivelAutoridadResolver, NivelAutoridadResolverMaestros>();
+        services.AddScoped<IPermisoResolver, PermisoResolverMaestros>();
         services.AddSingleton<IPasswordHasher, Argon2PasswordHasher>();
         services.AddSingleton<IClock, SystemClock>();
-        services.AddSingleton<IPermisoResolver, PermisoResolverSeed>();
         services.AddSingleton<ICodigoOtpGenerator, CodigoOtpGenerator>();
         services.AddScoped<INotificadorCorreo, NotificadorCorreoLog>();
 

@@ -42,6 +42,8 @@ public sealed class MaestrosDbContext(DbContextOptions<MaestrosDbContext> option
         modelBuilder.ApplyConfiguration(new ParametroConfiguration());
         modelBuilder.ApplyConfiguration(new SemanaCampaniaConfiguration());
         modelBuilder.ApplyConfiguration(new AuditoriaMaestrosConfiguration());
+
+        MaestrosSeedData.Seed(modelBuilder);
     }
 }
 

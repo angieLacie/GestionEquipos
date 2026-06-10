@@ -4,6 +4,8 @@
     <ProjectReference Include="..\Nova.Seguridad.Application\Nova.Seguridad.Application.csproj" />
     <ProjectReference Include="..\Nova.Seguridad.Domain\Nova.Seguridad.Domain.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Nova.SharedKernel\Nova.SharedKernel.csproj" />
+    <!-- Frontera de módulo (ADR-006): Seguridad consume la superficie pública de Maestros (Fase 0). -->
+    <ProjectReference Include="..\..\Maestros\Nova.Maestros.Application\Nova.Maestros.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>
