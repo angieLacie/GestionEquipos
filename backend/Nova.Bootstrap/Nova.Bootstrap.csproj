@@ -21,6 +21,8 @@
     <ProjectReference Include="..\Modules\Seguridad\Nova.Seguridad.Infrastructure\Nova.Seguridad.Infrastructure.csproj" />
     <ProjectReference Include="..\Modules\Maestros\Nova.Maestros.Api\Nova.Maestros.Api.csproj" />
     <ProjectReference Include="..\Modules\Maestros\Nova.Maestros.Infrastructure\Nova.Maestros.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Rol\Nova.Rol.Api\Nova.Rol.Api.csproj" />
+    <ProjectReference Include="..\Modules\Rol\Nova.Rol.Infrastructure\Nova.Rol.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

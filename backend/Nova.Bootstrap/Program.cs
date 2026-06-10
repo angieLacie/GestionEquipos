@@ -4,6 +4,8 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Nova.Maestros.Api;
 using Nova.Maestros.Infrastructure;
+using Nova.Rol.Api;
+using Nova.Rol.Infrastructure;
 using Nova.Seguridad.Api;
 using Nova.Seguridad.Infrastructure;
 
@@ -49,6 +51,8 @@ builder.Services.AddSeguridadApplication();
 builder.Services.AddSeguridadInfrastructure(builder.Configuration);
 builder.Services.AddMaestrosApplication();
 builder.Services.AddMaestrosInfrastructure(builder.Configuration);
+builder.Services.AddRolApplication();
+builder.Services.AddRolInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
@@ -69,5 +73,6 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" })).WithTags("Infra")
 // --- Endpoints por módulo ---
 app.MapSeguridadEndpoints();
 app.MapMaestrosEndpoints();
+app.MapRolEndpoints();
 
 app.Run();
