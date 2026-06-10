@@ -29,7 +29,7 @@ public static class RolModule
         {
             var (items, total) = await repo.ListarAsync(empresa, zonaId, anio, numeroSemana, estado, page ?? 1, pageSize ?? 50, ct);
             return Results.Ok(new { items = items.Select(r => r.ToResponse()), page = page ?? 1, page_size = pageSize ?? 50, total });
-        }).WithName("ListarRoles");
+        }).WithName("ListarRolesSemanales");
 
         grupo.MapGet("/roles/{idRol:guid}", async (Guid idRol, IRolSemanalRepository repo, CancellationToken ct) =>
         {

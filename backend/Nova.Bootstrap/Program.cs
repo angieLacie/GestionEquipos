@@ -28,6 +28,10 @@ builder.Services.AddSwaggerGen(o =>
 });
 builder.Services.AddProblemDetails();
 
+// Serializa enums como texto (p. ej. "Vigente" en vez de 1) para consumo del frontend.
+builder.Services.ConfigureHttpJsonOptions(o =>
+    o.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
+
 // --- Autenticación / Autorización (sesión por JWT) ---
 var jwtSection = builder.Configuration.GetSection("Jwt");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -60,6 +64,7 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    await Nova.Bootstrap.DevSeeder.SeedAdminAsync(app.Services);
 }
 
 app.UseExceptionHandler();
