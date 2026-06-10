@@ -2,6 +2,8 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Nova.Maestros.Api;
+using Nova.Maestros.Infrastructure;
 using Nova.Seguridad.Api;
 using Nova.Seguridad.Infrastructure;
 
@@ -45,6 +47,8 @@ builder.Services.AddAuthorization();
 // --- Módulos (monolito modular, ADR-006) ---
 builder.Services.AddSeguridadApplication();
 builder.Services.AddSeguridadInfrastructure(builder.Configuration);
+builder.Services.AddMaestrosApplication();
+builder.Services.AddMaestrosInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
@@ -64,5 +68,6 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" })).WithTags("Infra")
 
 // --- Endpoints por módulo ---
 app.MapSeguridadEndpoints();
+app.MapMaestrosEndpoints();
 
 app.Run();
