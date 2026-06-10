@@ -184,23 +184,53 @@ tbody tr:hover { background: #f8fafc; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 code { background: #eef2ff; color: var(--acento); padding: 1px 6px; border-radius: 5px; font-size: 12px; }
 
-/* Barra de semana del Rol */
-.wk-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-.wk-bar .rango { font-weight: 700; font-size: 14px; }
+/* ───────────── ROL DE PERSONAL (port fiel del prototipo) ───────────── */
 .estado-rol { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: #eef2ff; color: var(--acento); }
 
-/* Calendario semanal */
-.cal { width: 100%; border-collapse: collapse; font-size: 12.5px; table-layout: fixed; }
-.cal th, .cal td { border: 1px solid var(--borde); padding: 6px; text-align: center; }
-.cal th.col-trab, .cal td.col-trab { text-align: left; width: 180px; font-weight: 600; }
-.cal th { background: #fafbfc; color: var(--muted); font-weight: 600; }
-.cal th.feriado { background: #fff7ed; color: #c2410c; }
-.celda { cursor: pointer; height: 34px; }
-.celda:hover { outline: 2px solid var(--acento-claro); outline-offset: -2px; }
-.c-DescansoLaboral { background: #dcfce7; color: #166534; }
-.c-CoberturaTienda { background: #dbeafe; color: #1e40af; }
-.c-CompensacionFeriadoLaborado, .c-CompensacionDescansoNoGozado { background: #ffedd5; color: #9a3412; }
-.c-CoberturaTipoVenta { background: #fef9c3; color: #854d0e; }
+/* KPIs */
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
+.kpi { background: #fff; border: 1px solid var(--borde); border-radius: 12px; padding: 14px 16px; }
+.kpi.green { border-left: 3px solid #22c55e; }
+.kpi.crit { border-left: 3px solid #ef4444; }
+.kpi-label { font-size: 11px; color: var(--muted); font-weight: 600; }
+.kpi-val { font-size: 24px; font-weight: 800; color: var(--texto); margin: 2px 0; }
+.kpi-val.green { color: #16a34a; }
+.kpi-val.red { color: #dc2626; }
+.kpi-sub { font-size: 11px; color: var(--muted-2); }
+
+/* Filtros */
+.rol-filtros { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.rol-sel { padding: 7px 10px; border: 1.5px solid var(--borde); border-radius: 8px; font-size: 12.5px; background: #fff; color: var(--texto-2); outline: none; }
+.rol-sel:focus { border-color: var(--acento); }
+
+/* Barra de semana */
+.rol-wk-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--borde); border-bottom: none; background: #fafbfc; border-radius: 10px 10px 0 0; }
+.rol-wk-btn { background: #fff; border: 1px solid var(--borde-input); border-radius: 7px; width: 28px; height: 28px; cursor: pointer; font-size: 15px; color: #475569; }
+.rol-wk-btn:hover { background: #f1f5f9; }
+.rol-wk-today { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 7px; padding: 4px 12px; font-size: 11px; font-weight: 700; cursor: pointer; color: #1d4ed8; }
+.rol-wk-range { font-size: 12.5px; font-weight: 700; color: #1e293b; }
+.rol-wk-meta { font-size: 10.5px; color: var(--muted-2); background: #f1f5f9; padding: 2px 8px; border-radius: 10px; }
+.rol-wk-search { margin-left: auto; font-size: 12px; padding: 6px 10px; border: 1px solid var(--borde); border-radius: 8px; outline: none; min-width: 180px; }
+
+/* Tabla agrupada */
+.rol-wrap { border: 1px solid var(--borde); border-radius: 0 0 10px 10px; overflow: auto; max-height: calc(100vh - 320px); }
+.rol-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+.rol-tbl th { padding: 6px 4px; font-size: 10.5px; font-weight: 700; color: var(--muted); background: #fafbfc; border-bottom: 1px solid #f0f1f5; text-align: center; white-space: nowrap; position: sticky; top: 0; z-index: 2; }
+.rol-tbl td { padding: 5px; border-bottom: 1px solid #f8f9fa; vertical-align: middle; }
+.rol-th-asesor { background: #fce7f3 !important; color: #be185d !important; }
+.rol-th-sem { background: #f0fdf4 !important; color: #166534 !important; }
+.rol-c-puesto { width: 90px; text-align: left !important; font-weight: 600; color: var(--texto-2); }
+.rol-c-personal { width: 150px; text-align: left !important; font-weight: 600; }
+.rol-c-cuota { width: 48px; text-align: center; color: var(--muted-2); font-size: 11px; }
+.rol-grp-zona td { background: #1e293b; font-size: 11.5px; font-weight: 800; color: #fff; padding: 6px 12px; letter-spacing: .04em; text-transform: uppercase; }
+.rol-day { text-align: center; min-width: 84px; cursor: pointer; }
+.rol-day:hover { outline: 2px solid var(--acento-claro); outline-offset: -2px; }
+.rol-db { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; min-width: 26px; letter-spacing: .03em; }
+.rol-db-DescansoLaboral { background: #bbf7d0; color: #15803d; }
+.rol-db-CoberturaTienda { background: #bfdbfe; color: #1d4ed8; }
+.rol-db-CompensacionFeriadoLaborado, .rol-db-CompensacionDescansoNoGozado { background: #fed7aa; color: #c2410c; }
+.rol-db-CoberturaTipoVenta { background: #fef08a; color: #854d0e; }
+.rol-vacio { color: #cbd5e1; font-size: 11px; }
 .leyenda { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; font-size: 12px; color: var(--muted); }
 .leyenda span { display: inline-flex; align-items: center; gap: 6px; }
-.swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--borde); }
+.swatch { width: 14px; height: 14px; border-radius: 3px; }

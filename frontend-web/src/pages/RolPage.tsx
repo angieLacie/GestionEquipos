@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '../components/AppLayout'
 import { useAuth } from '../lib/auth'
@@ -7,254 +7,206 @@ import { listarEmpresas } from '../lib/maestros'
 import {
   listarRolesSemanales, obtenerRol, crearRol, programarCelda,
   enviarRol, aprobarRol, rechazarRol, programarGt,
-  type CrearRolBody, type EstadoCelda, type PuestoRol, type RolSemanal,
+  type EstadoCelda, type PuestoRol, type RolSemanal,
 } from '../lib/rol'
 
-const PUESTOS: PuestoRol[] = ['Seniors', 'GtAsesores', 'Secretarias', 'Auxiliares', 'Sastres']
+const MES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 const DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
-const ESTADOS_CELDA: { v: EstadoCelda; label: string }[] = [
-  { v: 'Vacio', label: '—' },
-  { v: 'DescansoLaboral', label: 'Descanso laboral' },
-  { v: 'CoberturaTienda', label: 'Cobertura de tienda' },
-  { v: 'CompensacionFeriadoLaborado', label: 'Comp. feriado laborado' },
-  { v: 'CompensacionDescansoNoGozado', label: 'Comp. descanso no gozado' },
-  { v: 'CoberturaTipoVenta', label: 'Cobertura tipo venta (Lukers)' },
+const CARGOS: { v: PuestoRol; label: string }[] = [
+  { v: 'Seniors', label: 'Seniors' },
+  { v: 'GtAsesores', label: 'Gt/Ases' },
+  { v: 'Secretarias', label: 'Secretarias' },
+  { v: 'Auxiliares', label: 'Auxiliares' },
+  { v: 'Sastres', label: 'Sastres' },
 ]
 
-function domingoDe(fecha: Date): Date {
-  const d = new Date(fecha)
-  d.setHours(0, 0, 0, 0)
-  d.setDate(d.getDate() - d.getDay())
-  return d
-}
-function numeroSemana(d: Date): number {
-  const inicio = new Date(d.getFullYear(), 0, 1)
-  const dias = Math.floor((d.getTime() - inicio.getTime()) / 86400000)
-  return Math.ceil((dias + inicio.getDay() + 1) / 7)
-}
+const ESTADOS_CELDA: { v: EstadoCelda; label: string; abbr: string }[] = [
+  { v: 'Vacio', label: '— (vaciar)', abbr: '' },
+  { v: 'DescansoLaboral', label: 'Descanso laboral', abbr: 'DL' },
+  { v: 'CoberturaTienda', label: 'Cobertura de tienda', abbr: 'COB' },
+  { v: 'CompensacionFeriadoLaborado', label: 'Comp. feriado laborado', abbr: 'CF' },
+  { v: 'CompensacionDescansoNoGozado', label: 'Comp. descanso no gozado', abbr: 'CD' },
+  { v: 'CoberturaTipoVenta', label: 'Cobertura tipo venta (Lukers)', abbr: 'CV' },
+]
+const abbrDe = (e: EstadoCelda) => ESTADOS_CELDA.find((x) => x.v === e)?.abbr ?? ''
+
+function domingoDe(f: Date) { const d = new Date(f); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - d.getDay()); return d }
+function numeroSemana(d: Date) { const i = new Date(d.getFullYear(), 0, 1); const n = Math.floor((d.getTime() - i.getTime()) / 86400000); return Math.ceil((n + i.getDay() + 1) / 7) }
 const fmt = (d: Date) => d.toISOString().slice(0, 10)
 
 export function RolPage() {
-  const [sel, setSel] = useState<string | null>(null)
-  return (
-    <AppLayout active="rol" title="Rol de Personal">
-      {sel ? <Detalle id={sel} volver={() => setSel(null)} /> : <Lista abrir={setSel} />}
-    </AppLayout>
-  )
-}
-
-function Lista({ abrir }: { abrir: (id: string) => void }) {
-  const qc = useQueryClient()
-  const [nuevo, setNuevo] = useState(false)
-  const { data, isLoading, error } = useQuery({ queryKey: ['roles-sem'], queryFn: () => listarRolesSemanales() })
-
-  return (
-    <section className="tarjeta">
-      <div className="entre">
-        <h2>Roles semanales</h2>
-        <button className="btn btn-primary" onClick={() => setNuevo(true)}>+ Nuevo rol</button>
-      </div>
-      {isLoading && <p className="muted">Cargando…</p>}
-      {error && <p className="error">{(error as Error).message}</p>}
-      {data && data.items.length === 0 && <p className="muted">Sin roles. Crea el primero.</p>}
-      {data && data.items.length > 0 && (
-        <table>
-          <thead>
-            <tr><th>Empresa</th><th>Año/Sem</th><th>Semana</th><th>Puesto</th><th>Estado</th><th>v</th><th></th></tr>
-          </thead>
-          <tbody>
-            {data.items.map((r) => (
-              <tr key={r.id}>
-                <td><strong>{r.empresa}</strong></td>
-                <td>{r.anio} / {String(r.numeroSemana).padStart(2, '0')}</td>
-                <td>{r.fechaInicio} → {r.fechaFin}</td>
-                <td>{r.puesto}</td>
-                <td><span className="estado-rol">{r.estado}</span></td>
-                <td>{r.version}</td>
-                <td><button className="btn btn-ghost" onClick={() => abrir(r.id)}>Abrir</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      {nuevo && <NuevoRol onClose={() => setNuevo(false)} onSaved={(id) => { setNuevo(false); qc.invalidateQueries({ queryKey: ['roles-sem'] }); abrir(id) }} />}
-    </section>
-  )
-}
-
-function NuevoRol({ onClose, onSaved }: { onClose: () => void; onSaved: (id: string) => void }) {
-  const creadoPor = useAuth((s) => s.usuario?.idUsuario) ?? ''
-  const { data: empresas } = useQuery({ queryKey: ['empresas'], queryFn: listarEmpresas })
-  const [empresa, setEmpresa] = useState('CADENA')
-  const [puesto, setPuesto] = useState<PuestoRol>('GtAsesores')
-  const [fecha, setFecha] = useState(fmt(domingoDe(new Date())))
-  const [zonaId, setZonaId] = useState<string>(crypto.randomUUID())
-  const [error, setError] = useState<string | null>(null)
-
-  const mut = useMutation({
-    mutationFn: (b: CrearRolBody) => crearRol(b),
-    onSuccess: (r) => onSaved(r.id),
-    onError: (e) => setError(e instanceof ApiError ? e.message : 'No se pudo crear.'),
-  })
-
-  function submit(e: FormEvent) {
-    e.preventDefault()
-    setError(null)
-    const dom = domingoDe(new Date(fecha + 'T00:00:00'))
-    mut.mutate({
-      empresa, zonaId, anio: dom.getFullYear(), numeroSemana: numeroSemana(dom),
-      fechaInicio: fmt(dom), puesto, creadoPor,
-    })
-  }
-
-  return (
-    <div className="modal-bg" onClick={onClose}>
-      <form className="modal" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
-        <h3>Nuevo rol semanal</h3>
-        <div className="grid2">
-          <div className="campo">
-            <label>Empresa</label>
-            <select value={empresa} onChange={(e) => setEmpresa(e.target.value)}>
-              {(empresas ?? []).map((x) => <option key={x.codigo} value={x.codigo}>{x.nombre}</option>)}
-            </select>
-          </div>
-          <div className="campo">
-            <label>Puesto</label>
-            <select value={puesto} onChange={(e) => setPuesto(e.target.value as PuestoRol)}>
-              {PUESTOS.map((p) => <option key={p}>{p}</option>)}
-            </select>
-          </div>
-          <div className="campo">
-            <label>Semana (se ajusta al domingo)</label>
-            <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
-          </div>
-          <div className="campo">
-            <label>Zona (UUID)</label>
-            <input value={zonaId} onChange={(e) => setZonaId(e.target.value)} required />
-          </div>
-        </div>
-        {error && <p className="error">{error}</p>}
-        <div className="fila-acciones" style={{ justifyContent: 'flex-end', marginTop: 8 }}>
-          <button type="button" className="btn btn-ghost" onClick={onClose}>Cancelar</button>
-          <button type="submit" className="btn btn-primary" disabled={mut.isPending}>{mut.isPending ? 'Creando…' : 'Crear'}</button>
-        </div>
-      </form>
-    </div>
-  )
-}
-
-function Detalle({ id, volver }: { id: string; volver: () => void }) {
   const qc = useQueryClient()
   const idUsuario = useAuth((s) => s.usuario?.idUsuario) ?? ''
-  const { data, isLoading, error } = useQuery({ queryKey: ['rol', id], queryFn: () => obtenerRol(id) })
-  const [rosterLocal, setRosterLocal] = useState<{ id: string; nombre: string }[]>(() => {
-    const raw = localStorage.getItem(`roster-${id}`)
-    return raw ? JSON.parse(raw) : []
+  const { data: empresas } = useQuery({ queryKey: ['empresas'], queryFn: listarEmpresas })
+
+  const [empresa, setEmpresa] = useState('CADENA')
+  const [puesto, setPuesto] = useState<PuestoRol>('GtAsesores')
+  const [wkOffset, setWkOffset] = useState(0)
+
+  const lunes = useMemo(() => { const d = domingoDe(new Date()); d.setDate(d.getDate() + wkOffset * 7); return d }, [wkOffset])
+  const anio = lunes.getFullYear()
+  const semana = numeroSemana(lunes)
+  const dias = useMemo(() => Array.from({ length: 7 }, (_, i) => { const d = new Date(lunes); d.setDate(lunes.getDate() + i); return d }), [lunes])
+  const finSem = dias[6]
+  const wkLabel = `Sem ${String(semana).padStart(2, '0')} — ${lunes.getDate()} ${MES[lunes.getMonth()]} al ${finSem.getDate()} ${MES[finSem.getMonth()]} ${finSem.getFullYear()}`
+
+  // Documento de rol para (empresa, puesto, semana). Una zona demo por documento.
+  const { data: lista } = useQuery({
+    queryKey: ['roles-sem', empresa, anio, semana],
+    queryFn: () => listarRolesSemanales({ empresa, anio: String(anio), numeroSemana: String(semana) }),
+  })
+  const doc = lista?.items.find((r) => r.puesto === puesto) ?? null
+
+  const { data: detalle } = useQuery({
+    queryKey: ['rol', doc?.id],
+    queryFn: () => obtenerRol(doc!.id),
+    enabled: !!doc,
   })
 
-  const invalidar = () => qc.invalidateQueries({ queryKey: ['rol', id] })
+  const rosterKey = `roster-${empresa}-${puesto}-${anio}-${semana}`
+  const [roster, setRoster] = useState<{ id: string; nombre: string }[]>(() => {
+    const r = localStorage.getItem(rosterKey); return r ? JSON.parse(r) : []
+  })
+  // Re-sync roster al cambiar de semana/empresa/puesto.
+  useMemo(() => { const r = localStorage.getItem(rosterKey); setRoster(r ? JSON.parse(r) : []) }, [rosterKey])
 
-  const programar = useMutation({
-    mutationFn: (p: { colaboradorId: string; fecha: string; estado: EstadoCelda }) =>
-      programarCelda(id, { ...p, registradoPor: idUsuario }),
+  const invalidar = () => { qc.invalidateQueries({ queryKey: ['rol', doc?.id] }); qc.invalidateQueries({ queryKey: ['roles-sem'] }) }
+
+  const crear = useMutation({
+    mutationFn: () => crearRol({ empresa, zonaId: crypto.randomUUID(), anio, numeroSemana: semana, fechaInicio: fmt(lunes), puesto, creadoPor: idUsuario }),
     onSuccess: invalidar,
+    onError: (e) => alert(e instanceof ApiError ? e.message : 'Error'),
+  })
+  const programar = useMutation({
+    mutationFn: (p: { colaboradorId: string; fecha: string; estado: EstadoCelda }) => programarCelda(doc!.id, { ...p, registradoPor: idUsuario }),
+    onSuccess: invalidar,
+    onError: (e) => alert(e instanceof ApiError ? e.message : 'Error'),
   })
   const transicion = useMutation({
-    mutationFn: (accion: () => Promise<RolSemanal>) => accion(),
+    mutationFn: (fn: () => Promise<RolSemanal>) => fn(),
     onSuccess: invalidar,
     onError: (e) => alert(e instanceof ApiError ? e.message : 'Error'),
   })
 
-  const dias = useMemo(() => {
-    if (!data) return []
-    const base = new Date(data.rol.fechaInicio + 'T00:00:00')
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(base); d.setDate(base.getDate() + i); return d
-    })
-  }, [data])
-
-  if (isLoading) return <p className="muted">Cargando…</p>
-  if (error || !data) return <p className="error">{(error as Error)?.message ?? 'No encontrado'}</p>
-
-  const { rol, dias: celdas } = data
-  const idsEnCeldas = [...new Set(celdas.map((c) => c.colaboradorId))]
-  const filas = [
-    ...rosterLocal,
-    ...idsEnCeldas.filter((cid) => !rosterLocal.some((r) => r.id === cid)).map((cid) => ({ id: cid, nombre: cid.slice(0, 8) })),
-  ]
-  const celdaDe = (cid: string, fecha: string) => celdas.find((c) => c.colaboradorId === cid && c.fecha === fecha)
-  const editable = ['EnEdicion', 'PendienteEnvio', 'RechazadoGG', 'VersionEnRevision'].includes(rol.estado)
+  const celdas = detalle?.dias ?? []
+  const estado = doc?.estado
+  const editable = !!doc && ['EnEdicion', 'PendienteEnvio', 'RechazadoGG', 'VersionEnRevision'].includes(estado!)
+  const celdaDe = (cid: string, f: string) => celdas.find((c) => c.colaboradorId === cid && c.fecha === f)
 
   function agregarColaborador() {
-    const nombre = prompt('Nombre del colaborador:')
-    if (!nombre) return
-    const nuevo = [...rosterLocal, { id: crypto.randomUUID(), nombre }]
-    setRosterLocal(nuevo)
-    localStorage.setItem(`roster-${id}`, JSON.stringify(nuevo))
+    if (!editable) return
+    const nombre = prompt('Nombre del colaborador:'); if (!nombre) return
+    const next = [...roster, { id: crypto.randomUUID(), nombre }]
+    setRoster(next); localStorage.setItem(rosterKey, JSON.stringify(next))
+  }
+  function clickCelda(cid: string, f: string, dow: number) {
+    if (!editable) return
+    const op = prompt(`Estado (${DIAS[dow]}):\n` + ESTADOS_CELDA.map((e, i) => `${i}=${e.label}`).join('\n'))
+    if (op === null) return
+    const el = ESTADOS_CELDA[Number(op)]; if (el) programar.mutate({ colaboradorId: cid, fecha: f, estado: el.v })
   }
 
+  const coberturas = celdas.filter((c) => c.estado === 'CoberturaTienda' || c.estado === 'CoberturaTipoVenta').length
+
   return (
-    <section className="tarjeta">
-      <div className="entre">
-        <div className="wk-bar">
-          <button className="btn btn-ghost" onClick={volver}>← Volver</button>
-          <span className="rango">{rol.empresa} · {rol.puesto} · Sem {String(rol.numeroSemana).padStart(2, '0')}/{rol.anio}</span>
-          <span className="estado-rol">{rol.estado}</span>
-        </div>
-        <div className="fila-acciones">
-          {editable && <button className="btn btn-ghost" onClick={agregarColaborador}>+ Colaborador</button>}
-          {['EnEdicion', 'PendienteEnvio', 'RechazadoGG'].includes(rol.estado) &&
-            <button className="btn btn-primary" onClick={() => transicion.mutate(() => enviarRol(id, idUsuario))}>Enviar a GG</button>}
-          {rol.estado === 'EnviadoGG' && <>
-            <button className="btn btn-primary" onClick={() => transicion.mutate(() => aprobarRol(id, idUsuario))}>Aprobar</button>
-            <button className="btn btn-ghost" onClick={() => { const c = prompt('Comentario de rechazo:'); if (c) transicion.mutate(() => rechazarRol(id, idUsuario, c)) }}>Rechazar</button>
+    <AppLayout active="rol" title="Rol de Personal">
+      {/* KPIs */}
+      <div className="kpis">
+        <div className="kpi"><div className="kpi-label">Desc. máx / día</div><div className="kpi-val">6</div><div className="kpi-sub">Límite configurado</div></div>
+        <div className="kpi green"><div className="kpi-label">Coberturas activas</div><div className="kpi-val green">{coberturas}</div><div className="kpi-sub">CV + COB</div></div>
+        <div className="kpi"><div className="kpi-label">Trabajadores</div><div className="kpi-val">{roster.length}</div><div className="kpi-sub">En esta vista</div></div>
+        <div className="kpi crit"><div className="kpi-label">Estado del rol</div><div className="kpi-val red" style={{ fontSize: 16 }}>{estado ?? 'Sin crear'}</div><div className="kpi-sub">{wkLabel}</div></div>
+      </div>
+
+      {/* Filtros */}
+      <div className="rol-filtros">
+        <select className="rol-sel" value={empresa} onChange={(e) => setEmpresa(e.target.value)}>
+          {(empresas ?? []).map((x) => <option key={x.codigo} value={x.codigo}>{x.nombre}</option>)}
+        </select>
+        <select className="rol-sel" value={puesto} onChange={(e) => setPuesto(e.target.value as PuestoRol)}>
+          {CARGOS.map((c) => <option key={c.v} value={c.v}>{c.label}</option>)}
+        </select>
+        <div style={{ marginLeft: 'auto' }} className="fila-acciones">
+          {!doc && <button className="btn btn-ghost" onClick={() => crear.mutate()} disabled={crear.isPending}>+ Crear rol de la semana</button>}
+          {editable && <button className="btn btn-ghost" onClick={agregarColaborador}>+ Trabajador</button>}
+          {doc && ['EnEdicion', 'PendienteEnvio', 'RechazadoGG'].includes(estado!) &&
+            <button className="btn btn-primary" onClick={() => transicion.mutate(() => enviarRol(doc.id, idUsuario))}>✉ Enviar a aprobación</button>}
+          {estado === 'EnviadoGG' && <>
+            <button className="btn btn-primary" onClick={() => transicion.mutate(() => aprobarRol(doc!.id, idUsuario))}>Aprobar</button>
+            <button className="btn btn-ghost" onClick={() => { const c = prompt('Comentario de rechazo:'); if (c) transicion.mutate(() => rechazarRol(doc!.id, idUsuario, c)) }}>Rechazar</button>
           </>}
-          {rol.estado === 'AprobadoGG' && <button className="btn btn-primary" onClick={() => transicion.mutate(() => programarGt(id, idUsuario))}>Programar GT</button>}
+          {estado === 'AprobadoGG' && <button className="btn btn-primary" onClick={() => transicion.mutate(() => programarGt(doc!.id, idUsuario))}>Programar GT</button>}
         </div>
       </div>
 
-      <table className="cal">
-        <thead>
-          <tr>
-            <th className="col-trab">Colaborador</th>
-            {dias.map((d, i) => <th key={i}>{DIAS[d.getDay()]}<br />{d.getDate()}/{d.getMonth() + 1}</th>)}
-          </tr>
-        </thead>
-        <tbody>
-          {filas.length === 0 && <tr><td className="col-trab muted" colSpan={8}>Agrega un colaborador para programar.</td></tr>}
-          {filas.map((f) => (
-            <tr key={f.id}>
-              <td className="col-trab">{f.nombre}</td>
-              {dias.map((d, i) => {
-                const fechaStr = fmt(d)
-                const celda = celdaDe(f.id, fechaStr)
-                const estado = celda?.estado ?? 'Vacio'
-                return (
-                  <td key={i} className={`celda c-${estado}`} title={estado}
-                    onClick={() => {
-                      if (!editable) return
-                      const op = prompt(`Estado para ${f.nombre} (${DIAS[d.getDay()]}):\n` + ESTADOS_CELDA.map((e, n) => `${n}=${e.label}`).join('\n'))
-                      if (op === null) return
-                      const elegido = ESTADOS_CELDA[Number(op)]
-                      if (elegido) programar.mutate({ colaboradorId: f.id, fecha: fechaStr, estado: elegido.v })
-                    }}>
-                    {estado !== 'Vacio' ? ESTADOS_CELDA.find((e) => e.v === estado)?.label.split(' ')[0] : ''}
-                  </td>
-                )
-              })}
+      {/* Barra de semana */}
+      <div className="rol-wk-bar">
+        <button className="rol-wk-btn" onClick={() => setWkOffset((o) => o - 1)} title="Semana anterior">‹</button>
+        <button className="rol-wk-today" onClick={() => setWkOffset(0)}>Hoy</button>
+        <button className="rol-wk-btn" onClick={() => setWkOffset((o) => o + 1)} title="Semana siguiente">›</button>
+        <span className="rol-wk-range">{wkLabel}</span>
+        <span className="rol-wk-meta">{wkOffset === 0 ? 'Semana actual' : wkOffset > 0 ? `+${wkOffset} sem.` : `${wkOffset} sem.`}</span>
+        {doc && <span className="estado-rol" style={{ marginLeft: 8 }}>{estado}</span>}
+      </div>
+
+      {/* Tabla */}
+      <div className="rol-wrap">
+        <table className="rol-tbl">
+          <thead>
+            <tr>
+              <th className="rol-c-puesto" rowSpan={2}>Puesto</th>
+              <th className="rol-c-personal" rowSpan={2} style={{ textAlign: 'left' }}>Trabajador</th>
+              <th className="rol-th-asesor" colSpan={2}>% Cuota Asesor</th>
+              <th className="rol-th-asesor" rowSpan={2}>% Cuota<br />Senior</th>
+              <th className="rol-th-asesor" rowSpan={2}>% Semana<br />Senior</th>
+              <th className="rol-th-sem" colSpan={7}>Semana en curso</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+            <tr>
+              <th className="rol-th-asesor">{MES[(lunes.getMonth() + 11) % 12]} %</th>
+              <th className="rol-th-asesor">{MES[lunes.getMonth()]} %</th>
+              {dias.map((d, i) => <th key={i} className="rol-th-sem">{DIAS[d.getDay()]}<br />{d.getDate()}/{d.getMonth() + 1}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="rol-grp-zona"><td colSpan={13}>{empresa} · {CARGOS.find((c) => c.v === puesto)?.label}</td></tr>
+            {roster.length === 0 && (
+              <tr><td colSpan={13} style={{ textAlign: 'center', padding: 24, color: '#94a3b8' }}>
+                {doc ? 'Agrega un trabajador para programar la semana.' : 'Crea el rol de la semana para empezar.'}
+              </td></tr>
+            )}
+            {roster.map((t) => (
+              <tr key={t.id}>
+                <td className="rol-c-puesto">{CARGOS.find((c) => c.v === puesto)?.label}</td>
+                <td className="rol-c-personal">{t.nombre}</td>
+                <td className="rol-c-cuota">—</td>
+                <td className="rol-c-cuota">—</td>
+                <td className="rol-c-cuota">—</td>
+                <td className="rol-c-cuota">—</td>
+                {dias.map((d, i) => {
+                  const f = fmt(d)
+                  const celda = celdaDe(t.id, f)
+                  const est = celda?.estado ?? 'Vacio'
+                  return (
+                    <td key={i} className="rol-day" onClick={() => clickCelda(t.id, f, d.getDay())}>
+                      {est === 'Vacio'
+                        ? <span className="rol-vacio">·</span>
+                        : <span className={`rol-db rol-db-${est}`}>{abbrDe(est)}</span>}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <div className="leyenda">
-        <span><i className="swatch c-DescansoLaboral" /> Descanso laboral</span>
-        <span><i className="swatch c-CoberturaTienda" /> Cobertura de tienda</span>
-        <span><i className="swatch c-CompensacionFeriadoLaborado" /> Compensaciones</span>
-        <span><i className="swatch c-CoberturaTipoVenta" /> Cobertura tipo venta</span>
+        <span><i className="swatch rol-db-DescansoLaboral" /> DL · Descanso laboral</span>
+        <span><i className="swatch rol-db-CoberturaTienda" /> COB · Cobertura de tienda</span>
+        <span><i className="swatch rol-db-CompensacionFeriadoLaborado" /> CF/CD · Compensaciones</span>
+        <span><i className="swatch rol-db-CoberturaTipoVenta" /> CV · Cobertura tipo venta</span>
       </div>
-      {!editable && <p className="muted" style={{ marginTop: 10 }}>Rol en estado {rol.estado}: solo lectura.</p>}
-    </section>
+    </AppLayout>
   )
 }
