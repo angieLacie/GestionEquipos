@@ -39,3 +39,49 @@ internal sealed class JwtTokenService(JwtOptions options) : ITokenService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }
+
+/// <summary>Token de un solo uso para restablecer contraseña (RN-SEGU-37). JWT corto con purpose=pwd_reset.</summary>
+internal sealed class ResetTokenService(JwtOptions options) : IResetTokenService
+{
+    private const string Purpose = "pwd_reset";
+    private const int MinutosVigencia = 10;
+
+    public string EmitirTokenReset(Guid idUsuario)
+    {
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(options.SecretKey));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var token = new JwtSecurityToken(
+            issuer: options.Issuer,
+            audience: Purpose,
+            claims: [new Claim(JwtRegisteredClaimNames.Sub, idUsuario.ToString())],
+            expires: DateTime.UtcNow.AddMinutes(MinutosVigencia),
+            signingCredentials: creds);
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public Guid? ValidarTokenReset(string token)
+    {
+        var parameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = options.Issuer,
+            ValidateAudience = true,
+            ValidAudience = Purpose,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(options.SecretKey)),
+            ClockSkew = TimeSpan.Zero
+        };
+        try
+        {
+            var principal = new JwtSecurityTokenHandler().ValidateToken(token, parameters, out _);
+            var sub = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                      ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            return Guid.TryParse(sub, out var id) ? id : null;
+        }
+        catch
+        {
+            return null; // token inválido/expirado/manipulado → fallo seguro
+        }
+    }
+}

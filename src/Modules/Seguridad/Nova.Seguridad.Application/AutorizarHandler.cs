@@ -16,14 +16,16 @@ public sealed record AutorizarResponse(DecisionAutorizacion Decision, string? Mo
 public sealed class AutorizarHandler(
     IAsignacionRolAmbitoRepository asignaciones,
     IPermisoResolver permisos,
-    IClock clock)
+    IAuditoriaRepository auditoria,
+    IClock clock,
+    IUnitOfWork uow)
 {
     public async Task<AutorizarResponse> HandleAsync(AutorizarRequest req, CancellationToken ct = default)
     {
         var hoy = DateOnly.FromDateTime(clock.Now.UtcDateTime);
         var vigentes = await asignaciones.ObtenerVigentesPorUsuarioAsync(req.IdUsuario, hoy, ct);
         if (vigentes.Count == 0)
-            return new(DecisionAutorizacion.Denegado, "El usuario no tiene asignaciones vigentes.");
+            return await DenegarAsync(req, "El usuario no tiene asignaciones vigentes.", ct);
 
         // Solo las asignaciones cuyo ámbito cubre el objetivo pueden otorgar el permiso (RN-SEGU-22).
         var rolesQueCubren = vigentes
@@ -33,11 +35,22 @@ public sealed class AutorizarHandler(
             .ToList();
 
         if (rolesQueCubren.Count == 0)
-            return new(DecisionAutorizacion.Denegado, "Ámbito objetivo fuera del alcance del usuario.");
+            return await DenegarAsync(req, "Ámbito objetivo fuera del alcance del usuario.", ct);
 
         var permisosUsuario = await permisos.PermisosDeRolesAsync(rolesQueCubren, ct);
-        return permisosUsuario.Contains(req.Permiso)
-            ? new(DecisionAutorizacion.Permitido)
-            : new(DecisionAutorizacion.Denegado, $"Permiso ausente: {req.Permiso}.");
+        if (!permisosUsuario.Contains(req.Permiso))
+            return await DenegarAsync(req, $"Permiso ausente: {req.Permiso}.", ct);
+
+        return new(DecisionAutorizacion.Permitido);
+    }
+
+    // Las denegaciones sobre acciones críticas quedan auditadas (RN-SEGU-23).
+    private async Task<AutorizarResponse> DenegarAsync(AutorizarRequest req, string motivo, CancellationToken ct)
+    {
+        await auditoria.AgregarAsync(AuditoriaSeguridad.Registrar(
+            EventoAudit.DenegacionAcceso, req.IdUsuario, ResultadoAudit.Denegado, clock.Now,
+            detalle: $"{{\"permiso\":\"{req.Permiso}\",\"motivo\":\"{motivo}\"}}"), ct);
+        await uow.SaveChangesAsync(ct);
+        return new(DecisionAutorizacion.Denegado, motivo);
     }
 }

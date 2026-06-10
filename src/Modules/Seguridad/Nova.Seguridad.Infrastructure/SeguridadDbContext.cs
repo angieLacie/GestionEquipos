@@ -17,6 +17,8 @@ public sealed class SeguridadDbContext(DbContextOptions<SeguridadDbContext> opti
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<Credencial> Credenciales => Set<Credencial>();
     public DbSet<AsignacionRolAmbito> Asignaciones => Set<AsignacionRolAmbito>();
+    public DbSet<AuditoriaSeguridad> Auditoria => Set<AuditoriaSeguridad>();
+    public DbSet<CodigoOtp> CodigosOtp => Set<CodigoOtp>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -24,6 +26,8 @@ public sealed class SeguridadDbContext(DbContextOptions<SeguridadDbContext> opti
         modelBuilder.ApplyConfiguration(new UsuarioConfiguration());
         modelBuilder.ApplyConfiguration(new CredencialConfiguration());
         modelBuilder.ApplyConfiguration(new AsignacionRolAmbitoConfiguration());
+        modelBuilder.ApplyConfiguration(new AuditoriaSeguridadConfiguration());
+        modelBuilder.ApplyConfiguration(new CodigoOtpConfiguration());
     }
 }
 
@@ -74,6 +78,42 @@ internal sealed class AsignacionRolAmbitoConfiguration : IEntityTypeConfiguratio
 
         b.HasOne<Usuario>().WithMany().HasForeignKey(a => a.IdUsuario).OnDelete(DeleteBehavior.Restrict);
         b.HasIndex(a => new { a.IdUsuario, a.Estado }).HasDatabaseName("idx_asignacion_usuario_estado");
+    }
+}
+
+internal sealed class AuditoriaSeguridadConfiguration : IEntityTypeConfiguration<AuditoriaSeguridad>
+{
+    public void Configure(EntityTypeBuilder<AuditoriaSeguridad> b)
+    {
+        // Append-only (RN-SEGU-25): la inmutabilidad se refuerza con privilegios DENY UPDATE/DELETE en BD.
+        b.ToTable("auditoria_seguridad");
+        b.HasKey(a => a.Id);
+        b.Property(a => a.Id).HasColumnName("id_log");
+        b.Property(a => a.Evento).HasColumnName("evento").HasConversion<string>().HasMaxLength(30);
+        b.Property(a => a.IdActor).HasColumnName("id_actor");
+        b.Property(a => a.IdObjeto).HasColumnName("id_objeto");
+        b.Property(a => a.Resultado).HasColumnName("resultado").HasConversion<string>().HasMaxLength(10);
+        b.Property(a => a.Detalle).HasColumnName("detalle"); // JSON
+        b.Property(a => a.FechaHora).HasColumnName("fecha_hora");
+        b.HasIndex(a => new { a.IdActor, a.FechaHora }).HasDatabaseName("idx_auditoria_actor_fecha");
+    }
+}
+
+internal sealed class CodigoOtpConfiguration : IEntityTypeConfiguration<CodigoOtp>
+{
+    public void Configure(EntityTypeBuilder<CodigoOtp> b)
+    {
+        b.ToTable("codigo_otp");
+        b.HasKey(c => c.Id);
+        b.Property(c => c.Id).HasColumnName("id_codigo");
+        b.Property(c => c.IdUsuario).HasColumnName("id_usuario").IsRequired();
+        b.Property(c => c.HashCodigo).HasColumnName("hash_codigo").IsRequired(); // DATO SENSIBLE
+        b.Property(c => c.ExpiraEn).HasColumnName("expira_en");
+        b.Property(c => c.Intentos).HasColumnName("intentos");
+        b.Property(c => c.MaxIntentos).HasColumnName("max_intentos");
+        b.Property(c => c.Estado).HasColumnName("estado").HasConversion<string>().HasMaxLength(12);
+        b.Property(c => c.CreadoEn).HasColumnName("creado_en");
+        b.HasIndex(c => new { c.IdUsuario, c.Estado }).HasDatabaseName("idx_otp_usuario_estado");
     }
 }
 

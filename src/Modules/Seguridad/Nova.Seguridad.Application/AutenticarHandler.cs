@@ -13,6 +13,7 @@ public sealed class AutenticarHandler(
     IPasswordHasher hasher,
     IClock clock,
     ITokenService tokens,
+    IAuditoriaRepository auditoria,
     IUnitOfWork uow)
 {
     private static readonly TimeSpan DuracionBloqueo = TimeSpan.FromMinutes(15);
@@ -37,11 +38,16 @@ public sealed class AutenticarHandler(
         if (!hasher.Verify(req.Password, credencial.HashPassword))
         {
             credencial.RegistrarFallo(clock.Now, DuracionBloqueo);
+            var evento = credencial.EstaBloqueada(clock.Now) ? EventoAudit.Bloqueo : EventoAudit.LoginFallido;
+            await auditoria.AgregarAsync(AuditoriaSeguridad.Registrar(
+                evento, usuario.Id, ResultadoAudit.Fallido, clock.Now, usuario.Id), ct);
             await uow.SaveChangesAsync(ct);
             return Result.Failure<LoginResponse>(CredencialesInvalidas);
         }
 
         credencial.RegistrarExito();
+        await auditoria.AgregarAsync(AuditoriaSeguridad.Registrar(
+            EventoAudit.LoginOk, usuario.Id, ResultadoAudit.Exitoso, clock.Now, usuario.Id), ct);
         await uow.SaveChangesAsync(ct);
 
         var token = tokens.EmitirToken(usuario.Id, usuario.NombreUsuario);

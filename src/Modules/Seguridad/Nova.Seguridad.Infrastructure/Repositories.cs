@@ -12,6 +12,9 @@ internal sealed class UsuarioRepository(SeguridadDbContext db) : IUsuarioReposit
     public Task<Usuario?> ObtenerPorNombreAsync(string nombreUsuario, CancellationToken ct = default)
         => db.Usuarios.FirstOrDefaultAsync(u => u.NombreUsuario == nombreUsuario, ct);
 
+    public Task<Usuario?> ObtenerPorCorreoAsync(string correo, CancellationToken ct = default)
+        => db.Usuarios.FirstOrDefaultAsync(u => u.CorreoContacto == correo, ct);
+
     public Task<bool> ExisteNombreAsync(string nombreUsuario, CancellationToken ct = default)
         => db.Usuarios.AnyAsync(u => u.NombreUsuario == nombreUsuario, ct);
 
@@ -34,6 +37,33 @@ internal sealed class AsignacionRolAmbitoRepository(SeguridadDbContext db) : IAs
 
     public async Task AgregarAsync(AsignacionRolAmbito asignacion, CancellationToken ct = default)
         => await db.Asignaciones.AddAsync(asignacion, ct);
+}
+
+internal sealed class AuditoriaRepository(SeguridadDbContext db) : IAuditoriaRepository
+{
+    public async Task AgregarAsync(AuditoriaSeguridad registro, CancellationToken ct = default)
+        => await db.Auditoria.AddAsync(registro, ct);
+}
+
+internal sealed class CodigoOtpRepository(SeguridadDbContext db) : ICodigoOtpRepository
+{
+    public Task<CodigoOtp?> ObtenerActivoPorUsuarioAsync(Guid idUsuario, CancellationToken ct = default)
+        => db.CodigosOtp
+            .Where(c => c.IdUsuario == idUsuario && (c.Estado == EstadoOtp.Activo || c.Estado == EstadoOtp.Verificado))
+            .OrderByDescending(c => c.CreadoEn)
+            .FirstOrDefaultAsync(ct);
+
+    public async Task InvalidarActivosDeUsuarioAsync(Guid idUsuario, CancellationToken ct = default)
+    {
+        var activos = await db.CodigosOtp
+            .Where(c => c.IdUsuario == idUsuario && c.Estado == EstadoOtp.Activo)
+            .ToListAsync(ct);
+        foreach (var c in activos)
+            c.Invalidar();
+    }
+
+    public async Task AgregarAsync(CodigoOtp codigo, CancellationToken ct = default)
+        => await db.CodigosOtp.AddAsync(codigo, ct);
 }
 
 internal sealed class CredencialRepository(SeguridadDbContext db) : ICredencialRepository

@@ -68,14 +68,21 @@ dotnet run --project Nova.Bootstrap
 | POST | `/v1/segu/auth/login` | CU-SEGU-02 login local (bloqueo RN-SEGU-12, fallo seguro, emite JWT) | anónimo |
 | POST | `/v1/segu/asignaciones` | CU-SEGU-03 asignar rol con ámbito (coherencia RN-SEGU-05) | Bearer |
 | POST | `/v1/segu/autorizar` | CU-SEGU-05 enforcement permiso+ámbito (RN-SEGU-21/22, fallo seguro) | Bearer |
+| POST | `/v1/segu/auth/recuperacion/solicitar` | CU-SEGU-10 solicitar OTP (anti-enumeración RN-SEGU-32) | anónimo |
+| POST | `/v1/segu/auth/recuperacion/verificar` | CU-SEGU-10 verificar OTP → token un-uso (RN-SEGU-35/37) | anónimo |
+| POST | `/v1/segu/auth/recuperacion/restablecer` | CU-SEGU-10 nueva contraseña con token (RN-SEGU-38) | anónimo |
 | GET | `/health` | Liveness | — |
 
 Sesión por **JWT** (HS256); configurar `Jwt:SecretKey` en producción (mín. 32 bytes).
+**Auditoría** append-only (`segu.auditoria_seguridad`): login OK/fallido, bloqueo, denegación de acceso, fases de recuperación. Inmutabilidad real requiere DENY UPDATE/DELETE en BD.
+**OTP**: código numérico cripto, hasheado (Argon2id), nunca expuesto; notificador en log solo en dev (`NotificadorCorreoLog`).
 
 ## Pendiente (siguiente)
 
-- Seguridad: normalizar `segu.asignacion_zona` (hoy JSON), OTP recuperación, jerarquía, delegación/suplencia, auditoría append-only, refresh/cierre de sesión.
+- Seguridad: normalizar `segu.asignacion_zona` (hoy JSON), jerarquía, delegación/suplencia, store de sesión + cierre en cambio de contraseña (RN-SEGU-38), historial no-reuso de contraseña (RN-SEGU-10), DENY UPDATE/DELETE en tablas de auditoría.
+- Política OTP/PWD: hoy `OtpPolicy` con defaults; migrar a parámetros `SEGU_OTP_*`/`SEGU_PWD_*` de Maestros.
 - Permisos: hoy `PermisoResolverSeed` (catálogo en memoria); migrar a `maes.rol_permiso` cuando exista Maestros.
+- Notificador de correo real (reemplazar stub).
 - Módulos Maestros (`maes`) y Aprobaciones (`apro`) — requieren cerrar specs EP-01/EP-02 primero.
 - Outbox transaccional + worker (ADR-003).
 - Frontends: `apps/web` (React + Vite) y `apps/mobile` (Expo).

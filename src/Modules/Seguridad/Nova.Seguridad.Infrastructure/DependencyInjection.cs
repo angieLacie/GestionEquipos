@@ -22,14 +22,22 @@ public static class DependencyInjection
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<ICredencialRepository, CredencialRepository>();
         services.AddScoped<IAsignacionRolAmbitoRepository, AsignacionRolAmbitoRepository>();
+        services.AddScoped<IAuditoriaRepository, AuditoriaRepository>();
+        services.AddScoped<ICodigoOtpRepository, CodigoOtpRepository>();
         services.AddSingleton<IPasswordHasher, Argon2PasswordHasher>();
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<IPermisoResolver, PermisoResolverSeed>();
+        services.AddSingleton<ICodigoOtpGenerator, CodigoOtpGenerator>();
+        services.AddScoped<INotificadorCorreo, NotificadorCorreoLog>();
+
+        var otpPolicy = configuration.GetSection("Otp").Get<OtpPolicy>() ?? new OtpPolicy();
+        services.AddSingleton(otpPolicy);
 
         var jwt = configuration.GetSection("Jwt").Get<JwtOptions>()
             ?? throw new InvalidOperationException("Falta la sección de configuración 'Jwt'.");
         services.AddSingleton(jwt);
         services.AddSingleton<ITokenService, JwtTokenService>();
+        services.AddSingleton<IResetTokenService, ResetTokenService>();
 
         return services;
     }

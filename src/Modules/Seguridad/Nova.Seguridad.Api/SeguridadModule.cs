@@ -16,6 +16,9 @@ public static class SeguridadModule
         services.AddScoped<AutenticarHandler>();
         services.AddScoped<AsignarRolHandler>();
         services.AddScoped<AutorizarHandler>();
+        services.AddScoped<SolicitarOtpHandler>();
+        services.AddScoped<VerificarOtpHandler>();
+        services.AddScoped<RestablecerPasswordHandler>();
         return services;
     }
 
@@ -57,6 +60,27 @@ public static class SeguridadModule
         })
         .WithName("Autorizar")
         .RequireAuthorization();
+
+        // --- Recuperación de contraseña por OTP (CU-SEGU-10), endpoints anónimos ---
+        var recup = grupo.MapGroup("/auth/recuperacion").AllowAnonymous();
+
+        recup.MapPost("/solicitar", async (SolicitarOtpRequest req, SolicitarOtpHandler handler, CancellationToken ct) =>
+            Results.Ok(await handler.HandleAsync(req, ct))) // siempre genérico (anti-enumeración)
+            .WithName("SolicitarOtp");
+
+        recup.MapPost("/verificar", async (VerificarOtpRequest req, VerificarOtpHandler handler, CancellationToken ct) =>
+        {
+            var result = await handler.HandleAsync(req, ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : ToProblem(result.Error);
+        })
+        .WithName("VerificarOtp");
+
+        recup.MapPost("/restablecer", async (RestablecerPasswordRequest req, RestablecerPasswordHandler handler, CancellationToken ct) =>
+        {
+            var result = await handler.HandleAsync(req, ct);
+            return result.IsSuccess ? Results.NoContent() : ToProblem(result.Error);
+        })
+        .WithName("RestablecerPassword");
 
         return app;
     }
