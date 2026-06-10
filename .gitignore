@@ -8,3 +8,9 @@ log_orquestador_*.txt
 
 # graphify - artefactos generados (grafo, cache, rutas locales)
 graphify-out/
+
+# .NET build artifacts
+[Bb]in/
+[Oo]bj/
+*.user
+.vs/
