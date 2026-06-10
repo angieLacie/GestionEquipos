@@ -5,6 +5,7 @@ import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import './index.css'
 import { LoginPage } from './pages/LoginPage'
 import { MaestrosPage } from './pages/MaestrosPage'
+import { RolPage } from './pages/RolPage'
 import { ProtectedRoute } from './components/ProtectedRoute'
 
 const queryClient = new QueryClient({
@@ -18,6 +19,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <MaestrosPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/rol',
+    element: (
+      <ProtectedRoute>
+        <RolPage />
       </ProtectedRoute>
     ),
   },

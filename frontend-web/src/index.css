@@ -151,3 +151,56 @@ tbody tr:hover { background: #f8fafc; }
 }
 .badge.bloq { background: #fee2e2; color: #dc2626; }
 .badge.degr { background: #dcfce7; color: #16a34a; }
+
+/* Sub-tabs dentro de una página */
+.subtabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--borde); }
+.subtab { background: none; color: var(--muted); border: none; border-bottom: 2px solid transparent; padding: 9px 14px; font-size: 13.5px; cursor: pointer; border-radius: 0; }
+.subtab.activa { color: var(--acento); border-bottom-color: var(--acento); font-weight: 600; }
+
+/* Botones */
+.btn { border: none; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.btn-primary { background: linear-gradient(135deg, #4f46e5, #6366f1); color: #fff; }
+.btn-primary:hover { opacity: .93; }
+.btn-ghost { background: #f5f6fa; border: 1.5px solid var(--borde); color: var(--texto-2); }
+.btn-ghost:hover { background: #eef2ff; border-color: var(--acento-claro); }
+.btn:disabled { opacity: .55; cursor: default; }
+.fila-acciones { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.entre { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; gap: 12px; }
+
+/* Modal */
+.modal-bg { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: grid; place-items: center; z-index: 100; padding: 16px; }
+.modal { background: #fff; border-radius: 14px; padding: 22px; width: min(520px, 100%); max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+.modal h3 { font-size: 17px; font-weight: 700; margin-bottom: 16px; }
+
+/* Formularios claros */
+.campo { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+.campo label { font-size: 12px; font-weight: 600; color: var(--texto-2); }
+.campo input, .campo select {
+  padding: 9px 11px; border: 1.5px solid var(--borde-input); border-radius: 8px;
+  font-size: 13px; font-family: inherit; color: var(--texto); background: #fff; outline: none;
+}
+.campo input:focus, .campo select:focus { border-color: var(--acento); box-shadow: 0 0 0 3px rgba(79,70,229,.1); }
+.campo-check { flex-direction: row; align-items: center; gap: 8px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+code { background: #eef2ff; color: var(--acento); padding: 1px 6px; border-radius: 5px; font-size: 12px; }
+
+/* Barra de semana del Rol */
+.wk-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.wk-bar .rango { font-weight: 700; font-size: 14px; }
+.estado-rol { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: #eef2ff; color: var(--acento); }
+
+/* Calendario semanal */
+.cal { width: 100%; border-collapse: collapse; font-size: 12.5px; table-layout: fixed; }
+.cal th, .cal td { border: 1px solid var(--borde); padding: 6px; text-align: center; }
+.cal th.col-trab, .cal td.col-trab { text-align: left; width: 180px; font-weight: 600; }
+.cal th { background: #fafbfc; color: var(--muted); font-weight: 600; }
+.cal th.feriado { background: #fff7ed; color: #c2410c; }
+.celda { cursor: pointer; height: 34px; }
+.celda:hover { outline: 2px solid var(--acento-claro); outline-offset: -2px; }
+.c-DescansoLaboral { background: #dcfce7; color: #166534; }
+.c-CoberturaTienda { background: #dbeafe; color: #1e40af; }
+.c-CompensacionFeriadoLaborado, .c-CompensacionDescansoNoGozado { background: #ffedd5; color: #9a3412; }
+.c-CoberturaTipoVenta { background: #fef9c3; color: #854d0e; }
+.leyenda { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; font-size: 12px; color: var(--muted); }
+.leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+.swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--borde); }
