@@ -21,4 +21,5 @@ public sealed record LoginRequest(string NombreUsuario, string Password);
 public sealed record LoginResponse(
     Guid IdUsuario,
     string NombreUsuario,
-    bool RequiereCambioPassword);
+    bool RequiereCambioPassword,
+    string Token);

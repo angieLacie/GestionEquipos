@@ -16,12 +16,14 @@ public sealed class SeguridadDbContext(DbContextOptions<SeguridadDbContext> opti
 
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<Credencial> Credenciales => Set<Credencial>();
+    public DbSet<AsignacionRolAmbito> Asignaciones => Set<AsignacionRolAmbito>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);
         modelBuilder.ApplyConfiguration(new UsuarioConfiguration());
         modelBuilder.ApplyConfiguration(new CredencialConfiguration());
+        modelBuilder.ApplyConfiguration(new AsignacionRolAmbitoConfiguration());
     }
 }
 
@@ -45,6 +47,33 @@ internal sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
         b.Property(u => u.MfaHabilitado).HasColumnName("mfa_habilitado");
         b.Property(u => u.FechaAlta).HasColumnName("fecha_alta");
         b.Property(u => u.FechaBaja).HasColumnName("fecha_baja");
+    }
+}
+
+internal sealed class AsignacionRolAmbitoConfiguration : IEntityTypeConfiguration<AsignacionRolAmbito>
+{
+    public void Configure(EntityTypeBuilder<AsignacionRolAmbito> b)
+    {
+        b.ToTable("asignacion_rol_ambito");
+        b.HasKey(a => a.Id);
+        b.Property(a => a.Id).HasColumnName("id_asignacion");
+        b.Property(a => a.IdUsuario).HasColumnName("id_usuario").IsRequired();
+        b.Property(a => a.IdRol).HasColumnName("id_rol").HasMaxLength(20).IsRequired();
+        b.Property(a => a.TipoAmbito).HasColumnName("tipo_ambito").HasConversion<string>().HasMaxLength(10);
+        b.Property(a => a.IdEmpresa).HasColumnName("id_empresa").HasMaxLength(10);
+        b.Property(a => a.IdTienda).HasColumnName("id_tienda");
+        b.Property(a => a.Justificacion).HasColumnName("justificacion");
+        b.Property(a => a.VigenciaDesde).HasColumnName("vigencia_desde");
+        b.Property(a => a.VigenciaHasta).HasColumnName("vigencia_hasta");
+        b.Property(a => a.Estado).HasColumnName("estado").HasConversion<string>().HasMaxLength(12);
+
+        // TODO(maes): normalizar a segu.asignacion_zona (1:N) para FK a maes.zona e índice inverso
+        // de resolución de aprobador por zona (modelo-datos-fase0 §3). Provisional: colección JSON.
+        b.PrimitiveCollection<List<Guid>>("_zonas").HasColumnName("zonas");
+        b.Ignore(a => a.Zonas);
+
+        b.HasOne<Usuario>().WithMany().HasForeignKey(a => a.IdUsuario).OnDelete(DeleteBehavior.Restrict);
+        b.HasIndex(a => new { a.IdUsuario, a.Estado }).HasDatabaseName("idx_asignacion_usuario_estado");
     }
 }
 

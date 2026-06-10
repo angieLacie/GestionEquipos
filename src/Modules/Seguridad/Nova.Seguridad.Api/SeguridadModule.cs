@@ -14,6 +14,8 @@ public static class SeguridadModule
     {
         services.AddScoped<CrearUsuarioHandler>();
         services.AddScoped<AutenticarHandler>();
+        services.AddScoped<AsignarRolHandler>();
+        services.AddScoped<AutorizarHandler>();
         return services;
     }
 
@@ -37,6 +39,24 @@ public static class SeguridadModule
         })
         .WithName("Login")
         .AllowAnonymous();
+
+        grupo.MapPost("/asignaciones", async (AsignarRolRequest req, AsignarRolHandler handler, CancellationToken ct) =>
+        {
+            var result = await handler.HandleAsync(req, ct);
+            return result.IsSuccess
+                ? Results.Created($"/v1/segu/asignaciones/{result.Value.Id}", result.Value)
+                : ToProblem(result.Error);
+        })
+        .WithName("AsignarRol")
+        .RequireAuthorization();
+
+        grupo.MapPost("/autorizar", async (AutorizarRequest req, AutorizarHandler handler, CancellationToken ct) =>
+        {
+            var result = await handler.HandleAsync(req, ct);
+            return Results.Ok(result);
+        })
+        .WithName("Autorizar")
+        .RequireAuthorization();
 
         return app;
     }

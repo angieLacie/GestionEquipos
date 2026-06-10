@@ -62,15 +62,20 @@ dotnet run --project Nova.Bootstrap
 
 ## Endpoints (Fase 0 — Seguridad, parcial)
 
-| Método | Ruta | Caso de uso |
-|---|---|---|
-| POST | `/v1/segu/usuarios` | CU-SEGU-01 alta de usuario + credencial |
-| POST | `/v1/segu/auth/login` | CU-SEGU-02 login local (bloqueo RN-SEGU-12, fallo seguro) |
-| GET | `/health` | Liveness |
+| Método | Ruta | Caso de uso | Auth |
+|---|---|---|---|
+| POST | `/v1/segu/usuarios` | CU-SEGU-01 alta de usuario + credencial | — |
+| POST | `/v1/segu/auth/login` | CU-SEGU-02 login local (bloqueo RN-SEGU-12, fallo seguro, emite JWT) | anónimo |
+| POST | `/v1/segu/asignaciones` | CU-SEGU-03 asignar rol con ámbito (coherencia RN-SEGU-05) | Bearer |
+| POST | `/v1/segu/autorizar` | CU-SEGU-05 enforcement permiso+ámbito (RN-SEGU-21/22, fallo seguro) | Bearer |
+| GET | `/health` | Liveness | — |
+
+Sesión por **JWT** (HS256); configurar `Jwt:SecretKey` en producción (mín. 32 bytes).
 
 ## Pendiente (siguiente)
 
-- Seguridad: asignación rol-ámbito (RBAC scoped), sesión/JWT, OTP recuperación, jerarquía, delegación/suplencia, auditoría.
+- Seguridad: normalizar `segu.asignacion_zona` (hoy JSON), OTP recuperación, jerarquía, delegación/suplencia, auditoría append-only, refresh/cierre de sesión.
+- Permisos: hoy `PermisoResolverSeed` (catálogo en memoria); migrar a `maes.rol_permiso` cuando exista Maestros.
 - Módulos Maestros (`maes`) y Aprobaciones (`apro`) — requieren cerrar specs EP-01/EP-02 primero.
 - Outbox transaccional + worker (ADR-003).
 - Frontends: `apps/web` (React + Vite) y `apps/mobile` (Expo).

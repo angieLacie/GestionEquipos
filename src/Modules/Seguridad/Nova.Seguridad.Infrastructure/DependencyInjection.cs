@@ -21,8 +21,15 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<SeguridadDbContext>());
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<ICredencialRepository, CredencialRepository>();
+        services.AddScoped<IAsignacionRolAmbitoRepository, AsignacionRolAmbitoRepository>();
         services.AddSingleton<IPasswordHasher, Argon2PasswordHasher>();
         services.AddSingleton<IClock, SystemClock>();
+        services.AddSingleton<IPermisoResolver, PermisoResolverSeed>();
+
+        var jwt = configuration.GetSection("Jwt").Get<JwtOptions>()
+            ?? throw new InvalidOperationException("Falta la sección de configuración 'Jwt'.");
+        services.AddSingleton(jwt);
+        services.AddSingleton<ITokenService, JwtTokenService>();
 
         return services;
     }

@@ -12,6 +12,7 @@ public sealed class AutenticarHandler(
     ICredencialRepository credenciales,
     IPasswordHasher hasher,
     IClock clock,
+    ITokenService tokens,
     IUnitOfWork uow)
 {
     private static readonly TimeSpan DuracionBloqueo = TimeSpan.FromMinutes(15);
@@ -43,6 +44,7 @@ public sealed class AutenticarHandler(
         credencial.RegistrarExito();
         await uow.SaveChangesAsync(ct);
 
-        return Result.Success(new LoginResponse(usuario.Id, usuario.NombreUsuario, credencial.RequiereCambio));
+        var token = tokens.EmitirToken(usuario.Id, usuario.NombreUsuario);
+        return Result.Success(new LoginResponse(usuario.Id, usuario.NombreUsuario, credencial.RequiereCambio, token));
     }
 }
