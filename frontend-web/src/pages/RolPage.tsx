@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '../components/AppLayout'
 import { useAuth } from '../lib/auth'
 import { ApiError } from '../lib/api'
+import { toast } from '../lib/ui'
 import { listarEmpresas, listarEmpleados, listarTiendas, type Empleado } from '../lib/maestros'
 import {
   listarRolesSemanales, obtenerRol, crearRol, programarCelda,
@@ -84,18 +85,18 @@ export function RolPage() {
 
   const crear = useMutation({
     mutationFn: () => crearRol({ empresa, zonaId: crypto.randomUUID(), anio, numeroSemana: semana, fechaInicio: fmt(lunes), puesto, creadoPor: idUsuario }),
-    onSuccess: invalidar,
-    onError: (e) => alert(e instanceof ApiError ? e.message : 'Error'),
+    onSuccess: () => { invalidar(); toast.ok('Rol de la semana creado.') },
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Error'),
   })
   const programar = useMutation({
     mutationFn: (p: { colaboradorId: string; fecha: string; estado: EstadoCelda; tiendaCoberturaId?: string }) => programarCelda(doc!.id, { ...p, registradoPor: idUsuario }),
     onSuccess: invalidar,
-    onError: (e) => alert(e instanceof ApiError ? e.message : 'Error'),
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Error'),
   })
   const transicion = useMutation({
     mutationFn: (fn: () => Promise<RolSemanal>) => fn(),
-    onSuccess: invalidar,
-    onError: (e) => alert(e instanceof ApiError ? e.message : 'Error'),
+    onSuccess: () => { invalidar(); toast.ok('Estado del rol actualizado.') },
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Error'),
   })
 
   const celdas = detalle?.dias ?? []
@@ -120,9 +121,9 @@ export function RolPage() {
   // Siembra celdas variadas sobre los empleados reales para ver el calendario lleno (demo).
   async function cargarDatosPrueba() {
     if (!lista) return // espera a conocer si ya existe un rol (evita crear duplicados)
-    if (empleados.length === 0) { alert('No hay empleados para esta empresa/puesto.'); return }
+    if (empleados.length === 0) { toast.error('No hay empleados para esta empresa/puesto.'); return }
     let id = doc?.id
-    if (id && !editable) { alert(`El rol está en ${estado}: elige otra semana o puesto para los datos de prueba.`); return }
+    if (id && !editable) { toast.error(`El rol está en ${estado}: elige otra semana o puesto para los datos de prueba.`); return }
     if (!id) { const r = await crearRol({ empresa, zonaId: crypto.randomUUID(), anio, numeroSemana: semana, fechaInicio: fmt(lunes), puesto, creadoPor: idUsuario }); id = r.id }
 
     const esLukers = empresa.toUpperCase() === 'LUKERS'
@@ -152,7 +153,7 @@ export function RolPage() {
   function asignarCelda(e: EstadoCelda) {
     if (!pop) return
     if (e === 'CoberturaTienda') {
-      if (tiendas.length === 0) { alert('No hay tiendas registradas para esta empresa.'); return }
+      if (tiendas.length === 0) { toast.error('No hay tiendas registradas para esta empresa.'); return }
       setPickTienda(true) // pasa al sub-paso de elegir la tienda a cubrir
       return
     }
