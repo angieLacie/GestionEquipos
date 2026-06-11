@@ -20,6 +20,8 @@ public interface IRolSemanalRepository
 {
     Task<RolSemanal?> ObtenerAsync(Guid id, CancellationToken ct = default);
     Task<RolSemanal?> ObtenerConDiasAsync(Guid id, CancellationToken ct = default);
+    Task<ProgramacionDia?> ObtenerCeldaAsync(Guid idRol, Guid colaboradorId, DateOnly fecha, CancellationToken ct = default);
+    Task AgregarCeldaAsync(ProgramacionDia dia, CancellationToken ct = default);
     Task<(IReadOnlyList<RolSemanal> items, int total)> ListarAsync(
         string? empresa, Guid? zonaId, int? anio, int? numeroSemana, EstadoRol? estado,
         int page, int pageSize, CancellationToken ct = default);

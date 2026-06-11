@@ -28,6 +28,13 @@ internal sealed class RolSemanalRepository(RolDbContext db) : IRolSemanalReposit
         return (items, total);
     }
 
+    public Task<ProgramacionDia?> ObtenerCeldaAsync(Guid idRol, Guid colaboradorId, DateOnly fecha, CancellationToken ct = default)
+        => db.Programaciones.FirstOrDefaultAsync(
+            d => d.RolSemanalId == idRol && d.ColaboradorId == colaboradorId && d.Fecha == fecha, ct);
+
+    public async Task AgregarCeldaAsync(ProgramacionDia dia, CancellationToken ct = default)
+        => await db.Programaciones.AddAsync(dia, ct);
+
     public async Task AgregarAsync(RolSemanal rol, CancellationToken ct = default)
         => await db.Roles.AddAsync(rol, ct);
 }

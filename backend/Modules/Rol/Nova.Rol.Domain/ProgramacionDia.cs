@@ -10,7 +10,7 @@ public sealed class ProgramacionDia : Entity
 {
     private ProgramacionDia() { } // EF
 
-    internal ProgramacionDia(
+    private ProgramacionDia(
         Guid id, Guid rolSemanalId, Guid colaboradorId, DateOnly fecha, EstadoCelda estado,
         Guid? tiendaCoberturaId, string? tipoVenta, Guid? conceptoCompensacionId, bool esSugerencia,
         Guid registradoPor) : base(id)
@@ -38,7 +38,13 @@ public sealed class ProgramacionDia : Entity
     public Guid RegistradoPor { get; private set; }
     public DateTimeOffset FechaRegistro { get; private set; }
 
-    internal void Reasignar(EstadoCelda estado, Guid? tiendaCoberturaId, string? tipoVenta, Guid? conceptoCompensacionId, Guid registradoPor)
+    public static ProgramacionDia Crear(
+        Guid rolSemanalId, Guid colaboradorId, DateOnly fecha, EstadoCelda estado,
+        Guid? tiendaCoberturaId, string? tipoVenta, Guid? conceptoCompensacionId, Guid registradoPor)
+        => new(Guid.NewGuid(), rolSemanalId, colaboradorId, fecha, estado,
+            tiendaCoberturaId, tipoVenta, conceptoCompensacionId, false, registradoPor);
+
+    public void Reasignar(EstadoCelda estado, Guid? tiendaCoberturaId, string? tipoVenta, Guid? conceptoCompensacionId, Guid registradoPor)
     {
         Estado = estado;
         TiendaCoberturaId = tiendaCoberturaId;

@@ -94,6 +94,41 @@ export function RolPage() {
   const editable = !!doc && ['EnEdicion', 'PendienteEnvio', 'RechazadoGG', 'VersionEnRevision'].includes(estado!)
   const celdaDe = (cid: string, f: string) => celdas.find((c) => c.colaboradorId === cid && c.fecha === f)
 
+  // Filas = roster local ∪ colaboradores con celdas persistidas (por si el roster se perdió).
+  const filas = [
+    ...roster,
+    ...[...new Set(celdas.map((c) => c.colaboradorId))]
+      .filter((cid) => !roster.some((r) => r.id === cid))
+      .map((cid) => ({ id: cid, nombre: cid.slice(0, 8) })),
+  ]
+
+  // Siembra un roster + celdas variadas para ver el calendario lleno (demo).
+  async function cargarDatosPrueba() {
+    if (!lista) return // espera a conocer si ya existe un rol (evita crear duplicados)
+    let id = doc?.id
+    if (id && !editable) { alert(`El rol está en ${estado}: elige otra semana o puesto para los datos de prueba.`); return }
+    if (!id) { const r = await crearRol({ empresa, zonaId: crypto.randomUUID(), anio, numeroSemana: semana, fechaInicio: fmt(lunes), puesto, creadoPor: idUsuario }); id = r.id }
+
+    const nombres = ['Ana Torres', 'Luis Ramos', 'María Díaz', 'Jorge Vega', 'Sofía Núñez']
+    const nuevoRoster = nombres.map((n) => ({ id: crypto.randomUUID(), nombre: n }))
+    setRoster(nuevoRoster); localStorage.setItem(rosterKey, JSON.stringify(nuevoRoster))
+
+    const esLukers = empresa.toUpperCase() === 'LUKERS'
+    const plan: EstadoCelda[][] = [
+      ['DescansoLaboral', 'CoberturaTienda'],
+      ['CoberturaTienda', 'DescansoLaboral'],
+      ['CompensacionFeriadoLaborado', 'DescansoLaboral'],
+      ['CoberturaTienda', 'DescansoLaboral'],
+      [esLukers ? 'CoberturaTipoVenta' : 'DescansoLaboral', 'CoberturaTienda'],
+    ]
+    for (let i = 0; i < nuevoRoster.length; i++) {
+      const [e1, e2] = plan[i]
+      await programarCelda(id!, { colaboradorId: nuevoRoster[i].id, fecha: fmt(dias[i % 7]), estado: e1, registradoPor: idUsuario })
+      await programarCelda(id!, { colaboradorId: nuevoRoster[i].id, fecha: fmt(dias[(i + 3) % 7]), estado: e2, registradoPor: idUsuario })
+    }
+    invalidar()
+  }
+
   function agregarColaborador() {
     if (!editable) return
     const nombre = prompt('Nombre del colaborador:'); if (!nombre) return
@@ -115,7 +150,7 @@ export function RolPage() {
       <div className="kpis">
         <div className="kpi"><div className="kpi-label">Desc. máx / día</div><div className="kpi-val">6</div><div className="kpi-sub">Límite configurado</div></div>
         <div className="kpi green"><div className="kpi-label">Coberturas activas</div><div className="kpi-val green">{coberturas}</div><div className="kpi-sub">CV + COB</div></div>
-        <div className="kpi"><div className="kpi-label">Trabajadores</div><div className="kpi-val">{roster.length}</div><div className="kpi-sub">En esta vista</div></div>
+        <div className="kpi"><div className="kpi-label">Trabajadores</div><div className="kpi-val">{filas.length}</div><div className="kpi-sub">En esta vista</div></div>
         <div className="kpi crit"><div className="kpi-label">Estado del rol</div><div className="kpi-val red" style={{ fontSize: 16 }}>{estado ?? 'Sin crear'}</div><div className="kpi-sub">{wkLabel}</div></div>
       </div>
 
@@ -129,6 +164,7 @@ export function RolPage() {
         </select>
         <div style={{ marginLeft: 'auto' }} className="fila-acciones">
           {!doc && <button className="btn btn-ghost" onClick={() => crear.mutate()} disabled={crear.isPending}>+ Crear rol de la semana</button>}
+          <button className="btn btn-ghost" onClick={cargarDatosPrueba}>🎲 Datos de prueba</button>
           {editable && <button className="btn btn-ghost" onClick={agregarColaborador}>+ Trabajador</button>}
           {doc && ['EnEdicion', 'PendienteEnvio', 'RechazadoGG'].includes(estado!) &&
             <button className="btn btn-primary" onClick={() => transicion.mutate(() => enviarRol(doc.id, idUsuario))}>✉ Enviar a aprobación</button>}
@@ -170,12 +206,12 @@ export function RolPage() {
           </thead>
           <tbody>
             <tr className="rol-grp-zona"><td colSpan={13}>{empresa} · {CARGOS.find((c) => c.v === puesto)?.label}</td></tr>
-            {roster.length === 0 && (
+            {filas.length === 0 && (
               <tr><td colSpan={13} style={{ textAlign: 'center', padding: 24, color: '#94a3b8' }}>
-                {doc ? 'Agrega un trabajador para programar la semana.' : 'Crea el rol de la semana para empezar.'}
+                {doc ? 'Agrega un trabajador o usa “Datos de prueba”.' : 'Crea el rol de la semana o usa “Datos de prueba”.'}
               </td></tr>
             )}
-            {roster.map((t) => (
+            {filas.map((t) => (
               <tr key={t.id}>
                 <td className="rol-c-puesto">{CARGOS.find((c) => c.v === puesto)?.label}</td>
                 <td className="rol-c-personal">{t.nombre}</td>

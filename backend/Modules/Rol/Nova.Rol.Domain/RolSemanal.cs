@@ -73,31 +73,18 @@ public sealed class RolSemanal : Entity
     private bool EsEditable => Estado is EstadoRol.EnEdicion or EstadoRol.PendienteEnvio
         or EstadoRol.RechazadoGG or EstadoRol.VersionEnRevision;
 
-    /// <summary>Programa (o reasigna) la celda de un colaborador en una fecha (§6.3).</summary>
-    public Result<ProgramacionDia> ProgramarDia(
-        Guid colaboradorId, DateOnly fecha, EstadoCelda estado, Guid registradoPor,
-        Guid? tiendaCoberturaId = null, string? tipoVenta = null, Guid? conceptoCompensacionId = null)
+    /// <summary>Valida que una celda pueda programarse en este rol (sin mutar; §6.3).</summary>
+    public Result ValidarCelda(DateOnly fecha, EstadoCelda estado, Guid? tiendaCoberturaId)
     {
         if (!EsEditable)
-            return Result.Failure<ProgramacionDia>(Error.Conflicto($"El rol en estado {Estado} no admite edición de celdas."));
+            return Result.Failure(Error.Conflicto($"El rol en estado {Estado} no admite edición de celdas."));
         if (fecha < FechaInicio || fecha > FechaFin)
-            return Result.Failure<ProgramacionDia>(Error.Validacion("La fecha está fuera de la semana del rol."));
+            return Result.Failure(Error.Validacion("La fecha está fuera de la semana del rol."));
         if (estado == EstadoCelda.CoberturaTipoVenta && !Empresa.Equals("LUKERS", StringComparison.OrdinalIgnoreCase))
-            return Result.Failure<ProgramacionDia>(Error.Validacion("Cobertura por Tipo de Venta solo aplica a Lukers (RN-MAES-13)."));
+            return Result.Failure(Error.Validacion("Cobertura por Tipo de Venta solo aplica a Lukers (RN-MAES-13)."));
         if (estado == EstadoCelda.CoberturaTienda && tiendaCoberturaId is null)
-            return Result.Failure<ProgramacionDia>(Error.Validacion("Cobertura de Tienda requiere la tienda a cubrir."));
-
-        var existente = _dias.FirstOrDefault(d => d.ColaboradorId == colaboradorId && d.Fecha == fecha);
-        if (existente is not null)
-        {
-            existente.Reasignar(estado, tiendaCoberturaId, tipoVenta, conceptoCompensacionId, registradoPor);
-            return Result.Success(existente);
-        }
-
-        var dia = new ProgramacionDia(
-            Guid.NewGuid(), Id, colaboradorId, fecha, estado, tiendaCoberturaId, tipoVenta, conceptoCompensacionId, false, registradoPor);
-        _dias.Add(dia);
-        return Result.Success(dia);
+            return Result.Failure(Error.Validacion("Cobertura de Tienda requiere la tienda a cubrir."));
+        return Result.Success();
     }
 
     /// <summary>GZ envía el rol a GG (§6.2). Válido desde edición o tras rechazo.</summary>

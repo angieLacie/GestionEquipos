@@ -27,17 +27,28 @@ public sealed class ProgramarDiaHandler(IRolSemanalRepository roles, IHistorialR
 {
     public async Task<Result<CeldaResponse>> HandleAsync(Guid idRol, ProgramarDiaRequest req, CancellationToken ct = default)
     {
-        var rol = await roles.ObtenerConDiasAsync(idRol, ct);
+        var rol = await roles.ObtenerAsync(idRol, ct);
         if (rol is null)
             return Result.Failure<CeldaResponse>(Error.NoEncontrado("Rol no encontrado."));
 
-        var result = rol.ProgramarDia(
-            req.ColaboradorId, req.Fecha, req.Estado, req.RegistradoPor,
-            req.TiendaCoberturaId, req.TipoVenta, req.ConceptoCompensacionId);
-        if (result.IsFailure)
-            return Result.Failure<CeldaResponse>(result.Error);
+        var validacion = rol.ValidarCelda(req.Fecha, req.Estado, req.TiendaCoberturaId);
+        if (validacion.IsFailure)
+            return Result.Failure<CeldaResponse>(validacion.Error);
 
-        var dia = result.Value;
+        // Upsert de la celda como entidad propia (evita conflictos de tracking del agregado).
+        var dia = await roles.ObtenerCeldaAsync(idRol, req.ColaboradorId, req.Fecha, ct);
+        if (dia is null)
+        {
+            dia = ProgramacionDia.Crear(
+                idRol, req.ColaboradorId, req.Fecha, req.Estado,
+                req.TiendaCoberturaId, req.TipoVenta, req.ConceptoCompensacionId, req.RegistradoPor);
+            await roles.AgregarCeldaAsync(dia, ct);
+        }
+        else
+        {
+            dia.Reasignar(req.Estado, req.TiendaCoberturaId, req.TipoVenta, req.ConceptoCompensacionId, req.RegistradoPor);
+        }
+
         await historial.AgregarAsync(HistorialCambioRol.Registrar(
             rol.Id, TipoEventoRol.Modificacion, null, req.Estado.ToString(), req.RegistradoPor, programacionDiaId: dia.Id), ct);
         await uow.SaveChangesAsync(ct);
