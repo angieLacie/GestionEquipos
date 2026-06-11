@@ -2,12 +2,6 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "prototipo-ux",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "4178", "--directory", "prototipo-ux"],
-      "port": 4178
-    },
-    {
       "name": "prototipo-ux-v2",
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "4179", "--directory", "prototipo-ux-v2"],
@@ -16,8 +10,8 @@
     {
       "name": "nova-web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "frontend-web", "run", "dev"],
-      "port": 5173
+      "runtimeArgs": ["--prefix", "TS", "run", "dev", "--", "--port", "5174"],
+      "port": 5174
     }
   ]
 }
