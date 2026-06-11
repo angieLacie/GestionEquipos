@@ -43,6 +43,7 @@ export function RolPage() {
   const [empresa, setEmpresa] = useState('CADENA')
   const [puesto, setPuesto] = useState<PuestoRol>('GtAsesores')
   const [wkOffset, setWkOffset] = useState(0)
+  const [pop, setPop] = useState<{ cid: string; fecha: string; x: number; y: number } | null>(null)
 
   const lunes = useMemo(() => { const d = domingoDe(new Date()); d.setDate(d.getDate() + wkOffset * 7); return d }, [wkOffset])
   const anio = lunes.getFullYear()
@@ -133,15 +134,17 @@ export function RolPage() {
     invalidar()
   }
 
-  function clickCelda(cid: string, f: string, dow: number) {
+  function clickCelda(cid: string, f: string, ev: React.MouseEvent) {
     if (!doc) { alert('Crea el rol de la semana antes de programar.'); return }
     if (!editable) { alert(`El rol está en "${estado}" y no admite edición. Para programar necesita estar en edición (créalo en otra semana, o recházalo si está EnviadoGG).`); return }
-    const op = prompt(`Estado (${DIAS[dow]}):\n` + ESTADOS_CELDA.map((e, i) => `${i}=${e.label}`).join('\n'))
-    if (op === null) return
-    const el = ESTADOS_CELDA[Number(op)]
-    if (!el) return
-    if (el.v === 'CoberturaTienda') { alert('Cobertura de Tienda requiere elegir la tienda a cubrir (aún no disponible). Usa otro tipo por ahora.'); return }
-    programar.mutate({ colaboradorId: cid, fecha: f, estado: el.v })
+    const r = (ev.currentTarget as HTMLElement).getBoundingClientRect()
+    setPop({ cid, fecha: f, x: Math.min(r.left, window.innerWidth - 230), y: r.bottom + 4 })
+  }
+  function asignarCelda(e: EstadoCelda) {
+    if (!pop) return
+    if (e === 'CoberturaTienda') { alert('Cobertura de Tienda requiere elegir la tienda a cubrir (aún no disponible). Usa otro tipo por ahora.'); return }
+    programar.mutate({ colaboradorId: pop.cid, fecha: pop.fecha, estado: e })
+    setPop(null)
   }
 
   const coberturas = celdas.filter((c) => c.estado === 'CoberturaTienda' || c.estado === 'CoberturaTipoVenta').length
@@ -232,7 +235,7 @@ export function RolPage() {
                             const celda = celdaDe(t.id, f)
                             const est = celda?.estado ?? 'Vacio'
                             return (
-                              <td key={i} className="rol-day" onClick={() => clickCelda(t.id, f, d.getDay())}>
+                              <td key={i} className="rol-day" onClick={(ev) => clickCelda(t.id, f, ev)}>
                                 {est === 'Vacio'
                                   ? <span className="rol-vacio">·</span>
                                   : <span className={`rol-db rol-db-${est}`}>{abbrDe(est)}</span>}
@@ -256,6 +259,23 @@ export function RolPage() {
         <span><i className="swatch rol-db-CompensacionFeriadoLaborado" /> CF/CD · Compensaciones</span>
         <span><i className="swatch rol-db-CoberturaTipoVenta" /> CV · Cobertura tipo venta</span>
       </div>
+
+      {pop && (
+        <>
+          <div className="rol-pop-ov" onClick={() => setPop(null)} />
+          <div className="rol-pop" style={{ left: pop.x, top: pop.y }}>
+            <div className="rol-pop-ttl">Asignar tipo</div>
+            <div className="rol-pop-grid">
+              {ESTADOS_CELDA.filter((e) => e.v !== 'Vacio' && e.v !== 'CoberturaTienda').map((e) => (
+                <button key={e.v} className={`rol-pop-btn rol-db-${e.v}`} onClick={() => asignarCelda(e.v)} title={e.label}>
+                  {e.abbr}<span>{e.label}</span>
+                </button>
+              ))}
+            </div>
+            <button className="rol-pop-clear" onClick={() => asignarCelda('Vacio')}>✕ Vaciar día</button>
+          </div>
+        </>
+      )}
     </AppLayout>
   )
 }

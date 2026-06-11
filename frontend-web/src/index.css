@@ -232,6 +232,17 @@ code { background: #eef2ff; color: var(--acento); padding: 1px 6px; border-radiu
 .rol-db-CompensacionFeriadoLaborado, .rol-db-CompensacionDescansoNoGozado { background: #fed7aa; color: #c2410c; }
 .rol-db-CoberturaTipoVenta { background: #fef08a; color: #854d0e; }
 .rol-vacio { color: #cbd5e1; font-size: 11px; }
+
+/* Popover de asignación rápida de celda */
+.rol-pop-ov { position: fixed; inset: 0; z-index: 40; }
+.rol-pop { position: fixed; z-index: 41; width: 218px; background: #fff; border: 1px solid var(--borde); border-radius: 10px; box-shadow: 0 10px 30px rgba(15, 23, 42, .18); padding: 10px; }
+.rol-pop-ttl { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 8px; }
+.rol-pop-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.rol-pop-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border: 1px solid var(--borde); border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; transition: transform .06s; }
+.rol-pop-btn span { font-size: 9px; font-weight: 600; opacity: .85; line-height: 1.1; text-align: center; }
+.rol-pop-btn:hover { transform: translateY(-1px); filter: brightness(.97); }
+.rol-pop-clear { width: 100%; margin-top: 8px; padding: 6px; border: 1px solid var(--borde); border-radius: 8px; background: #f8fafc; font-size: 11px; font-weight: 700; color: var(--muted); cursor: pointer; }
+.rol-pop-clear:hover { background: #f1f5f9; }
 .leyenda { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; font-size: 12px; color: var(--muted); }
 .leyenda span { display: inline-flex; align-items: center; gap: 6px; }
 .swatch { width: 14px; height: 14px; border-radius: 3px; }
