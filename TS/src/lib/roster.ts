@@ -70,8 +70,8 @@ export function rosterAZonas(items: EmpleadoRoster[]): Zona[] {
     const tMap = zMap.get(zona)!
     if (!tMap.has(tienda)) tMap.set(tienda, [])
     tMap.get(tienda)!.push({
-      puesto: e.puestoDesc ?? '—',
-      cargo: puestoACargo(e.puestoDesc),
+      puesto: e.esSenior ? `${e.puestoDesc ?? '—'} SENIOR` : (e.puestoDesc ?? '—'),
+      cargo: e.esSenior ? 'senior' : puestoACargo(e.puestoDesc),
       trabajador: e.nombreCompleto,
       cuota: { ...cuotaCero },
       celdas: Array.from({ length: 7 }, () => null),
