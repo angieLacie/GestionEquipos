@@ -61,6 +61,8 @@ const TIPO_META: Record<TipoKey, { sub: string; dot: string }> = {
   'feriado-trab':     { sub: 'Feriado trabajado',              dot: '#166534' },
 }
 
+const esCompensacion = (t: TipoKey | null) => t === 'comp-feriado' || t === 'comp-descanso'
+
 const TIPOS_LISTA: TipoKey[] = [
   'descanso', 'cobertura-tienda',
   'comp-feriado', 'comp-descanso',
@@ -175,6 +177,8 @@ const Rol = () => {
   const [selTipo, setSelTipo] = useState<TipoKey | null>(null)
   const [tiendaCob, setTiendaCob] = useState('')
   const [tiendaStep, setTiendaStep] = useState(false)
+  const [compStep, setCompStep] = useState(false)
+  const [fechaComp, setFechaComp] = useState('') // fecha que se compensa (CF/CD)
   const [notas, setNotas] = useState('')
 
   const dias = useMemo(() => diasDeSemana(dom), [dom])
@@ -230,8 +234,10 @@ const Rol = () => {
       diasSel: [diaIdx],
     })
     setSelTipo(cel?.tipo ?? null)
-    setTiendaCob(cel?.detalle ?? '')
+    setTiendaCob(esCompensacion(cel?.tipo ?? null) ? '' : (cel?.detalle ?? ''))
+    setFechaComp(esCompensacion(cel?.tipo ?? null) ? (cel?.detalle ?? '') : '')
     setTiendaStep(false)
+    setCompStep(false)
     setNotas('')
   }
 
@@ -247,15 +253,13 @@ const Rol = () => {
   function guardarModal() {
     if (!modal || !selTipo) return
     if (selTipo === 'cobertura-tienda' && !tiendaCob) { setTiendaStep(true); return }
+    if (esCompensacion(selTipo) && !fechaComp) { setCompStep(true); return }
+    const detalle = selTipo === 'cobertura-tienda' ? tiendaCob : esCompensacion(selTipo) ? fechaComp : undefined
     setLocalZonas((prev) => {
       const z = JSON.parse(JSON.stringify(prev)) as typeof zonas
       const fila = z[modal.zonaIdx].tiendas[modal.tiendaIdx].filas[modal.filaIdx]
       for (const d of modal.diasSel) {
-        fila.celdas[d] = {
-          tipo: selTipo,
-          estado: 'PROGRAMADO',
-          ...(selTipo === 'cobertura-tienda' && tiendaCob ? { detalle: tiendaCob } : {}),
-        }
+        fila.celdas[d] = { tipo: selTipo, estado: 'PROGRAMADO', ...(detalle ? { detalle } : {}) }
       }
       return z
     })
@@ -276,6 +280,14 @@ const Rol = () => {
   const celdaActual = modal
     ? localZonas[modal.zonaIdx].tiendas[modal.tiendaIdx].filas[modal.filaIdx].celdas[modal.diasSel[0]]
     : null
+
+  // Sugerencias de fecha a compensar: pendientes del trabajador (por nombre).
+  const sugComp = useMemo(() => {
+    if (!modal || !esCompensacion(selTipo)) return [] as string[]
+    const p = pendientes.find((x) => x.trabajador === modal.nombre)
+    if (!p) return []
+    return selTipo === 'comp-feriado' ? p.detFeriados : p.detDescansos
+  }, [modal, selTipo])
 
   return (
     <div className="content-wrapper rol-page" onClick={() => { colsOpen && setColsOpen(false); progOpen && setProgOpen(false) }}>
@@ -476,40 +488,7 @@ const Rol = () => {
                 })}
               </div>
 
-              {!tiendaStep ? (
-                <>
-                  <div className="rpm-sec-ttl">TIPO</div>
-                  <div className="rpm-tipos">
-                    {TIPOS_LISTA.map((tk) => {
-                      const def = TIPOS[tk]
-                      const meta = TIPO_META[tk]
-                      return (
-                        <button
-                          key={tk}
-                          className={`rpm-tipo${selTipo === tk ? ' rpm-tipo--sel' : ''}`}
-                          onClick={() => setSelTipo(tk)}
-                        >
-                          <span className="rpm-tipo-dot" style={{ background: meta.dot }} />
-                          <span className="rpm-tipo-txt">
-                            <strong>{def.etiqueta}</strong>
-                            <small>{meta.sub}</small>
-                          </span>
-                          {selTipo === tk && <span className="rpm-tipo-check">✓</span>}
-                        </button>
-                      )
-                    })}
-                  </div>
-
-                  <div className="rpm-sec-ttl">NOTAS</div>
-                  <textarea
-                    className="rpm-notas"
-                    placeholder="Motivo, observaciones..."
-                    value={notas}
-                    onChange={(e) => setNotas(e.target.value)}
-                    rows={2}
-                  />
-                </>
-              ) : (
+              {tiendaStep ? (
                 <>
                   <div className="rpm-sec-ttl">TIENDA A CUBRIR</div>
                   <div className="rpm-tiendas-lista">
@@ -525,6 +504,73 @@ const Rol = () => {
                   </div>
                   <button className="rpm-back" onClick={() => setTiendaStep(false)}>‹ Volver a tipos</button>
                 </>
+              ) : compStep ? (
+                <>
+                  <div className="rpm-sec-ttl">
+                    {selTipo === 'comp-feriado' ? 'FERIADO QUE SE COMPENSA' : 'DESCANSO NO GOZADO QUE SE COMPENSA'}
+                  </div>
+                  {sugComp.length > 0 && (
+                    <div className="rpm-tiendas-lista mb-2">
+                      {sugComp.map((s) => (
+                        <button
+                          key={s}
+                          className={`rpm-tienda-btn${fechaComp === s ? ' rpm-tienda-btn--sel' : ''}`}
+                          onClick={() => setFechaComp(s)}
+                        >
+                          📅 {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="rpm-sec-ttl">O INGRESA LA FECHA</div>
+                  <input
+                    type="date"
+                    className="rpm-notas"
+                    value={/^\d{4}-\d{2}-\d{2}$/.test(fechaComp) ? fechaComp : ''}
+                    onChange={(e) => setFechaComp(e.target.value)}
+                  />
+                  <button className="rpm-back" onClick={() => setCompStep(false)}>‹ Volver a tipos</button>
+                </>
+              ) : (
+                <>
+                  <div className="rpm-sec-ttl">TIPO</div>
+                  <div className="rpm-tipos">
+                    {TIPOS_LISTA.map((tk) => {
+                      const def = TIPOS[tk]
+                      const meta = TIPO_META[tk]
+                      return (
+                        <button
+                          key={tk}
+                          className={`rpm-tipo${selTipo === tk ? ' rpm-tipo--sel' : ''}`}
+                          onClick={() => {
+                            setSelTipo(tk)
+                            if (esCompensacion(tk)) { setFechaComp(''); setCompStep(true) }
+                          }}
+                        >
+                          <span className="rpm-tipo-dot" style={{ background: meta.dot }} />
+                          <span className="rpm-tipo-txt">
+                            <strong>{def.etiqueta}</strong>
+                            <small>{meta.sub}</small>
+                          </span>
+                          {selTipo === tk && <span className="rpm-tipo-check">✓</span>}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {esCompensacion(selTipo) && fechaComp && (
+                    <div className="rpm-comp-resumen">Compensa: <strong>{fechaComp}</strong></div>
+                  )}
+
+                  <div className="rpm-sec-ttl">NOTAS</div>
+                  <textarea
+                    className="rpm-notas"
+                    placeholder="Motivo, observaciones..."
+                    value={notas}
+                    onChange={(e) => setNotas(e.target.value)}
+                    rows={2}
+                  />
+                </>
               )}
             </div>
 
@@ -537,7 +583,7 @@ const Rol = () => {
                 <button
                   className="btn btn-sm btn-primary"
                   onClick={guardarModal}
-                  disabled={!selTipo || (selTipo === 'cobertura-tienda' && tiendaStep && !tiendaCob)}
+                  disabled={!selTipo || (tiendaStep && !tiendaCob) || (compStep && !fechaComp)}
                 >
                   💾 Guardar cambios
                 </button>
