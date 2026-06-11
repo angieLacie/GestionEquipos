@@ -79,6 +79,8 @@ public interface IFeriadoRepository
 public interface IParametroRepository
 {
     Task<Parametro?> ObtenerVigenteAsync(string clave, DateOnly fecha, string? idEmpresa, string? idAmbito, CancellationToken ct = default);
+    /// <summary>Igual que ObtenerVigenteAsync pero con tracking, para cerrar su vigencia (CU-MAES-04).</summary>
+    Task<Parametro?> ObtenerVigenteParaCierreAsync(string clave, DateOnly fecha, string? idEmpresa, string? idAmbito, CancellationToken ct = default);
     Task<(IReadOnlyList<Parametro> items, int total)> ListarAsync(
         ModuloNova? modulo, string? flujo, Criticidad? criticidad, string? clave, int page, int pageSize, CancellationToken ct = default);
     Task<Parametro?> ObtenerAsync(Guid id, CancellationToken ct = default);

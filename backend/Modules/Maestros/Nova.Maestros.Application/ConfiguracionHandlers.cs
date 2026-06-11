@@ -39,8 +39,9 @@ public sealed class CrearParametroHandler(
         var p = result.Value;
 
         // Cierra la versión anterior vigente (vigencia_hasta = nueva vigencia - 1 día).
-        var anterior = await parametros.ObtenerVigenteAsync(p.Clave, req.VigenciaDesde, req.IdEmpresa, req.IdAmbito, ct);
-        anterior?.CerrarVigencia(req.VigenciaDesde.AddDays(-1));
+        var anterior = await parametros.ObtenerVigenteParaCierreAsync(p.Clave, req.VigenciaDesde, req.IdEmpresa, req.IdAmbito, ct);
+        if (anterior is not null && anterior.VigenciaDesde < req.VigenciaDesde)
+            anterior.CerrarVigencia(req.VigenciaDesde.AddDays(-1));
 
         await parametros.AgregarAsync(p, ct);
         await auditoria.AgregarAsync(AuditoriaMaestros.Registrar(

@@ -163,6 +163,21 @@ internal sealed class ParametroRepository(MaestrosDbContext db) : IParametroRepo
             .FirstOrDefault();
     }
 
+    public async Task<Parametro?> ObtenerVigenteParaCierreAsync(
+        string clave, DateOnly fecha, string? idEmpresa, string? idAmbito, CancellationToken ct = default)
+    {
+        // Con tracking: la mutación de CerrarVigencia debe persistirse en SaveChanges.
+        var candidatos = await db.Parametros
+            .Where(p => p.Clave == clave
+                && (idEmpresa == null || p.IdEmpresa == idEmpresa)
+                && (idAmbito == null || p.IdAmbito == idAmbito))
+            .ToListAsync(ct);
+        return candidatos
+            .Where(p => p.EstaVigente(fecha))
+            .OrderByDescending(p => p.VigenciaDesde)
+            .FirstOrDefault();
+    }
+
     public async Task<(IReadOnlyList<Parametro> items, int total)> ListarAsync(
         ModuloNova? modulo, string? flujo, Criticidad? criticidad, string? clave, int page, int pageSize, CancellationToken ct = default)
     {
