@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Card } from 'react-bootstrap'
 import PageBreadcrumb from '@/components/PageBreadcrumb.tsx'
 import NovaSelect from '@/components/NovaSelect.tsx'
@@ -7,16 +7,15 @@ import {
   CARGOS_FILTRO,
   GRUPOS,
   kpis,
-  listaTiendas,
-  listaZonas,
   pendientes,
   TIPOS,
   TIPOS_FILTRO,
-  zonas,
   type Celda,
   type GrupoKey,
   type TipoKey,
+  type Zona,
 } from './data'
+import { listarRoster, rosterAZonas } from '@/lib/roster'
 import { diasDeSemana, etiquetaSemana, inicioSemana, mismaSemana, sumarDias } from './fechas'
 import './rol.scss'
 
@@ -169,8 +168,27 @@ const Rol = () => {
   const [fTipos, setFTipos] = useState<string[]>([])
   const [busqueda, setBusqueda] = useState('')
 
-  // Datos editables (copia profunda del mock)
-  const [localZonas, setLocalZonas] = useState(() => JSON.parse(JSON.stringify(zonas)) as typeof zonas)
+  // Roster real (RMS vía /v1/maes/empleados/roster). Editable en memoria para las celdas.
+  const [localZonas, setLocalZonas] = useState<Zona[]>([])
+  const [cargando, setCargando] = useState(true)
+  const [errorCarga, setErrorCarga] = useState<string | null>(null)
+
+  useEffect(() => {
+    let vivo = true
+    setCargando(true)
+    listarRoster({ pageSize: 2000 })
+      .then((pag) => { if (vivo) { setLocalZonas(rosterAZonas(pag.items)); setErrorCarga(null) } })
+      .catch((e) => { if (vivo) setErrorCarga(e?.message ?? 'No se pudo cargar el roster.') })
+      .finally(() => { if (vivo) setCargando(false) })
+    return () => { vivo = false }
+  }, [])
+
+  // Opciones de filtro derivadas del roster cargado
+  const listaZonas = useMemo(() => [...new Set(localZonas.map((z) => z.nombre))], [localZonas])
+  const listaTiendas = useMemo(
+    () => [...new Set(localZonas.flatMap((z) => z.tiendas.map((t) => t.nombre)))],
+    [localZonas],
+  )
 
   // Modal de programación
   const [modal, setModal] = useState<ModalCtx | null>(null)
@@ -256,7 +274,7 @@ const Rol = () => {
     if (esCompensacion(selTipo) && !fechaComp) { setCompStep(true); return }
     const detalle = selTipo === 'cobertura-tienda' ? tiendaCob : esCompensacion(selTipo) ? fechaComp : undefined
     setLocalZonas((prev) => {
-      const z = JSON.parse(JSON.stringify(prev)) as typeof zonas
+      const z = JSON.parse(JSON.stringify(prev)) as Zona[]
       const fila = z[modal.zonaIdx].tiendas[modal.tiendaIdx].filas[modal.filaIdx]
       for (const d of modal.diasSel) {
         fila.celdas[d] = { tipo: selTipo, estado: 'PROGRAMADO', ...(detalle ? { detalle } : {}) }
@@ -269,7 +287,7 @@ const Rol = () => {
   function anularModal() {
     if (!modal) return
     setLocalZonas((prev) => {
-      const z = JSON.parse(JSON.stringify(prev)) as typeof zonas
+      const z = JSON.parse(JSON.stringify(prev)) as Zona[]
       const fila = z[modal.zonaIdx].tiendas[modal.tiendaIdx].filas[modal.filaIdx]
       for (const d of modal.diasSel) fila.celdas[d] = null
       return z
@@ -412,7 +430,13 @@ const Rol = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {zonasFiltradas.length === 0 && (
+                  {cargando && (
+                    <tr><td colSpan={totalCols} className="rol-empty">Cargando roster…</td></tr>
+                  )}
+                  {errorCarga && !cargando && (
+                    <tr><td colSpan={totalCols} className="rol-empty text-danger">⚠ {errorCarga}</td></tr>
+                  )}
+                  {!cargando && !errorCarga && zonasFiltradas.length === 0 && (
                     <tr>
                       <td colSpan={totalCols} className="rol-empty">Sin resultados para los filtros aplicados.</td>
                     </tr>
