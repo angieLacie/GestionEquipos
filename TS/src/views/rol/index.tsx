@@ -15,7 +15,7 @@ import {
   type TipoKey,
   type Zona,
 } from './data'
-import { listarRoster, rosterAZonas } from '@/lib/roster'
+import { listarRoster, obtenerMapaPuestoCategoria, rosterAZonas } from '@/lib/roster'
 import { diasDeSemana, etiquetaSemana, inicioSemana, mismaSemana, sumarDias } from './fechas'
 import './rol.scss'
 
@@ -176,8 +176,8 @@ const Rol = () => {
   useEffect(() => {
     let vivo = true
     setCargando(true)
-    listarRoster({ pageSize: 2000 })
-      .then((pag) => { if (vivo) { setLocalZonas(rosterAZonas(pag.items)); setErrorCarga(null) } })
+    Promise.all([listarRoster({ pageSize: 2000 }), obtenerMapaPuestoCategoria()])
+      .then(([pag, mapa]) => { if (vivo) { setLocalZonas(rosterAZonas(pag.items, mapa)); setErrorCarga(null) } })
       .catch((e) => { if (vivo) setErrorCarga(e?.message ?? 'No se pudo cargar el roster.') })
       .finally(() => { if (vivo) setCargando(false) })
     return () => { vivo = false }

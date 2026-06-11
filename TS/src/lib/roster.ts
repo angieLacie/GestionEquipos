@@ -44,15 +44,34 @@ export function listarRoster(f: RosterFiltro = {}): Promise<Pagina<EmpleadoRoste
   return api<Pagina<EmpleadoRoster>>(`/v1/maes/empleados/roster${s ? `?${s}` : ''}`)
 }
 
-/** Mapea la descripción de puesto RMS a la categoría de cargo del rol. */
-export function puestoACargo(desc: string | null): Cargo {
-  const d = (desc ?? '').toUpperCase()
-  if (d.includes('SENIOR')) return 'senior'
-  if (d.includes('SECRETARIA') || d.includes('CAJER')) return 'secretarias'
-  if (d.includes('SASTRE')) return 'sastres'
-  if (d.includes('AUXILIAR')) return 'auxiliares'
-  // ASESOR, GERENTE y resto → asesores/gerentes
-  return 'gte-asesor'
+// Categoría canónica del rol (vocabulario PuestoRol del backend).
+export type CategoriaRol = 'Seniors' | 'GtAsesores' | 'Secretarias' | 'Auxiliares' | 'Sastres'
+
+/** Traduce la categoría canónica del parámetro al Cargo (css) que usa la grilla. */
+const CATEGORIA_A_CARGO: Record<CategoriaRol, Cargo> = {
+  Seniors: 'senior',
+  GtAsesores: 'gte-asesor',
+  Secretarias: 'secretarias',
+  Auxiliares: 'auxiliares',
+  Sastres: 'sastres',
+}
+
+/** Mapa puesto→categoría leído del parámetro ROL_MAPEO_PUESTO_CATEGORIA (Maestros). */
+export type MapaPuestoCategoria = Map<string, CategoriaRol>
+
+export async function obtenerMapaPuestoCategoria(): Promise<MapaPuestoCategoria> {
+  const hoy = new Date().toISOString().slice(0, 10)
+  const p = await api<{ valor: string }>(
+    `/v1/maes/configuracion/parametros/lookup?clave=ROL_MAPEO_PUESTO_CATEGORIA&fecha=${hoy}`,
+  )
+  const lista = JSON.parse(p.valor) as { puesto: string; categoria: CategoriaRol }[]
+  return new Map(lista.map((x) => [x.puesto.toUpperCase(), x.categoria]))
+}
+
+/** Resuelve el Cargo (css) de un puesto vía el mapa de parámetros. Fallback gte-asesor. */
+function puestoACargo(desc: string | null, mapa: MapaPuestoCategoria): Cargo {
+  const cat = mapa.get((desc ?? '').toUpperCase())
+  return cat ? CATEGORIA_A_CARGO[cat] : 'gte-asesor'
 }
 
 const cuotaCero: Cuota = {
@@ -61,7 +80,7 @@ const cuotaCero: Cuota = {
 }
 
 /** Agrupa el roster plano en la estructura Zona → Tienda → Fila del calendario. */
-export function rosterAZonas(items: EmpleadoRoster[]): Zona[] {
+export function rosterAZonas(items: EmpleadoRoster[], mapa: MapaPuestoCategoria): Zona[] {
   const zMap = new Map<string, Map<string, FilaRol[]>>()
   for (const e of items) {
     const zona = e.zona ?? 'SIN ZONA'
@@ -71,7 +90,7 @@ export function rosterAZonas(items: EmpleadoRoster[]): Zona[] {
     if (!tMap.has(tienda)) tMap.set(tienda, [])
     tMap.get(tienda)!.push({
       puesto: e.esSenior ? `${e.puestoDesc ?? '—'} SENIOR` : (e.puestoDesc ?? '—'),
-      cargo: e.esSenior ? 'senior' : puestoACargo(e.puestoDesc),
+      cargo: e.esSenior ? 'senior' : puestoACargo(e.puestoDesc, mapa),
       trabajador: e.nombreCompleto,
       cuota: { ...cuotaCero },
       celdas: Array.from({ length: 7 }, () => null),
