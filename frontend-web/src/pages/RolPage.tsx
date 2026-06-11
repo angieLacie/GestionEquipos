@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '../components/AppLayout'
 import { useAuth } from '../lib/auth'
 import { ApiError } from '../lib/api'
-import { listarEmpresas } from '../lib/maestros'
+import { listarEmpresas, listarEmpleados, type Empleado } from '../lib/maestros'
 import {
   listarRolesSemanales, obtenerRol, crearRol, programarCelda,
   enviarRol, aprobarRol, rechazarRol, programarGt,
@@ -64,12 +64,12 @@ export function RolPage() {
     enabled: !!doc,
   })
 
-  const rosterKey = `roster-${empresa}-${puesto}-${anio}-${semana}`
-  const [roster, setRoster] = useState<{ id: string; nombre: string }[]>(() => {
-    const r = localStorage.getItem(rosterKey); return r ? JSON.parse(r) : []
+  // Roster real desde el maestro de empleados (Maestros): empresa + categoría (= puesto del rol).
+  const { data: empleadosPag } = useQuery({
+    queryKey: ['empleados', empresa, puesto],
+    queryFn: () => listarEmpleados({ idEmpresa: empresa, categoria: puesto }),
   })
-  // Re-sync roster al cambiar de semana/empresa/puesto.
-  useMemo(() => { const r = localStorage.getItem(rosterKey); setRoster(r ? JSON.parse(r) : []) }, [rosterKey])
+  const empleados = empleadosPag?.items ?? []
 
   const invalidar = () => { qc.invalidateQueries({ queryKey: ['rol', doc?.id] }); qc.invalidateQueries({ queryKey: ['roles-sem'] }) }
 
@@ -94,24 +94,27 @@ export function RolPage() {
   const editable = !!doc && ['EnEdicion', 'PendienteEnvio', 'RechazadoGG', 'VersionEnRevision'].includes(estado!)
   const celdaDe = (cid: string, f: string) => celdas.find((c) => c.colaboradorId === cid && c.fecha === f)
 
-  // Filas = roster local ∪ colaboradores con celdas persistidas (por si el roster se perdió).
-  const filas = [
-    ...roster,
-    ...[...new Set(celdas.map((c) => c.colaboradorId))]
-      .filter((cid) => !roster.some((r) => r.id === cid))
-      .map((cid) => ({ id: cid, nombre: cid.slice(0, 8) })),
-  ]
+  const filas = empleados
 
-  // Siembra un roster + celdas variadas para ver el calendario lleno (demo).
+  // Agrupa los empleados por Zona → Tienda (como el prototipo).
+  const grupos = useMemo(() => {
+    const byZona = new Map<string, Map<string, Empleado[]>>()
+    for (const e of empleados) {
+      if (!byZona.has(e.zona)) byZona.set(e.zona, new Map())
+      const t = byZona.get(e.zona)!
+      if (!t.has(e.tienda)) t.set(e.tienda, [])
+      t.get(e.tienda)!.push(e)
+    }
+    return byZona
+  }, [empleados])
+
+  // Siembra celdas variadas sobre los empleados reales para ver el calendario lleno (demo).
   async function cargarDatosPrueba() {
     if (!lista) return // espera a conocer si ya existe un rol (evita crear duplicados)
+    if (empleados.length === 0) { alert('No hay empleados para esta empresa/puesto.'); return }
     let id = doc?.id
     if (id && !editable) { alert(`El rol está en ${estado}: elige otra semana o puesto para los datos de prueba.`); return }
     if (!id) { const r = await crearRol({ empresa, zonaId: crypto.randomUUID(), anio, numeroSemana: semana, fechaInicio: fmt(lunes), puesto, creadoPor: idUsuario }); id = r.id }
-
-    const nombres = ['Ana Torres', 'Luis Ramos', 'María Díaz', 'Jorge Vega', 'Sofía Núñez']
-    const nuevoRoster = nombres.map((n) => ({ id: crypto.randomUUID(), nombre: n }))
-    setRoster(nuevoRoster); localStorage.setItem(rosterKey, JSON.stringify(nuevoRoster))
 
     const esLukers = empresa.toUpperCase() === 'LUKERS'
     const plan: EstadoCelda[][] = [
@@ -121,20 +124,14 @@ export function RolPage() {
       ['CoberturaTienda', 'DescansoLaboral'],
       [esLukers ? 'CoberturaTipoVenta' : 'DescansoLaboral', 'CoberturaTienda'],
     ]
-    for (let i = 0; i < nuevoRoster.length; i++) {
-      const [e1, e2] = plan[i]
-      await programarCelda(id!, { colaboradorId: nuevoRoster[i].id, fecha: fmt(dias[i % 7]), estado: e1, registradoPor: idUsuario })
-      await programarCelda(id!, { colaboradorId: nuevoRoster[i].id, fecha: fmt(dias[(i + 3) % 7]), estado: e2, registradoPor: idUsuario })
+    for (let i = 0; i < empleados.length; i++) {
+      const [e1, e2] = plan[i % plan.length]
+      await programarCelda(id!, { colaboradorId: empleados[i].id, fecha: fmt(dias[i % 7]), estado: e1, registradoPor: idUsuario })
+      await programarCelda(id!, { colaboradorId: empleados[i].id, fecha: fmt(dias[(i + 3) % 7]), estado: e2, registradoPor: idUsuario })
     }
     invalidar()
   }
 
-  function agregarColaborador() {
-    if (!editable) return
-    const nombre = prompt('Nombre del colaborador:'); if (!nombre) return
-    const next = [...roster, { id: crypto.randomUUID(), nombre }]
-    setRoster(next); localStorage.setItem(rosterKey, JSON.stringify(next))
-  }
   function clickCelda(cid: string, f: string, dow: number) {
     if (!editable) return
     const op = prompt(`Estado (${DIAS[dow]}):\n` + ESTADOS_CELDA.map((e, i) => `${i}=${e.label}`).join('\n'))
@@ -165,7 +162,6 @@ export function RolPage() {
         <div style={{ marginLeft: 'auto' }} className="fila-acciones">
           {!doc && <button className="btn btn-ghost" onClick={() => crear.mutate()} disabled={crear.isPending}>+ Crear rol de la semana</button>}
           <button className="btn btn-ghost" onClick={cargarDatosPrueba}>🎲 Datos de prueba</button>
-          {editable && <button className="btn btn-ghost" onClick={agregarColaborador}>+ Trabajador</button>}
           {doc && ['EnEdicion', 'PendienteEnvio', 'RechazadoGG'].includes(estado!) &&
             <button className="btn btn-primary" onClick={() => transicion.mutate(() => enviarRol(doc.id, idUsuario))}>✉ Enviar a aprobación</button>}
           {estado === 'EnviadoGG' && <>
@@ -205,34 +201,46 @@ export function RolPage() {
             </tr>
           </thead>
           <tbody>
-            <tr className="rol-grp-zona"><td colSpan={13}>{empresa} · {CARGOS.find((c) => c.v === puesto)?.label}</td></tr>
             {filas.length === 0 && (
               <tr><td colSpan={13} style={{ textAlign: 'center', padding: 24, color: '#94a3b8' }}>
-                {doc ? 'Agrega un trabajador o usa “Datos de prueba”.' : 'Crea el rol de la semana o usa “Datos de prueba”.'}
+                Sin empleados para {empresa} · {CARGOS.find((c) => c.v === puesto)?.label}.
               </td></tr>
             )}
-            {filas.map((t) => (
-              <tr key={t.id}>
-                <td className="rol-c-puesto">{CARGOS.find((c) => c.v === puesto)?.label}</td>
-                <td className="rol-c-personal">{t.nombre}</td>
-                <td className="rol-c-cuota">—</td>
-                <td className="rol-c-cuota">—</td>
-                <td className="rol-c-cuota">—</td>
-                <td className="rol-c-cuota">—</td>
-                {dias.map((d, i) => {
-                  const f = fmt(d)
-                  const celda = celdaDe(t.id, f)
-                  const est = celda?.estado ?? 'Vacio'
-                  return (
-                    <td key={i} className="rol-day" onClick={() => clickCelda(t.id, f, d.getDay())}>
-                      {est === 'Vacio'
-                        ? <span className="rol-vacio">·</span>
-                        : <span className={`rol-db rol-db-${est}`}>{abbrDe(est)}</span>}
-                    </td>
-                  )
-                })}
-              </tr>
-            ))}
+            {[...grupos.entries()].map(([zona, tiendas]) => {
+              const totalZona = [...tiendas.values()].reduce((s, arr) => s + arr.length, 0)
+              return (
+                <Fragment key={zona}>
+                  <tr className="rol-grp-zona"><td colSpan={13}>{zona} · {totalZona} personas</td></tr>
+                  {[...tiendas.entries()].map(([tienda, emps]) => (
+                    <Fragment key={tienda}>
+                      <tr className="rol-grp-tienda"><td colSpan={13}>📍 {tienda}</td></tr>
+                      {emps.map((t) => (
+                        <tr key={t.id}>
+                          <td className="rol-c-puesto">{t.cargo}</td>
+                          <td className="rol-c-personal">{t.nombreCompleto}</td>
+                          <td className="rol-c-cuota">—</td>
+                          <td className="rol-c-cuota">—</td>
+                          <td className="rol-c-cuota">—</td>
+                          <td className="rol-c-cuota">—</td>
+                          {dias.map((d, i) => {
+                            const f = fmt(d)
+                            const celda = celdaDe(t.id, f)
+                            const est = celda?.estado ?? 'Vacio'
+                            return (
+                              <td key={i} className="rol-day" onClick={() => clickCelda(t.id, f, d.getDay())}>
+                                {est === 'Vacio'
+                                  ? <span className="rol-vacio">·</span>
+                                  : <span className={`rol-db rol-db-${est}`}>{abbrDe(est)}</span>}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </Fragment>
+                  ))}
+                </Fragment>
+              )
+            })}
           </tbody>
         </table>
       </div>

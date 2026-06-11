@@ -223,6 +223,7 @@ code { background: #eef2ff; color: var(--acento); padding: 1px 6px; border-radiu
 .rol-c-personal { width: 150px; text-align: left !important; font-weight: 600; }
 .rol-c-cuota { width: 48px; text-align: center; color: var(--muted-2); font-size: 11px; }
 .rol-grp-zona td { background: #1e293b; font-size: 11.5px; font-weight: 800; color: #fff; padding: 6px 12px; letter-spacing: .04em; text-transform: uppercase; }
+.rol-grp-tienda td { background: #f1f5f9; font-size: 11px; font-weight: 700; color: #475569; padding: 5px 12px; }
 .rol-day { text-align: center; min-width: 84px; cursor: pointer; }
 .rol-day:hover { outline: 2px solid var(--acento-claro); outline-offset: -2px; }
 .rol-db { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; min-width: 26px; letter-spacing: .03em; }

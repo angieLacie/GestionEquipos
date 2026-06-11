@@ -57,6 +57,33 @@ internal sealed class PuestoRepository(MaestrosDbContext db) : IPuestoRepository
         => await db.Puestos.AsNoTracking().ToListAsync(ct);
 }
 
+internal sealed class EmpleadoRepository(MaestrosDbContext db) : IEmpleadoRepository
+{
+    public async Task<(IReadOnlyList<Empleado> items, int total)> ListarAsync(
+        string? idEmpresa, string? zona, string? tienda, CategoriaRol? categoria, EstadoEmpleado? estado,
+        string? busqueda, int page, int pageSize, CancellationToken ct = default)
+    {
+        var q = db.Empleados.AsNoTracking().AsQueryable();
+        if (idEmpresa is not null) q = q.Where(e => e.IdEmpresa == idEmpresa);
+        if (zona is not null) q = q.Where(e => e.Zona == zona);
+        if (tienda is not null) q = q.Where(e => e.Tienda == tienda);
+        if (categoria is not null) q = q.Where(e => e.Categoria == categoria);
+        if (estado is not null) q = q.Where(e => e.Estado == estado);
+        if (!string.IsNullOrWhiteSpace(busqueda))
+            q = q.Where(e => e.NombreCompleto.Contains(busqueda) || e.Cargo.Contains(busqueda));
+        var total = await q.CountAsync(ct);
+        var items = await q.OrderBy(e => e.Zona).ThenBy(e => e.Tienda).ThenBy(e => e.NombreCompleto)
+            .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+        return (items, total);
+    }
+
+    public Task<Empleado?> ObtenerAsync(Guid id, CancellationToken ct = default)
+        => db.Empleados.FirstOrDefaultAsync(e => e.Id == id, ct);
+
+    public async Task AgregarAsync(Empleado empleado, CancellationToken ct = default)
+        => await db.Empleados.AddAsync(empleado, ct);
+}
+
 internal sealed class RolRepository(MaestrosDbContext db) : IRolRepository
 {
     public async Task<IReadOnlyList<Rol>> ListarAsync(CancellationToken ct = default)

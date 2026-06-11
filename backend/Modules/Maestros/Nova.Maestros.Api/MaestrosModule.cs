@@ -49,6 +49,15 @@ public static class MaestrosModule
         grupo.MapGet("/puestos", async (IPuestoRepository repo, CancellationToken ct) =>
             Results.Ok(await repo.ListarAsync(ct))).WithName("ListarPuestos");
 
+        grupo.MapGet("/empleados", async (
+            string? idEmpresa, string? zona, string? tienda, CategoriaRol? categoria, EstadoEmpleado? estado,
+            string? busqueda, int? page, int? pageSize, IEmpleadoRepository repo, CancellationToken ct) =>
+        {
+            var (items, total) = await repo.ListarAsync(
+                idEmpresa, zona, tienda, categoria, estado, busqueda, page ?? 1, pageSize ?? 200, ct);
+            return Results.Ok(new { items, page = page ?? 1, page_size = pageSize ?? 200, total });
+        }).WithName("ListarEmpleados");
+
         grupo.MapGet("/roles", async (IRolRepository repo, CancellationToken ct) =>
             Results.Ok(await repo.ListarAsync(ct))).WithName("ListarRoles");
 

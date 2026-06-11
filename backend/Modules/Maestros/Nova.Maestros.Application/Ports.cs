@@ -41,6 +41,15 @@ public interface IPuestoRepository
     Task<IReadOnlyList<Puesto>> ListarAsync(CancellationToken ct = default);
 }
 
+public interface IEmpleadoRepository
+{
+    Task<(IReadOnlyList<Empleado> items, int total)> ListarAsync(
+        string? idEmpresa, string? zona, string? tienda, CategoriaRol? categoria, EstadoEmpleado? estado,
+        string? busqueda, int page, int pageSize, CancellationToken ct = default);
+    Task<Empleado?> ObtenerAsync(Guid id, CancellationToken ct = default);
+    Task AgregarAsync(Empleado empleado, CancellationToken ct = default);
+}
+
 public interface IRolRepository
 {
     Task<IReadOnlyList<Rol>> ListarAsync(CancellationToken ct = default);

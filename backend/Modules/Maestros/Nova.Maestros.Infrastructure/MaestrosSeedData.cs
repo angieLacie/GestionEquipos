@@ -84,5 +84,37 @@ internal static class MaestrosSeedData
             IdRol = rp.rol,
             ClavePermiso = rp.permiso
         }).ToArray());
+
+        // Empleados demo (base RMS) para poblar la grilla del Rol de Personal.
+        // Guids fijos para que HasData sea determinista entre migraciones.
+        (string id, string cod, string nom, string emp, string zona, string tienda, string cargo, CategoriaRol cat, EstadoEmpleado est)[] empleados =
+        [
+            ("a1000001-0000-0000-0000-000000000001", "E-0001", "Ana Torres",      "CADENA", "Zona Lima Norte", "Mega Plaza",   "Gerente Titular", CategoriaRol.GtAsesores,  EstadoEmpleado.Activo),
+            ("a1000001-0000-0000-0000-000000000002", "E-0002", "Luis Ramos",      "CADENA", "Zona Lima Norte", "Mega Plaza",   "Asesor",          CategoriaRol.GtAsesores,  EstadoEmpleado.Activo),
+            ("a1000001-0000-0000-0000-000000000003", "E-0003", "María Díaz",      "CADENA", "Zona Lima Norte", "Mega Plaza",   "Asesor Senior",   CategoriaRol.Seniors,     EstadoEmpleado.Activo),
+            ("a1000001-0000-0000-0000-000000000004", "E-0004", "Jorge Vega",      "CADENA", "Zona Lima Norte", "Plaza Norte",  "Asesor",          CategoriaRol.GtAsesores,  EstadoEmpleado.Vacaciones),
+            ("a1000001-0000-0000-0000-000000000005", "E-0005", "Sofía Núñez",     "CADENA", "Zona Lima Norte", "Plaza Norte",  "Secretaria",      CategoriaRol.Secretarias, EstadoEmpleado.Activo),
+            ("a1000001-0000-0000-0000-000000000006", "E-0006", "Carlos Pérez",    "CADENA", "Zona Lima Sur",   "Jockey Plaza", "Asesor Senior",   CategoriaRol.Seniors,     EstadoEmpleado.Activo),
+            ("a1000001-0000-0000-0000-000000000007", "E-0007", "Lucía Flores",    "CADENA", "Zona Lima Sur",   "Jockey Plaza", "Asesor",          CategoriaRol.GtAsesores,  EstadoEmpleado.Descanso),
+            ("a1000001-0000-0000-0000-000000000008", "E-0008", "Diego Salas",     "CADENA", "Zona Lima Sur",   "Jockey Plaza", "Auxiliar",        CategoriaRol.Auxiliares,  EstadoEmpleado.Activo),
+            ("a1000001-0000-0000-0000-000000000009", "E-0009", "Rosa Campos",     "LUKERS", "Zona Lima Sur",   "Jockey Plaza", "Sastre",          CategoriaRol.Sastres,     EstadoEmpleado.Activo),
+            ("a1000001-0000-0000-0000-00000000000a", "E-0010", "Pedro Quispe",    "LUKERS", "Zona Lima Norte", "Plaza Norte",  "Asesor",          CategoriaRol.GtAsesores,  EstadoEmpleado.Activo),
+            ("a1000001-0000-0000-0000-00000000000b", "E-0011", "Elena Ríos",      "LUKERS", "Zona Lima Norte", "Plaza Norte",  "Asesor Senior",   CategoriaRol.Seniors,     EstadoEmpleado.Licencia),
+            ("a1000001-0000-0000-0000-00000000000c", "E-0012", "Marco Aguilar",   "LUKERS", "Zona Lima Norte", "Mega Plaza",   "Auxiliar",        CategoriaRol.Auxiliares,  EstadoEmpleado.Activo),
+        ];
+        b.Entity<Empleado>().HasData(empleados.Select(e => new
+        {
+            Id = Guid.Parse(e.id),
+            Codigo = e.cod,
+            NombreCompleto = e.nom,
+            IdEmpresa = e.emp,
+            Zona = e.zona,
+            Tienda = e.tienda,
+            Cargo = e.cargo,
+            Categoria = e.cat,
+            Estado = e.est,
+            Origen = OrigenDato.Rms,
+            RmsSyncAt = (DateTimeOffset?)null
+        }).ToArray());
     }
 }

@@ -18,6 +18,7 @@ public sealed class MaestrosDbContext(DbContextOptions<MaestrosDbContext> option
     public DbSet<Zona> Zonas => Set<Zona>();
     public DbSet<Tienda> Tiendas => Set<Tienda>();
     public DbSet<Puesto> Puestos => Set<Puesto>();
+    public DbSet<Empleado> Empleados => Set<Empleado>();
     public DbSet<Rol> Roles => Set<Rol>();
     public DbSet<Permiso> Permisos => Set<Permiso>();
     public DbSet<RolPermiso> RolesPermisos => Set<RolPermiso>();
@@ -34,6 +35,7 @@ public sealed class MaestrosDbContext(DbContextOptions<MaestrosDbContext> option
         modelBuilder.ApplyConfiguration(new ZonaConfiguration());
         modelBuilder.ApplyConfiguration(new TiendaConfiguration());
         modelBuilder.ApplyConfiguration(new PuestoConfiguration());
+        modelBuilder.ApplyConfiguration(new EmpleadoConfiguration());
         modelBuilder.ApplyConfiguration(new RolConfiguration());
         modelBuilder.ApplyConfiguration(new PermisoConfiguration());
         modelBuilder.ApplyConfiguration(new RolPermisoConfiguration());
@@ -110,6 +112,28 @@ internal sealed class PuestoConfiguration : IEntityTypeConfiguration<Puesto>
         b.Property(p => p.GeneraRatiosSenior).HasColumnName("genera_ratios_senior");
         b.Property(p => p.HabilitadoSenior).HasColumnName("habilitado_senior");
         b.Property(p => p.Origen).HasColumnName("origen").HasConversion<string>().HasMaxLength(6);
+    }
+}
+
+internal sealed class EmpleadoConfiguration : IEntityTypeConfiguration<Empleado>
+{
+    public void Configure(EntityTypeBuilder<Empleado> b)
+    {
+        b.ToTable("empleado");
+        b.HasKey(e => e.Id);
+        b.Property(e => e.Id).HasColumnName("id_empleado");
+        b.Property(e => e.Codigo).HasColumnName("codigo").HasMaxLength(30).IsRequired();
+        b.HasIndex(e => e.Codigo).IsUnique().HasDatabaseName("uk_empleado_codigo");
+        b.Property(e => e.NombreCompleto).HasColumnName("nombre_completo").HasMaxLength(120).IsRequired();
+        b.Property(e => e.IdEmpresa).HasColumnName("id_empresa").HasMaxLength(10).IsRequired();
+        b.Property(e => e.Zona).HasColumnName("zona").HasMaxLength(80).IsRequired();
+        b.Property(e => e.Tienda).HasColumnName("tienda").HasMaxLength(120).IsRequired();
+        b.Property(e => e.Cargo).HasColumnName("cargo").HasMaxLength(60).IsRequired();
+        b.Property(e => e.Categoria).HasColumnName("categoria").HasConversion<string>().HasMaxLength(16);
+        b.Property(e => e.Estado).HasColumnName("estado").HasConversion<string>().HasMaxLength(12);
+        b.Property(e => e.Origen).HasColumnName("origen").HasConversion<string>().HasMaxLength(6);
+        b.Property(e => e.RmsSyncAt).HasColumnName("rms_sync_at");
+        b.HasIndex(e => new { e.IdEmpresa, e.Categoria, e.Estado }).HasDatabaseName("idx_empleado_empresa_categoria_estado");
     }
 }
 

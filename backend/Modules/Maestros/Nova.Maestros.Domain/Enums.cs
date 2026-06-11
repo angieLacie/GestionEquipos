@@ -84,6 +84,26 @@ public enum TipoAmbitoFeriado
     Tienda = 2
 }
 
+/// <summary>Situación operativa de un empleado (base RMS, RN-MAES-05).</summary>
+public enum EstadoEmpleado
+{
+    Activo = 1,
+    Descanso = 2,
+    Vacaciones = 3,
+    Licencia = 4,
+    Cesado = 5
+}
+
+/// <summary>Categoría del empleado para el Rol de Personal (las 5 agrupaciones del rol).</summary>
+public enum CategoriaRol
+{
+    Seniors = 1,
+    GtAsesores = 2,
+    Secretarias = 3,
+    Auxiliares = 4,
+    Sastres = 5
+}
+
 /// <summary>Acción de auditoría de configuración (RN-MAES-16).</summary>
 public enum AccionConfig
 {

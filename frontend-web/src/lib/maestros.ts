@@ -42,6 +42,27 @@ interface Pagina<T> {
   total: number
 }
 
+export type CategoriaRol = 'Seniors' | 'GtAsesores' | 'Secretarias' | 'Auxiliares' | 'Sastres'
+export type EstadoEmpleado = 'Activo' | 'Descanso' | 'Vacaciones' | 'Licencia' | 'Cesado'
+
+export interface Empleado {
+  id: string
+  codigo: string
+  nombreCompleto: string
+  idEmpresa: string
+  zona: string
+  tienda: string
+  cargo: string
+  categoria: CategoriaRol
+  estado: EstadoEmpleado
+  origen: string
+}
+
+export const listarEmpleados = (params: Record<string, string> = {}) => {
+  const qs = new URLSearchParams(params).toString()
+  return api<Pagina<Empleado>>(`/v1/maes/empleados${qs ? `?${qs}` : ''}`)
+}
+
 export const listarEmpresas = () => api<Empresa[]>('/v1/maes/empresas')
 export const listarRoles = () => api<Rol[]>('/v1/maes/roles')
 export const listarPermisos = () => api<Permiso[]>('/v1/maes/permisos')
