@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { Toaster } from './Toaster'
@@ -42,11 +42,14 @@ export function AppLayout({
   const usuario = useAuth((s) => s.usuario)
   const logout = useAuth((s) => s.logout)
   const iniciales = (usuario?.nombreUsuario ?? '?').slice(0, 2).toUpperCase()
+  const [colapsado, setColapsado] = useState(() => localStorage.getItem('nav-colapsado') === '1')
+  const toggle = () => setColapsado((c) => { localStorage.setItem('nav-colapsado', c ? '0' : '1'); return !c })
 
   return (
     <div className="app">
-      <aside className="sidebar">
+      <aside className={colapsado ? 'sidebar col' : 'sidebar'}>
         <div className="sidebar-brand">
+          <button className="brand-toggle" onClick={toggle} title={colapsado ? 'Expandir menú' : 'Colapsar menú'}>☰</button>
           <span className="brand-icon">◆</span>
           <span className="brand-name">Nova</span>
         </div>
@@ -55,6 +58,7 @@ export function AppLayout({
             <button
               key={n.id}
               className={n.id === active ? 'nav-item active' : 'nav-item'}
+              title={n.label}
               onClick={() => (n.ruta ? navigate(n.ruta) : toast.info(`${n.label}: módulo en construcción.`))}
             >
               <span className="nav-icon">{n.icono}</span>
