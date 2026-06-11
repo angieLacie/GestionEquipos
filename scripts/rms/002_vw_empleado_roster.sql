@@ -28,13 +28,13 @@ SELECT
     t.Descripcion                                AS Tienda,
     t.Zona                                       AS ZonaCod,
     z.Descripcion                                AS Zona,
-    e.EmpresaOrigen                              AS EmpresaCod,
+    t.Empresa                                    AS EmpresaCod,
     em.Razon_social                              AS Empresa
 FROM BD_RETAIL.SEGURIDAD.Empleado e
 LEFT JOIN BD_RETAIL.SEGURIDAD.Tienda  t  ON t.Tienda = e.TiendaActual
 LEFT JOIN BD_RETAIL.SEGURIDAD.Zona    z  ON z.Zona = t.Zona
 LEFT JOIN BD_RETAIL.SEGURIDAD.Puesto  p  ON CAST(p.Puesto AS varchar(20)) = e.Puesto
-LEFT JOIN BD_RETAIL.SEGURIDAD.Empresa em ON em.Empresa = e.EmpresaOrigen
+LEFT JOIN BD_RETAIL.SEGURIDAD.Empresa em ON em.Empresa = t.Empresa
 WHERE e.EstadoEmpleado = 'A'
   AND e.TiendaActual IS NOT NULL
   AND e.TiendaActual <> '';

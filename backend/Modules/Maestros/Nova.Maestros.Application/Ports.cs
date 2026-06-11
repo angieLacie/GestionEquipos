@@ -50,6 +50,14 @@ public interface IEmpleadoRepository
     Task AgregarAsync(Empleado empleado, CancellationToken ct = default);
 }
 
+/// <summary>Roster de empleados leído en vivo desde RMS (vista cross-DB). Solo lectura.</summary>
+public interface IEmpleadoRosterRepository
+{
+    Task<(IReadOnlyList<EmpleadoRoster> items, int total)> ListarAsync(
+        string? empresa, string? zona, string? tienda, bool? soloSenior, string? busqueda,
+        int page, int pageSize, CancellationToken ct = default);
+}
+
 public interface IRolRepository
 {
     Task<IReadOnlyList<Rol>> ListarAsync(CancellationToken ct = default);

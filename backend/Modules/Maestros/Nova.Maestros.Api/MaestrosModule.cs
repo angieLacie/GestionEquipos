@@ -58,6 +58,16 @@ public static class MaestrosModule
             return Results.Ok(new { items, page = page ?? 1, page_size = pageSize ?? 200, total });
         }).WithName("ListarEmpleados");
 
+        // Roster en vivo desde RMS (vista cross-DB). Fuente real del módulo Rol de Personal.
+        grupo.MapGet("/empleados/roster", async (
+            string? empresa, string? zona, string? tienda, bool? soloSenior, string? busqueda,
+            int? page, int? pageSize, IEmpleadoRosterRepository repo, CancellationToken ct) =>
+        {
+            var (items, total) = await repo.ListarAsync(
+                empresa, zona, tienda, soloSenior, busqueda, page ?? 1, pageSize ?? 1000, ct);
+            return Results.Ok(new { items, page = page ?? 1, page_size = pageSize ?? 1000, total });
+        }).WithName("ListarRoster");
+
         grupo.MapGet("/roles", async (IRolRepository repo, CancellationToken ct) =>
             Results.Ok(await repo.ListarAsync(ct))).WithName("ListarRoles");
 

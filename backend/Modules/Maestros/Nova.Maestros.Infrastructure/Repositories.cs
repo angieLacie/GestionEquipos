@@ -84,6 +84,26 @@ internal sealed class EmpleadoRepository(MaestrosDbContext db) : IEmpleadoReposi
         => await db.Empleados.AddAsync(empleado, ct);
 }
 
+internal sealed class EmpleadoRosterRepository(MaestrosDbContext db) : IEmpleadoRosterRepository
+{
+    public async Task<(IReadOnlyList<EmpleadoRoster> items, int total)> ListarAsync(
+        string? empresa, string? zona, string? tienda, bool? soloSenior, string? busqueda,
+        int page, int pageSize, CancellationToken ct = default)
+    {
+        var q = db.Roster.AsNoTracking().AsQueryable();
+        if (!string.IsNullOrWhiteSpace(empresa)) q = q.Where(e => e.EmpresaCod == empresa);
+        if (!string.IsNullOrWhiteSpace(zona)) q = q.Where(e => e.Zona == zona);
+        if (!string.IsNullOrWhiteSpace(tienda)) q = q.Where(e => e.Tienda == tienda);
+        if (soloSenior is not null) q = q.Where(e => e.EsSenior == soloSenior);
+        if (!string.IsNullOrWhiteSpace(busqueda))
+            q = q.Where(e => e.NombreCompleto.Contains(busqueda) || e.PuestoDesc!.Contains(busqueda));
+        var total = await q.CountAsync(ct);
+        var items = await q.OrderBy(e => e.Zona).ThenBy(e => e.Tienda).ThenBy(e => e.NombreCompleto)
+            .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+        return (items, total);
+    }
+}
+
 internal sealed class RolRepository(MaestrosDbContext db) : IRolRepository
 {
     public async Task<IReadOnlyList<Rol>> ListarAsync(CancellationToken ct = default)

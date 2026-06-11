@@ -19,6 +19,7 @@ public sealed class MaestrosDbContext(DbContextOptions<MaestrosDbContext> option
     public DbSet<Tienda> Tiendas => Set<Tienda>();
     public DbSet<Puesto> Puestos => Set<Puesto>();
     public DbSet<Empleado> Empleados => Set<Empleado>();
+    public DbSet<EmpleadoRoster> Roster => Set<EmpleadoRoster>();
     public DbSet<Rol> Roles => Set<Rol>();
     public DbSet<Permiso> Permisos => Set<Permiso>();
     public DbSet<RolPermiso> RolesPermisos => Set<RolPermiso>();
@@ -36,6 +37,7 @@ public sealed class MaestrosDbContext(DbContextOptions<MaestrosDbContext> option
         modelBuilder.ApplyConfiguration(new TiendaConfiguration());
         modelBuilder.ApplyConfiguration(new PuestoConfiguration());
         modelBuilder.ApplyConfiguration(new EmpleadoConfiguration());
+        modelBuilder.ApplyConfiguration(new EmpleadoRosterConfiguration());
         modelBuilder.ApplyConfiguration(new RolConfiguration());
         modelBuilder.ApplyConfiguration(new PermisoConfiguration());
         modelBuilder.ApplyConfiguration(new RolPermisoConfiguration());
@@ -134,6 +136,27 @@ internal sealed class EmpleadoConfiguration : IEntityTypeConfiguration<Empleado>
         b.Property(e => e.Origen).HasColumnName("origen").HasConversion<string>().HasMaxLength(6);
         b.Property(e => e.RmsSyncAt).HasColumnName("rms_sync_at");
         b.HasIndex(e => new { e.IdEmpresa, e.Categoria, e.Estado }).HasDatabaseName("idx_empleado_empresa_categoria_estado");
+    }
+}
+
+internal sealed class EmpleadoRosterConfiguration : IEntityTypeConfiguration<EmpleadoRoster>
+{
+    public void Configure(EntityTypeBuilder<EmpleadoRoster> b)
+    {
+        // Keyless read model sobre la vista cross-DB (script 002_vw_empleado_roster.sql).
+        // EF no genera migración para vistas: se administra con el script SQL versionado.
+        b.HasNoKey().ToView("vw_EmpleadoRoster", MaestrosDbContext.Schema);
+        b.Property(e => e.Codigo).HasColumnName("Codigo");
+        b.Property(e => e.NombreCompleto).HasColumnName("NombreCompleto");
+        b.Property(e => e.PuestoCod).HasColumnName("PuestoCod");
+        b.Property(e => e.PuestoDesc).HasColumnName("PuestoDesc");
+        b.Property(e => e.EsSenior).HasColumnName("EsSenior");
+        b.Property(e => e.TiendaCod).HasColumnName("TiendaCod");
+        b.Property(e => e.Tienda).HasColumnName("Tienda");
+        b.Property(e => e.ZonaCod).HasColumnName("ZonaCod");
+        b.Property(e => e.Zona).HasColumnName("Zona");
+        b.Property(e => e.EmpresaCod).HasColumnName("EmpresaCod");
+        b.Property(e => e.Empresa).HasColumnName("Empresa");
     }
 }
 
