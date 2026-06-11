@@ -226,6 +226,14 @@ code { background: #eef2ff; color: var(--acento); padding: 1px 6px; border-radiu
 .rol-grp-tienda td { background: #f1f5f9; font-size: 11px; font-weight: 700; color: #475569; padding: 5px 12px; }
 .rol-day { text-align: center; min-width: 84px; cursor: pointer; }
 .rol-day:hover { outline: 2px solid var(--acento-claro); outline-offset: -2px; }
+.rol-day-lock { cursor: not-allowed; opacity: .6; }
+.rol-day-lock:hover { outline: none; }
+
+/* Banner de estado del rol (editable / solo lectura / sin crear) */
+.rol-banner { margin: 0 0 10px; padding: 9px 14px; border-radius: 8px; font-size: 13px; border: 1px solid; }
+.rol-banner.ok { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+.rol-banner.lock { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+.rol-banner.info { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
 .rol-db { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; min-width: 26px; letter-spacing: .03em; }
 .rol-db-DescansoLaboral { background: #bbf7d0; color: #15803d; }
 .rol-db-CoberturaTienda { background: #bfdbfe; color: #1d4ed8; }

@@ -143,8 +143,8 @@ export function RolPage() {
   }
 
   function clickCelda(cid: string, f: string, ev: React.MouseEvent) {
-    if (!doc) { alert('Crea el rol de la semana antes de programar.'); return }
-    if (!editable) { alert(`El rol está en "${estado}" y no admite edición. Para programar necesita estar en edición (créalo en otra semana, o recházalo si está EnviadoGG).`); return }
+    // No editable / sin rol → no-op silencioso (el banner de estado lo explica).
+    if (!doc || !editable) return
     const r = (ev.currentTarget as HTMLElement).getBoundingClientRect()
     setPickTienda(false)
     setPop({ cid, fecha: f, x: Math.min(r.left, window.innerWidth - 230), y: r.bottom + 4 })
@@ -208,6 +208,21 @@ export function RolPage() {
         {doc && <span className="estado-rol" style={{ marginLeft: 8 }}>{estado}</span>}
       </div>
 
+      {/* Banner de estado: aclara por qué la grilla es editable o de solo lectura */}
+      {!doc && (
+        <div className="rol-banner info">📝 No hay rol para esta semana. Crea el rol para empezar a programar.</div>
+      )}
+      {doc && editable && (
+        <div className="rol-banner ok">✏️ Rol en edición ({estado}). Clic en una celda para programar el día.</div>
+      )}
+      {doc && !editable && (
+        <div className="rol-banner lock">
+          🔒 Rol en <b>{estado}</b> — solo lectura.
+          {estado === 'EnviadoGG' && <> Para volver a editar, recházalo (botón <b>Rechazar</b> arriba).</>}
+          {estado !== 'EnviadoGG' && <> Esta semana no admite edición en este estado.</>}
+        </div>
+      )}
+
       {/* Tabla */}
       <div className="rol-wrap">
         <table className="rol-tbl">
@@ -253,7 +268,7 @@ export function RolPage() {
                             const celda = celdaDe(t.id, f)
                             const est = celda?.estado ?? 'Vacio'
                             return (
-                              <td key={i} className="rol-day" onClick={(ev) => clickCelda(t.id, f, ev)}>
+                              <td key={i} className={`rol-day${editable ? '' : ' rol-day-lock'}`} onClick={(ev) => clickCelda(t.id, f, ev)}>
                                 {est === 'Vacio'
                                   ? <span className="rol-vacio">·</span>
                                   : <span className={`rol-db rol-db-${est}`}>{abbrDe(est)}</span>}
