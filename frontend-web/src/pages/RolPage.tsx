@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AppLayout } from '../components/AppLayout'
 import { useAuth } from '../lib/auth'
 import { ApiError } from '../lib/api'
-import { listarEmpresas, listarEmpleados, type Empleado } from '../lib/maestros'
+import { listarEmpresas, listarEmpleados, listarTiendas, type Empleado } from '../lib/maestros'
 import {
   listarRolesSemanales, obtenerRol, crearRol, programarCelda,
   enviarRol, aprobarRol, rechazarRol, programarGt,
@@ -44,6 +44,7 @@ export function RolPage() {
   const [puesto, setPuesto] = useState<PuestoRol>('GtAsesores')
   const [wkOffset, setWkOffset] = useState(0)
   const [pop, setPop] = useState<{ cid: string; fecha: string; x: number; y: number } | null>(null)
+  const [pickTienda, setPickTienda] = useState(false)
 
   const lunes = useMemo(() => { const d = domingoDe(new Date()); d.setDate(d.getDate() + wkOffset * 7); return d }, [wkOffset])
   const anio = lunes.getFullYear()
@@ -72,6 +73,13 @@ export function RolPage() {
   })
   const empleados = empleadosPag?.items ?? []
 
+  // Tiendas de la empresa (destino de CoberturaTienda).
+  const { data: tiendasPag } = useQuery({
+    queryKey: ['tiendas', empresa],
+    queryFn: () => listarTiendas({ idEmpresa: empresa }),
+  })
+  const tiendas = tiendasPag?.items ?? []
+
   const invalidar = () => { qc.invalidateQueries({ queryKey: ['rol'] }); qc.invalidateQueries({ queryKey: ['roles-sem'] }) }
 
   const crear = useMutation({
@@ -80,7 +88,7 @@ export function RolPage() {
     onError: (e) => alert(e instanceof ApiError ? e.message : 'Error'),
   })
   const programar = useMutation({
-    mutationFn: (p: { colaboradorId: string; fecha: string; estado: EstadoCelda }) => programarCelda(doc!.id, { ...p, registradoPor: idUsuario }),
+    mutationFn: (p: { colaboradorId: string; fecha: string; estado: EstadoCelda; tiendaCoberturaId?: string }) => programarCelda(doc!.id, { ...p, registradoPor: idUsuario }),
     onSuccess: invalidar,
     onError: (e) => alert(e instanceof ApiError ? e.message : 'Error'),
   })
@@ -138,13 +146,23 @@ export function RolPage() {
     if (!doc) { alert('Crea el rol de la semana antes de programar.'); return }
     if (!editable) { alert(`El rol está en "${estado}" y no admite edición. Para programar necesita estar en edición (créalo en otra semana, o recházalo si está EnviadoGG).`); return }
     const r = (ev.currentTarget as HTMLElement).getBoundingClientRect()
+    setPickTienda(false)
     setPop({ cid, fecha: f, x: Math.min(r.left, window.innerWidth - 230), y: r.bottom + 4 })
   }
   function asignarCelda(e: EstadoCelda) {
     if (!pop) return
-    if (e === 'CoberturaTienda') { alert('Cobertura de Tienda requiere elegir la tienda a cubrir (aún no disponible). Usa otro tipo por ahora.'); return }
+    if (e === 'CoberturaTienda') {
+      if (tiendas.length === 0) { alert('No hay tiendas registradas para esta empresa.'); return }
+      setPickTienda(true) // pasa al sub-paso de elegir la tienda a cubrir
+      return
+    }
     programar.mutate({ colaboradorId: pop.cid, fecha: pop.fecha, estado: e })
     setPop(null)
+  }
+  function asignarCobertura(tiendaId: string) {
+    if (!pop) return
+    programar.mutate({ colaboradorId: pop.cid, fecha: pop.fecha, estado: 'CoberturaTienda', tiendaCoberturaId: tiendaId })
+    setPop(null); setPickTienda(false)
   }
 
   const coberturas = celdas.filter((c) => c.estado === 'CoberturaTienda' || c.estado === 'CoberturaTipoVenta').length
@@ -262,17 +280,31 @@ export function RolPage() {
 
       {pop && (
         <>
-          <div className="rol-pop-ov" onClick={() => setPop(null)} />
+          <div className="rol-pop-ov" onClick={() => { setPop(null); setPickTienda(false) }} />
           <div className="rol-pop" style={{ left: pop.x, top: pop.y }}>
-            <div className="rol-pop-ttl">Asignar tipo</div>
-            <div className="rol-pop-grid">
-              {ESTADOS_CELDA.filter((e) => e.v !== 'Vacio' && e.v !== 'CoberturaTienda').map((e) => (
-                <button key={e.v} className={`rol-pop-btn rol-db-${e.v}`} onClick={() => asignarCelda(e.v)} title={e.label}>
-                  {e.abbr}<span>{e.label}</span>
-                </button>
-              ))}
-            </div>
-            <button className="rol-pop-clear" onClick={() => asignarCelda('Vacio')}>✕ Vaciar día</button>
+            {!pickTienda ? (
+              <>
+                <div className="rol-pop-ttl">Asignar tipo</div>
+                <div className="rol-pop-grid">
+                  {ESTADOS_CELDA.filter((e) => e.v !== 'Vacio').map((e) => (
+                    <button key={e.v} className={`rol-pop-btn rol-db-${e.v}`} onClick={() => asignarCelda(e.v)} title={e.label}>
+                      {e.abbr}<span>{e.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <button className="rol-pop-clear" onClick={() => asignarCelda('Vacio')}>✕ Vaciar día</button>
+              </>
+            ) : (
+              <>
+                <div className="rol-pop-ttl">Tienda a cubrir</div>
+                <div className="rol-pop-tiendas">
+                  {tiendas.map((t) => (
+                    <button key={t.id} className="rol-pop-tienda" onClick={() => asignarCobertura(t.id)}>🏪 {t.nombre}</button>
+                  ))}
+                </div>
+                <button className="rol-pop-clear" onClick={() => setPickTienda(false)}>‹ Volver</button>
+              </>
+            )}
           </div>
         </>
       )}

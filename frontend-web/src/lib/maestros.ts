@@ -63,6 +63,19 @@ export const listarEmpleados = (params: Record<string, string> = {}) => {
   return api<Pagina<Empleado>>(`/v1/maes/empleados${qs ? `?${qs}` : ''}`)
 }
 
+export interface Tienda {
+  id: string
+  codigo: string
+  nombre: string
+  idEmpresa: string
+  estadoOperativo: string
+}
+
+export const listarTiendas = (params: Record<string, string> = {}) => {
+  const qs = new URLSearchParams(params).toString()
+  return api<Pagina<Tienda>>(`/v1/maes/tiendas${qs ? `?${qs}` : ''}`)
+}
+
 export const listarEmpresas = () => api<Empresa[]>('/v1/maes/empresas')
 export const listarRoles = () => api<Rol[]>('/v1/maes/roles')
 export const listarPermisos = () => api<Permiso[]>('/v1/maes/permisos')

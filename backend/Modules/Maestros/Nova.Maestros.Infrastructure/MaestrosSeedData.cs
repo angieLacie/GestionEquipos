@@ -85,6 +85,29 @@ internal static class MaestrosSeedData
             ClavePermiso = rp.permiso
         }).ToArray());
 
+        // Tiendas demo (base RMS) — destino de CoberturaTienda en el Rol. Guids fijos.
+        (string id, string cod, string nom, string emp)[] tiendas =
+        [
+            ("b2000002-0000-0000-0000-000000000001", "T-CAD-001", "Mega Plaza",   "CADENA"),
+            ("b2000002-0000-0000-0000-000000000002", "T-CAD-002", "Plaza Norte",  "CADENA"),
+            ("b2000002-0000-0000-0000-000000000003", "T-CAD-003", "Jockey Plaza", "CADENA"),
+            ("b2000002-0000-0000-0000-000000000004", "T-LUK-001", "Mega Plaza",   "LUKERS"),
+            ("b2000002-0000-0000-0000-000000000005", "T-LUK-002", "Plaza Norte",  "LUKERS"),
+            ("b2000002-0000-0000-0000-000000000006", "T-LUK-003", "Jockey Plaza", "LUKERS"),
+        ];
+        b.Entity<Tienda>().HasData(tiendas.Select(t => new
+        {
+            Id = Guid.Parse(t.id),
+            Codigo = t.cod,
+            Nombre = t.nom,
+            IdEmpresa = t.emp,
+            Ubicacion = UbicacionTienda.Cc,
+            DotacionMinimaAsesores = 0,
+            EstadoOperativo = EstadoTienda.Activa,
+            Origen = OrigenDato.Rms,
+            RmsSyncAt = (DateTimeOffset?)null
+        }).ToArray());
+
         // Empleados demo (base RMS) para poblar la grilla del Rol de Personal.
         // Guids fijos para que HasData sea determinista entre migraciones.
         (string id, string cod, string nom, string emp, string zona, string tienda, string cargo, CategoriaRol cat, EstadoEmpleado est)[] empleados =
