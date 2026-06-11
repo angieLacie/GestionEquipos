@@ -71,7 +71,7 @@ export function RolPage() {
   })
   const empleados = empleadosPag?.items ?? []
 
-  const invalidar = () => { qc.invalidateQueries({ queryKey: ['rol', doc?.id] }); qc.invalidateQueries({ queryKey: ['roles-sem'] }) }
+  const invalidar = () => { qc.invalidateQueries({ queryKey: ['rol'] }); qc.invalidateQueries({ queryKey: ['roles-sem'] }) }
 
   const crear = useMutation({
     mutationFn: () => crearRol({ empresa, zonaId: crypto.randomUUID(), anio, numeroSemana: semana, fechaInicio: fmt(lunes), puesto, creadoPor: idUsuario }),
@@ -117,12 +117,13 @@ export function RolPage() {
     if (!id) { const r = await crearRol({ empresa, zonaId: crypto.randomUUID(), anio, numeroSemana: semana, fechaInicio: fmt(lunes), puesto, creadoPor: idUsuario }); id = r.id }
 
     const esLukers = empresa.toUpperCase() === 'LUKERS'
+    // CoberturaTienda exige tiendaCoberturaId (no hay maestro de tiendas cableado aún) → se omite del demo.
     const plan: EstadoCelda[][] = [
-      ['DescansoLaboral', 'CoberturaTienda'],
-      ['CoberturaTienda', 'DescansoLaboral'],
+      ['DescansoLaboral', 'CompensacionFeriadoLaborado'],
+      ['CompensacionDescansoNoGozado', 'DescansoLaboral'],
       ['CompensacionFeriadoLaborado', 'DescansoLaboral'],
-      ['CoberturaTienda', 'DescansoLaboral'],
-      [esLukers ? 'CoberturaTipoVenta' : 'DescansoLaboral', 'CoberturaTienda'],
+      ['DescansoLaboral', 'CompensacionDescansoNoGozado'],
+      [esLukers ? 'CoberturaTipoVenta' : 'DescansoLaboral', 'CompensacionFeriadoLaborado'],
     ]
     for (let i = 0; i < empleados.length; i++) {
       const [e1, e2] = plan[i % plan.length]
@@ -133,10 +134,14 @@ export function RolPage() {
   }
 
   function clickCelda(cid: string, f: string, dow: number) {
-    if (!editable) return
+    if (!doc) { alert('Crea el rol de la semana antes de programar.'); return }
+    if (!editable) { alert(`El rol está en "${estado}" y no admite edición. Para programar necesita estar en edición (créalo en otra semana, o recházalo si está EnviadoGG).`); return }
     const op = prompt(`Estado (${DIAS[dow]}):\n` + ESTADOS_CELDA.map((e, i) => `${i}=${e.label}`).join('\n'))
     if (op === null) return
-    const el = ESTADOS_CELDA[Number(op)]; if (el) programar.mutate({ colaboradorId: cid, fecha: f, estado: el.v })
+    const el = ESTADOS_CELDA[Number(op)]
+    if (!el) return
+    if (el.v === 'CoberturaTienda') { alert('Cobertura de Tienda requiere elegir la tienda a cubrir (aún no disponible). Usa otro tipo por ahora.'); return }
+    programar.mutate({ colaboradorId: cid, fecha: f, estado: el.v })
   }
 
   const coberturas = celdas.filter((c) => c.estado === 'CoberturaTienda' || c.estado === 'CoberturaTipoVenta').length
