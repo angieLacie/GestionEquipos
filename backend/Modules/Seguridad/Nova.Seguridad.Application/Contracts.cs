@@ -22,4 +22,5 @@ public sealed record LoginResponse(
     Guid IdUsuario,
     string NombreUsuario,
     bool RequiereCambioPassword,
-    string Token);
+    string Token,
+    IReadOnlyList<string> Roles);

@@ -14,6 +14,7 @@ public sealed class AutenticarHandler(
     IClock clock,
     ITokenService tokens,
     IAuditoriaRepository auditoria,
+    IAsignacionRolAmbitoRepository asignaciones,
     IUnitOfWork uow)
 {
     private static readonly TimeSpan DuracionBloqueo = TimeSpan.FromMinutes(15);
@@ -51,6 +52,9 @@ public sealed class AutenticarHandler(
         await uow.SaveChangesAsync(ct);
 
         var token = tokens.EmitirToken(usuario.Id, usuario.NombreUsuario);
-        return Result.Success(new LoginResponse(usuario.Id, usuario.NombreUsuario, credencial.RequiereCambio, token));
+        var hoy = DateOnly.FromDateTime(clock.Now.UtcDateTime);
+        var vigentes = await asignaciones.ObtenerVigentesPorUsuarioAsync(usuario.Id, hoy, ct);
+        var roles = vigentes.Select(a => a.IdRol).Distinct().ToList();
+        return Result.Success(new LoginResponse(usuario.Id, usuario.NombreUsuario, credencial.RequiereCambio, token, roles));
     }
 }
