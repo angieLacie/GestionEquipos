@@ -1,11 +1,25 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Button, Card, Col, Modal, ModalBody, ModalFooter, ModalHeader, Row, Table } from 'react-bootstrap'
+import { Button, Card, Col, Modal, ModalBody, ModalFooter, ModalHeader, Row } from 'react-bootstrap'
+import {
+  type ColumnDef,
+  type PaginationState,
+  type SortingState,
+  getCoreRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from '@tanstack/react-table'
 import { useToggle } from 'usehooks-ts'
+import copy from 'copy-to-clipboard'
 import PageBreadcrumb from '@/components/PageBreadcrumb.tsx'
 import KpiCard from '@/components/KpiCard.tsx'
+import DataTable from '@/components/DataTable.tsx'
+import TablePagination from '@/components/TablePagination.tsx'
 import { basePath } from '@/helpers'
 import { obtenerMapeoPuestos, guardarMapeoPuestos, type MapeoPuesto } from '@/lib/parametros'
 import { listarRoster, type CategoriaRol } from '@/lib/roster'
+
+type FilaMapeo = MapeoPuesto & { i: number }
 
 const CATEGORIAS: CategoriaRol[] = ['GtAsesores', 'Secretarias', 'Auxiliares', 'Sastres', 'Seniors']
 
@@ -43,6 +57,10 @@ const MapeoPuestos = () => {
   const [busqueda, setBusqueda] = useState('')
   const [fCategoria, setFCategoria] = useState('')
 
+  // Orden + paginación (gestionados por @tanstack/react-table)
+  const [sorting, setSorting] = useState<SortingState>([])
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
+
   useEffect(() => {
     let vivo = true
     Promise.all([obtenerMapeoPuestos(), listarRoster({ pageSize: 2000 })])
@@ -63,8 +81,9 @@ const MapeoPuestos = () => {
     return puestosRoster.filter((p) => !mapeados.has(p.toUpperCase()))
   }, [filas, puestosRoster])
 
-  // Filas visibles según búsqueda + filtro de categoría (conserva índice real para editar)
-  const filasVisibles = useMemo(() => {
+  // Filas según búsqueda + filtro (conserva índice real para editar). El orden
+  // y la paginación los aplica tanstack sobre estas filas.
+  const filasFiltradas = useMemo<FilaMapeo[]>(() => {
     const q = busqueda.trim().toLowerCase()
     return filas
       .map((f, i) => ({ ...f, i }))
@@ -75,6 +94,58 @@ const MapeoPuestos = () => {
     setFilas((f) => f.map((x, j) => (j === i ? { ...x, categoria } : x)))
 
   const eliminar = (i: number) => setFilas((f) => f.filter((_, j) => j !== i))
+
+  // Columnas de la grilla (Puesto/Categoría ordenables; Reasignar/Acciones no).
+  const columns = useMemo<ColumnDef<FilaMapeo>[]>(() => [
+    {
+      accessorKey: 'puesto',
+      header: 'Puesto (RMS)',
+      cell: ({ row }) => <span className="fw-semibold">{row.original.puesto}</span>,
+    },
+    {
+      accessorKey: 'categoria',
+      header: 'Categoría',
+      cell: ({ row }) => <CatBadge categoria={row.original.categoria} />,
+    },
+    {
+      id: 'reasignar',
+      header: 'Reasignar',
+      enableSorting: false,
+      cell: ({ row }) => (
+        <select
+          className="form-select form-select-sm"
+          style={{ maxWidth: 200 }}
+          value={row.original.categoria}
+          onChange={(e) => setCategoria(row.original.i, e.target.value as CategoriaRol)}
+        >
+          {CATEGORIAS.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+      ),
+    },
+    {
+      id: 'acciones',
+      header: () => <span className="d-block text-center">Acciones</span>,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="text-center">
+          <button className="btn btn-sm btn-icon btn-outline-danger rounded-circle" onClick={() => eliminar(row.original.i)} title="Quitar">
+            <svg className="sa-icon"><use href={`${basePath}/icons/sprite.svg#trash-2`}></use></svg>
+          </button>
+        </div>
+      ),
+    },
+  ], [])
+
+  const table = useReactTable({
+    data: filasFiltradas,
+    columns,
+    state: { sorting, pagination },
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  })
 
   const abrirAgregar = () => {
     setNuevoPuesto('')
@@ -99,6 +170,29 @@ const MapeoPuestos = () => {
     } finally {
       setGuardando(false)
     }
+  }
+
+  // ── Exportar / copiar (respeta filtros actuales) ──────────────
+  const copiar = () => {
+    const tsv = ['Puesto\tCategoría', ...filasFiltradas.map((f) => `${f.puesto}\t${f.categoria}`)].join('\n')
+    try {
+      copy(tsv)
+      setMsg({ tipo: 'ok', texto: `${filasFiltradas.length} fila(s) copiadas al portapapeles.` })
+    } catch {
+      setMsg({ tipo: 'err', texto: 'No se pudo copiar (permiso del navegador).' })
+    }
+  }
+
+  const exportarCsv = () => {
+    const esc = (v: string) => `"${v.replace(/"/g, '""')}"`
+    const csv = ['Puesto,Categoría', ...filasFiltradas.map((f) => `${esc(f.puesto)},${esc(f.categoria)}`)].join('\r\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'mapeo-puestos.csv'
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   return (
@@ -161,6 +255,12 @@ const MapeoPuestos = () => {
             </select>
 
             <div className="ms-auto d-flex flex-wrap align-items-center gap-2">
+              <button className="btn btn-outline-secondary" onClick={copiar} disabled={filasFiltradas.length === 0} title="Copiar al portapapeles">
+                <svg className="sa-icon me-1"><use href={`${basePath}/icons/sprite.svg#copy`}></use></svg>Copiar
+              </button>
+              <button className="btn btn-outline-success" onClick={exportarCsv} disabled={filasFiltradas.length === 0} title="Descargar CSV (Excel)">
+                <svg className="sa-icon me-1"><use href={`${basePath}/icons/sprite.svg#download`}></use></svg>Excel
+              </button>
               <button className="btn btn-outline-primary" onClick={abrirAgregar} disabled={sinMapear.length === 0}>
                 <svg className="sa-icon me-1"><use href={`${basePath}/icons/sprite.svg#plus`}></use></svg>Nuevo puesto
               </button>
@@ -175,48 +275,12 @@ const MapeoPuestos = () => {
             <div className="text-muted py-4 text-center">Cargando…</div>
           ) : (
             <>
-              <Table responsive hover className="st-table w-100 table-striped st-responsive align-middle">
-                <thead className="bg-light bg-opacity-25 thead-sm align-middle">
-                  <tr>
-                    <th>Puesto (RMS)</th>
-                    <th style={{ width: 200 }}>Categoría</th>
-                    <th style={{ width: 220 }}>Reasignar</th>
-                    <th style={{ width: 80 }} className="text-center">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filasVisibles.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="text-center pt-3 text-muted">
-                        <div className="st-no-results alert alert-info">
-                          <svg className="sa-icon sa-thin sa-icon-2x sa-bold hidden-sm"><use href={`${basePath}/icons/sprite.svg#frown`}></use></svg>
-                          <h6 className="mb-0">{filas.length === 0 ? 'Sin mapeos. Agrega uno arriba.' : 'Sin resultados para el filtro.'}</h6>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                  {filasVisibles.map((f) => (
-                    <tr key={`${f.puesto}-${f.i}`}>
-                      <td className="fw-semibold">{f.puesto}</td>
-                      <td><CatBadge categoria={f.categoria} /></td>
-                      <td>
-                        <select
-                          className="form-select form-select-sm"
-                          value={f.categoria}
-                          onChange={(e) => setCategoria(f.i, e.target.value as CategoriaRol)}
-                        >
-                          {CATEGORIAS.map((c) => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                      </td>
-                      <td className="text-center">
-                        <button className="btn btn-sm btn-icon btn-outline-danger rounded-circle" onClick={() => eliminar(f.i)} title="Quitar">
-                          <svg className="sa-icon"><use href={`${basePath}/icons/sprite.svg#trash-2`}></use></svg>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
+              <DataTable
+                table={table}
+                emptyMessage={filas.length === 0 ? 'Sin mapeos. Agrega uno arriba.' : 'Sin resultados para el filtro.'}
+              />
+
+              <TablePagination table={table} itemsName="puestos" />
 
               {sinMapear.length > 0 && (
                 <div className="small text-muted mt-2">
