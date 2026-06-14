@@ -1,0 +1,193 @@
+// Overrides de marca Nova (no editar archivos del template).
+// Sidebar azul/navy como el prototipo gestion-equipos.html.
+
+// Color de marca azul → botones conversan con el sidebar
+:root,
+[data-bs-theme='light'] {
+  --bs-primary: #2563eb;
+  --bs-primary-rgb: 37, 99, 235;
+  --bs-primary-text-emphasis: #1e40af;
+  --primary: 37, 99, 235;
+  --primary-500: #2563eb;
+  --primary-600: #1d4ed8;
+  --primary-700: #1e40af;
+  --primary-900: #172554;
+}
+.btn-primary {
+  --bs-btn-bg: #2563eb;
+  --bs-btn-border-color: #2563eb;
+  --bs-btn-hover-bg: #1d4ed8;
+  --bs-btn-hover-border-color: #1d4ed8;
+  --bs-btn-active-bg: #1e40af;
+  --bs-btn-active-border-color: #1e40af;
+}
+
+// Icono SVG blanco dentro de botones (sin emojis de colores)
+.rol-bico {
+  width: 15px;
+  height: 15px;
+  vertical-align: -2px;
+  margin-right: 6px;
+  stroke: currentColor;
+  fill: none;
+}
+
+// Logo en texto "Gestión de Equipos"
+.app-logo.app-logo-text {
+  .app-logo-name {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: .2px;
+    color: #fff;
+    white-space: nowrap;
+  }
+}
+
+// ───────────────────────────────────────────────────────────────
+//  Navegación: profundidad + dinámica (transiciones, hover, activo)
+//  Acento violeta combinable; respeta el tema seleccionado (Earth…).
+// ───────────────────────────────────────────────────────────────
+.set-nav-dark:not([data-bs-theme='dark']) {
+  --app-nav-bg: #1b2138;
+  --nova-nav-accent: #a78bfa; // violeta combinable
+  --nova-nav-accent-rgb: 167, 139, 250;
+
+  .app-sidebar,
+  .app-header .app-logo {
+    background-image: none;
+    // gradiente sutil para dar profundidad (no plano)
+    background: linear-gradient(185deg, #232b49 0%, #1b2138 55%, #151a2e 100%);
+  }
+
+  .app-sidebar {
+    --app-nav-active-indicator: var(--nova-nav-accent);
+    --app-nav-item-active-indicator: var(--nova-nav-accent);
+    --app-nav-item-active-bg: rgba(var(--nova-nav-accent-rgb), 0.18);
+
+    // ── Links: base con transición fluida ──
+    .nav-menu li > a {
+      position: relative;
+      margin: 2px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      color: #c3cbe0;
+      transition:
+        background-color .22s ease,
+        color .22s ease,
+        padding-left .22s ease,
+        box-shadow .25s ease,
+        transform .18s ease;
+    }
+
+    // ── Hover: desliza + ilumina + icono se mueve ──
+    .nav-menu li > a:hover {
+      background-color: rgba(var(--nova-nav-accent-rgb), 0.12);
+      color: #fff;
+      padding-left: 20px;
+    }
+    .nav-menu li > a .sa-icon {
+      transition: transform .22s ease, color .22s ease;
+    }
+    .nav-menu li > a:hover .sa-icon {
+      transform: translateX(2px) scale(1.08);
+      color: var(--nova-nav-accent);
+    }
+
+    // ── Activo: pill con gradiente + glow + barra ──
+    .nav-menu li.active > a {
+      border-left: 0;
+      color: #fff;
+      background: linear-gradient(90deg,
+        rgba(var(--nova-nav-accent-rgb), 0.38) 0%,
+        rgba(var(--nova-nav-accent-rgb), 0.10) 100%);
+      box-shadow:
+        inset 3px 0 0 var(--nova-nav-accent),
+        0 4px 14px rgba(var(--nova-nav-accent-rgb), 0.28);
+    }
+    .nav-menu li.active > a .sa-icon { color: var(--nova-nav-accent); }
+
+    // ── Chevron de submenú: rota al expandir ──
+    .nav-menu .collapse-sign i { transition: transform .25s ease; }
+    .nav-menu a[aria-expanded='true'] .collapse-sign i { transform: rotate(180deg); }
+
+    // ── Títulos de sección ──
+    .nav-title span {
+      letter-spacing: 1.4px;
+      font-size: 11px;
+      opacity: .75;
+    }
+  }
+}
+
+// ───────────────────────────────────────────────────────────────
+//  KPI cards: micro-interacción (hover lift) + transición
+// ───────────────────────────────────────────────────────────────
+.kpi-card {
+  border: 1px solid rgba(0, 0, 0, .06);
+  transition: transform .2s ease, box-shadow .2s ease;
+  cursor: default;
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, .12);
+  }
+}
+
+// Filas de tabla: hover suave
+.st-table tbody tr {
+  transition: background-color .15s ease;
+}
+
+// ───────────────────────────────────────────────────────────────
+//  Fase 1 — Pulido global de cabeceras, botones y KPIs
+// ───────────────────────────────────────────────────────────────
+
+// Título de página: era 14px UPPERCASE (parecía etiqueta) → encabezado real.
+.subheader-title {
+  text-transform: none;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  line-height: 1.2;
+}
+
+// Subtítulo descriptivo: gris suave, sin itálica débil.
+.subheader-title ~ h6 {
+  font-style: normal;
+  color: var(--bs-secondary-color);
+  font-weight: 400;
+}
+
+// Íconos SVG dentro de botones: inline (no se apilan encima del texto) + tamaño
+// relativo → botón deja de inflarse (era 52px → ~36px alineado a inputs).
+.btn .sa-icon {
+  display: inline-block;
+  width: 1.05em;
+  height: 1.05em;
+  vertical-align: -2px;
+}
+
+// KPI cards: barra de acento a la izquierda (color por tarjeta vía --kpi-accent).
+// Se usa box-shadow inset porque .card de Bootstrap pisa border-left.
+.kpi-card {
+  border-radius: 10px;
+  box-shadow: inset 3px 0 0 var(--kpi-accent, rgba(0, 0, 0, .08));
+}
+
+// KPI cards: ícono en burbuja teñida con el accent (top-right).
+.kpi-card-iconwrap {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--kpi-accent, #64748b);
+  background: color-mix(in srgb, var(--kpi-accent, #64748b) 14%, transparent);
+
+  .sa-icon {
+    width: 18px;
+    height: 18px;
+  }
+}

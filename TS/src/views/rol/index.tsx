@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { Card } from 'react-bootstrap'
+import { Card, Col, Row } from 'react-bootstrap'
 import PageBreadcrumb from '@/components/PageBreadcrumb.tsx'
+import KpiCard from '@/components/KpiCard.tsx'
 import NovaSelect from '@/components/NovaSelect.tsx'
 import { basePath } from '@/helpers'
 import {
@@ -312,29 +313,25 @@ const Rol = () => {
       <div className="d-flex align-items-end flex-wrap gap-2 mb-4">
         <PageBreadcrumb title={'Rol de Personal'} subTitle1={'Gestión'} subText={'Programación semanal del rol de personal por tienda'} />
         <div className="ms-auto d-flex align-items-center gap-3 small text-muted">
-          <span>↻ Última act. hoy</span>
+          <span><Ico name="refresh-cw" /> Última act. hoy</span>
           <span className="rol-online">● En línea</span>
         </div>
       </div>
 
-      <div className="rol-kpis">
+      <Row className="g-3 mb-4">
         {kpis.map((k) => (
-          <Card className="rol-kpi mb-0" key={k.label} style={{ borderTopColor: k.color }}>
-            <Card.Body>
-              <div className="rol-kpi-label">{k.label}</div>
-              <div className="rol-kpi-valor">{k.valor}</div>
-              <div className="rol-kpi-sub">{k.sub}</div>
-            </Card.Body>
-          </Card>
+          <Col key={k.label} xs={6} md={4} xl>
+            <KpiCard label={k.label} value={k.valor} accent={k.color} icon={k.icon} sub={k.sub} className="rol-kpi-card" />
+          </Col>
         ))}
-      </div>
+      </Row>
 
       <div className="rol-tabs">
         <button className={`rol-tab ${tab === 'semanal' ? 'active' : ''}`} onClick={() => setTab('semanal')}>
-          📋 Rol semanal
+          <Ico name="clipboard" /> Rol semanal
         </button>
         <button className={`rol-tab ${tab === 'pendientes' ? 'active' : ''}`} onClick={() => setTab('pendientes')}>
-          📌 Pendientes
+          <Ico name="bookmark" /> Pendientes
         </button>
       </div>
 
@@ -353,27 +350,27 @@ const Rol = () => {
               </div>
               <div className="rol-toolbar-actions">
                 <div className="rol-cols-wrap" onClick={(e) => e.stopPropagation()}>
-                  <button className="btn btn-sm btn-primary" onClick={() => setProgOpen((o) => !o)}><Ico name="grid" />Programar ▾</button>
+                  <button className="btn btn-sm btn-primary" onClick={() => setProgOpen((o) => !o)}><Ico name="grid" />Programar <Ico name="chevron-down" /></button>
                   {progOpen && (
                     <div className="rol-prog-menu">
                       <button className="rol-prog-item" onClick={() => setProgOpen(false)}>
-                        <span className="rol-prog-ico">🏪</span>
+                        <span className="rol-prog-ico"><Ico name="shopping-bag" /></span>
                         <span><strong>Cobertura de tienda</strong><small>Asignar cobertura a una tienda</small></span>
                       </button>
                       <button className="rol-prog-item" onClick={() => setProgOpen(false)}>
-                        <span className="rol-prog-ico">📊</span>
+                        <span className="rol-prog-ico"><Ico name="bar-chart" /></span>
                         <span><strong>Encargatura</strong><small>Registrar encargatura de tienda</small></span>
                       </button>
                       <button className="rol-prog-item" onClick={() => setProgOpen(false)}>
-                        <span className="rol-prog-ico">💼</span>
+                        <span className="rol-prog-ico"><Ico name="briefcase" /></span>
                         <span><strong>Cobertura por tipo de venta</strong><small>Solo tiendas Lukers</small></span>
                       </button>
                     </div>
                   )}
                 </div>
-                <button className="btn btn-sm btn-primary"><Ico name="download" />Exportar Excel</button>
+                <button className="btn btn-sm btn-success"><Ico name="download" />Exportar Excel</button>
                 <div className="rol-cols-wrap" onClick={(e) => e.stopPropagation()}>
-                  <button className="btn btn-sm btn-primary" onClick={() => setColsOpen((o) => !o)}><Ico name="columns" />Columnas ▾</button>
+                  <button className="btn btn-sm btn-outline-secondary" onClick={() => setColsOpen((o) => !o)}><Ico name="columns" />Columnas <Ico name="chevron-down" /></button>
                   {colsOpen && (
                     <div className="rol-cols-menu">
                       <div className="rol-cols-ttl">Mostrar columnas</div>
@@ -395,13 +392,13 @@ const Rol = () => {
           <Card className="rol-card">
             <div className="rol-weeknav">
               <div className="d-flex align-items-center gap-2">
-                <button className="btn btn-sm btn-light" onClick={semanaAnterior}>‹</button>
+                <button className="btn btn-sm btn-light" onClick={semanaAnterior}><Ico name="chevron-left" /></button>
                 <button className={`btn btn-sm ${esSemanaActual ? 'btn-outline-primary' : 'btn-primary'}`} onClick={irHoy}>Hoy</button>
-                <button className="btn btn-sm btn-light" onClick={semanaSiguiente}>›</button>
+                <button className="btn btn-sm btn-light" onClick={semanaSiguiente}><Ico name="chevron-right" /></button>
                 <strong className="ms-2">{etiquetaSemana(dom)}</strong>
                 {esSemanaActual && <span className="badge bg-light text-secondary">Semana actual</span>}
               </div>
-              <input className="form-control form-control-sm rol-search" placeholder="🔍 Buscar trabajador" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+              <input className="form-control form-control-sm rol-search" placeholder="Buscar trabajador" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
             </div>
 
             <div className="rol-grid">
@@ -446,15 +443,15 @@ const Rol = () => {
                       <tr className="rol-tr-zona">
                         <td colSpan={totalCols}>
                           <div className="rol-zona-row">
-                            <span>▼ {z.nombre}</span>
-                            <span className="badge bg-secondary">{z.personas} PERSONAS</span>
+                            <span><Ico name="chevron-down" /> {z.nombre}</span>
+                            <span className="badge bg-primary">{z.personas} PERSONAS</span>
                           </div>
                         </td>
                       </tr>
                       {z.tiendas.map((t) => (
                         <Fragment key={`t-${z.nombre}-${t.nombre}`}>
                           <tr className="rol-tr-tienda">
-                            <td colSpan={totalCols}>📍 {t.nombre}</td>
+                            <td colSpan={totalCols}><Ico name="map-pin" /> {t.nombre}</td>
                           </tr>
                           {t.filas.map((f) => (
                             <tr className="rol-tr-fila" key={`${t.nombre}-${f.fi}`}>
@@ -491,9 +488,9 @@ const Rol = () => {
         <div className="rpm-ov" onClick={() => setModal(null)}>
           <div className="rpm-dlg" onClick={(e) => e.stopPropagation()}>
             <div className="rpm-hd">
-              <span className="rpm-ico">📅</span>
+              <span className="rpm-ico"><Ico name="calendar" /></span>
               <span className="rpm-ttl">Programar</span>
-              <button className="rpm-close" onClick={() => setModal(null)}>×</button>
+              <button className="rpm-close" onClick={() => setModal(null)}><Ico name="x" /></button>
             </div>
             <div className="rpm-sub">{modal.nombre} · {modal.tiendaNombre}</div>
 
@@ -522,7 +519,7 @@ const Rol = () => {
                         className={`rpm-tienda-btn${tiendaCob === nombre ? ' rpm-tienda-btn--sel' : ''}`}
                         onClick={() => setTiendaCob(nombre)}
                       >
-                        🏪 {nombre}
+                        <Ico name="shopping-bag" /> {nombre}
                       </button>
                     ))}
                   </div>
@@ -541,7 +538,7 @@ const Rol = () => {
                           className={`rpm-tienda-btn${fechaComp === s ? ' rpm-tienda-btn--sel' : ''}`}
                           onClick={() => setFechaComp(s)}
                         >
-                          📅 {s}
+                          <Ico name="calendar" /> {s}
                         </button>
                       ))}
                     </div>
@@ -600,7 +597,7 @@ const Rol = () => {
 
             <div className="rpm-footer">
               {celdaActual && (
-                <button className="rpm-anular" onClick={anularModal}>✕ Anular programación</button>
+                <button className="rpm-anular" onClick={anularModal}><Ico name="x" /> Anular programación</button>
               )}
               <div className="rpm-footer-right">
                 <button className="btn btn-sm btn-light" onClick={() => setModal(null)}>Cancelar</button>
@@ -609,7 +606,7 @@ const Rol = () => {
                   onClick={guardarModal}
                   disabled={!selTipo || (tiendaStep && !tiendaCob) || (compStep && !fechaComp)}
                 >
-                  💾 Guardar cambios
+                  <Ico name="save" /> Guardar cambios
                 </button>
               </div>
             </div>
