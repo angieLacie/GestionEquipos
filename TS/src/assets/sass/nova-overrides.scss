@@ -48,15 +48,15 @@
 //  Acento violeta combinable; respeta el tema seleccionado (Earth…).
 // ───────────────────────────────────────────────────────────────
 .set-nav-dark:not([data-bs-theme='dark']) {
-  --app-nav-bg: #1b2138;
-  --nova-nav-accent: #a78bfa; // violeta combinable
-  --nova-nav-accent-rgb: 167, 139, 250;
+  --app-nav-bg: #1e2a52;
+  --nova-nav-accent: #60a5fa; // celeste combinable (como referencia)
+  --nova-nav-accent-rgb: 96, 165, 250;
 
   .app-sidebar,
   .app-header .app-logo {
     background-image: none;
-    // gradiente sutil para dar profundidad (no plano)
-    background: linear-gradient(185deg, #232b49 0%, #1b2138 55%, #151a2e 100%);
+    // gradiente azul-índigo (brillante arriba → profundo abajo), como el referencia
+    background: linear-gradient(185deg, #2e4488 0%, #233a6e 55%, #1a2c54 100%);
   }
 
   .app-sidebar {
