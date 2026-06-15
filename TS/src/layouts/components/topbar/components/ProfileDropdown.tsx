@@ -38,7 +38,7 @@ const ProfileDropdown = () => {
         </span>
       </DropdownToggle>
 
-      <DropdownMenu className="dropdown-menu-animated dropdown-menu-end shadow-lg border-0">
+      <DropdownMenu className="dropdown-menu-animated dropdown-menu-end shadow-lg border-0" style={{ marginRight: -28 }}>
         <div className="notification-header rounded-top mb-2">
           <div className="d-flex flex-row align-items-center mt-1 mb-1 color-white">
             <span

@@ -44,7 +44,7 @@ const NotificationDropdown = () => {
         </span>
       </DropdownToggle>
 
-      <DropdownMenu className="dropdown-menu-animated dropdown-xl dropdown-menu-end p-0 shadow-lg border-0">
+      <DropdownMenu className="dropdown-menu-animated dropdown-xl dropdown-menu-end p-0 shadow-lg border-0" style={{ marginRight: -64 }}>
         <div className="notification-header rounded-top">
           <h4 className="m-0">
             {noLeidas} nuevas <small className="mb-0 opacity-80">Notificaciones</small>
