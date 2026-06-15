@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import PageMeta from '@/components/PageMeta.tsx'
 import { basePath } from '@/helpers'
@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth'
 import { ApiError } from '@/lib/api'
 
 const PILLS = ['Rol de Personal', 'Marcaciones', 'Vacaciones', 'Reportes']
+const RECORDAR_KEY = 'nova-usuario-recordado'
 
 const Login = () => {
   const navigate = useNavigate()
@@ -14,8 +15,23 @@ const Login = () => {
   const [nombreUsuario, setNombreUsuario] = useState('')
   const [password, setPassword] = useState('')
   const [verPass, setVerPass] = useState(false)
+  const [recordar, setRecordar] = useState(false)
+  const [capsLock, setCapsLock] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(false)
+
+  // Prefill del usuario recordado.
+  useEffect(() => {
+    const guardado = localStorage.getItem(RECORDAR_KEY)
+    if (guardado) {
+      setNombreUsuario(guardado)
+      setRecordar(true)
+    }
+  }, [])
+
+  function onPassKey(e: KeyboardEvent<HTMLInputElement>) {
+    setCapsLock(e.getModifierState('CapsLock'))
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -23,6 +39,8 @@ const Login = () => {
     setCargando(true)
     try {
       const sesion = await login({ nombreUsuario, password })
+      if (recordar) localStorage.setItem(RECORDAR_KEY, nombreUsuario)
+      else localStorage.removeItem(RECORDAR_KEY)
       setSesion(sesion)
       navigate('/', { replace: true })
     } catch (err) {
@@ -93,27 +111,42 @@ const Login = () => {
                     <span className="input-group-text bg-light"><svg className="sa-icon"><use href={`${basePath}/icons/sprite.svg#lock`}></use></svg></span>
                     <input
                       type={verPass ? 'text' : 'password'} id="password" className="form-control" placeholder="••••••••"
-                      value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password"
+                      value={password} onChange={(e) => setPassword(e.target.value)} onKeyUp={onPassKey} onKeyDown={onPassKey} required autoComplete="current-password"
                     />
-                    <button type="button" className="input-group-text bg-light border-start-0" onClick={() => setVerPass((v) => !v)} title={verPass ? 'Ocultar' : 'Mostrar'}>
+                    <button type="button" className="input-group-text bg-light border-start-0" onClick={() => setVerPass((v) => !v)} title={verPass ? 'Ocultar' : 'Mostrar'} aria-label={verPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
                       <svg className="sa-icon"><use href={`${basePath}/icons/sprite.svg#${verPass ? 'eye-off' : 'eye'}`}></use></svg>
                     </button>
                   </div>
+                  {capsLock && (
+                    <div className="form-text text-warning-emphasis d-flex align-items-center gap-1 mt-1">
+                      <svg className="sa-icon"><use href={`${basePath}/icons/sprite.svg#alert-triangle`}></use></svg>
+                      Bloq Mayús está activado
+                    </div>
+                  )}
                 </div>
 
                 <div className="d-flex align-items-center justify-content-between mb-3">
                   <div className="form-check">
-                    <input className="form-check-input" type="checkbox" id="recordarme" />
+                    <input className="form-check-input" type="checkbox" id="recordarme" checked={recordar} onChange={(e) => setRecordar(e.target.checked)} />
                     <label className="form-check-label" htmlFor="recordarme">Recordarme</label>
                   </div>
                   <Link to="/auth/forgot-password" className="small text-primary fw-semibold text-decoration-none">¿Olvidaste tu contraseña?</Link>
                 </div>
 
-                {error && <div className="alert alert-danger py-2 px-3 small">{error}</div>}
+                {error && (
+                  <div className="alert alert-danger d-flex align-items-center gap-2 py-2 px-3 small" role="alert">
+                    <svg className="sa-icon"><use href={`${basePath}/icons/sprite.svg#alert-circle`}></use></svg>
+                    <span>{error}</span>
+                  </div>
+                )}
 
                 <div className="d-grid">
                   <button type="submit" className="btn btn-primary btn-lg fw-semibold" disabled={cargando}>
-                    {cargando ? 'Ingresando…' : <>Ingresar <svg className="sa-icon ms-1"><use href={`${basePath}/icons/sprite.svg#arrow-right`}></use></svg></>}
+                    {cargando ? (
+                      <><span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Ingresando…</>
+                    ) : (
+                      <>Ingresar <svg className="sa-icon ms-1"><use href={`${basePath}/icons/sprite.svg#arrow-right`}></use></svg></>
+                    )}
                   </button>
                 </div>
               </form>

@@ -1,75 +1,77 @@
 import { Dropdown, DropdownDivider, DropdownItem, DropdownMenu, DropdownToggle } from 'react-bootstrap'
-import adminAvatar from '@/assets/img/avatar-admin.png'
-
-import { Link } from 'react-router'
+import { useNavigate } from 'react-router'
+import { basePath } from '@/helpers'
+import { useAuth } from '@/lib/auth'
 
 const ProfileDropdown = () => {
+  const navigate = useNavigate()
+  const usuario = useAuth((s) => s.usuario)
+  const roles = useAuth((s) => s.roles)
+  const logout = useAuth((s) => s.logout)
+
+  const nombre = usuario?.nombreUsuario ?? 'Usuario'
+  const iniciales = nombre.slice(0, 2).toUpperCase()
+
   const handleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen()
-    } else {
-      document.exitFullscreen()
-    }
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen()
+    else document.exitFullscreen()
   }
 
-  const handlePrint = () => {
-    window.print()
+  const handleLogout = () => {
+    logout()
+    navigate('/auth/login', { replace: true })
   }
 
   return (
-    <Dropdown>
+    <Dropdown className="align-self-stretch d-flex align-items-stretch">
       <DropdownToggle
         as={'a'}
         type="button"
         data-bs-toggle="dropdown"
-        title="drlantern@gotbootstrap.com"
-        className="btn-system bg-transparent d-flex flex-shrink-0 align-items-center justify-content-center no-arrow"
-        aria-label="Open Profile Dropdown">
-        <img src={adminAvatar} className="profile-image profile-image-md rounded-circle" alt="Sunny A." />
+        title={nombre}
+        className="btn-system bg-transparent d-flex flex-shrink-0 align-items-center justify-content-center no-arrow h-100"
+        aria-label="Abrir menú de perfil">
+        <span
+          className="profile-image profile-image-md rounded-circle d-inline-flex align-items-center justify-content-center bg-primary text-white fw-600"
+          style={{ width: 38, height: 38, fontSize: '0.85rem' }}>
+          {iniciales}
+        </span>
       </DropdownToggle>
 
-      <DropdownMenu className="dropdown-menu-animated dropdown-menu-end">
+      <DropdownMenu className="dropdown-menu-animated dropdown-menu-end shadow-lg border-0">
         <div className="notification-header rounded-top mb-2">
           <div className="d-flex flex-row align-items-center mt-1 mb-1 color-white">
-            <span className="status status-success d-inline-block me-2">
-              <img src={adminAvatar} className="profile-image rounded-circle" alt="Sunny A." />
+            <span
+              className="status status-success d-inline-flex align-items-center justify-content-center rounded-circle me-2 bg-white bg-opacity-25 text-white fw-600"
+              style={{ width: 44, height: 44 }}>
+              {iniciales}
             </span>
             <div className="info-card-text">
-              <div className="fs-lg text-truncate text-truncate-lg">Sunny A.</div>
-              <span className="text-truncate text-truncate-md opacity-80 fs-sm">sunnya@sadim.com</span>
+              <div className="fs-lg text-truncate text-truncate-lg">{nombre}</div>
+              <span className="text-truncate text-truncate-md opacity-80 fs-sm">
+                {roles.length ? roles.join(', ') : 'Sin rol asignado'}
+              </span>
             </div>
           </div>
         </div>
-        <DropdownDivider className="m-0"></DropdownDivider>
-        <DropdownItem as={Link} to="">
-          <span>Reset Layout</span>
+
+        <DropdownDivider className="m-0" />
+
+        <DropdownItem className="py-2 fw-500 d-flex align-items-center gap-2 text-danger" onClick={handleLogout}>
+          <svg className="sa-icon">
+            <use href={`${basePath}/icons/sprite.svg#log-out`}></use>
+          </svg>
+          <span>Cerrar sesión</span>
         </DropdownItem>
-        <DropdownItem as={Link} to="">
-          <span>Settings</span>
-        </DropdownItem>
-        <DropdownDivider className="m-0"></DropdownDivider>
-        <DropdownItem className="dropdown-item d-flex justify-content-between align-items-center" onClick={handleFullscreen}>
-          <span>Fullscreen</span>
-          <b className="text-muted fs-nano px-2 rounded font-monospace align-self-center border">F11</b>
-        </DropdownItem>
-        <DropdownItem className="dropdown-item d-flex justify-content-between align-items-center" onClick={handlePrint}>
-          <span>Print</span>
-          <span className="text-muted fs-nano px-2 rounded font-monospace align-self-center border">
-            <svg width="15" height="15">
-              <path
-                d="M4.505 4.496h2M5.505 5.496v5M8.216 4.496l.055 5.993M10 7.5c.333.333.5.667.5 1v2M12.326 4.5v5.996M8.384 4.496c1.674 0 2.116 0 2.116 1.5s-.442 1.5-2.116 1.5M3.205 9.303c-.09.448-.277 1.21-1.241 1.203C1 10.5.5 9.513.5 8V7c0-1.57.5-2.5 1.464-2.494.964.006 1.134.598 1.24 1.342M12.553 10.5h1.953"
-                strokeWidth="1.2"
-                stroke="currentColor"
-                fill="none"
-                strokeLinecap="square"></path>
-            </svg>{' '}
-            + P
-          </span>
-        </DropdownItem>
-        <div className="dropdown-divider m-0"></div>
-        <DropdownItem className="py-3 fw-500 d-flex justify-content-between" as={Link} to="/auth/login">
-          <span className="text-danger">Logout</span>
-          <span className="d-block text-truncate text-truncate-sm">@sunnyahmed</span>
+
+        <DropdownDivider className="m-0" />
+
+        <DropdownItem className="d-flex align-items-center gap-2" onClick={handleFullscreen}>
+          <svg className="sa-icon">
+            <use href={`${basePath}/icons/sprite.svg#maximize`}></use>
+          </svg>
+          <span>Pantalla completa</span>
+          <b className="text-muted fs-nano px-2 rounded font-monospace ms-auto border">F11</b>
         </DropdownItem>
       </DropdownMenu>
     </Dropdown>
