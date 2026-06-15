@@ -73,7 +73,10 @@ public interface IPermisoRepository
 public interface IFeriadoRepository
 {
     Task<IReadOnlyList<Feriado>> ListarAsync(string? idEmpresa, int? anio, AlcanceFeriado? alcance, CancellationToken ct = default);
+    /// <summary>Carga con tracking (incluye ámbitos) para editar/eliminar (CU-MAES-01).</summary>
+    Task<Feriado?> ObtenerAsync(Guid id, CancellationToken ct = default);
     Task AgregarAsync(Feriado feriado, CancellationToken ct = default);
+    Task EliminarAsync(Feriado feriado, CancellationToken ct = default);
 }
 
 public interface IParametroRepository
@@ -90,10 +93,16 @@ public interface IParametroRepository
 public interface ISemanaCampaniaRepository
 {
     Task<IReadOnlyList<SemanaCampania>> ListarAsync(string? idEmpresa, int? anio, CancellationToken ct = default);
+    Task<SemanaCampania?> ObtenerAsync(Guid id, CancellationToken ct = default);
     Task AgregarAsync(SemanaCampania semana, CancellationToken ct = default);
+    Task EliminarAsync(SemanaCampania semana, CancellationToken ct = default);
 }
 
 public interface IAuditoriaMaestrosRepository
 {
     Task AgregarAsync(AuditoriaMaestros registro, CancellationToken ct = default);
+    /// <summary>Historial de cambios de configuración con nombre de usuario resuelto (CU-MAES-07).</summary>
+    Task<(IReadOnlyList<AuditoriaResponse> items, int total)> ListarAsync(
+        string? elemento, AccionConfig? accion, DateOnly? desde, DateOnly? hasta,
+        int page, int pageSize, CancellationToken ct = default);
 }

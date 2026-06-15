@@ -48,15 +48,15 @@
 //  Acento violeta combinable; respeta el tema seleccionado (Earth…).
 // ───────────────────────────────────────────────────────────────
 .set-nav-dark:not([data-bs-theme='dark']) {
-  --app-nav-bg: #1e2a52;
-  --nova-nav-accent: #60a5fa; // celeste combinable (como referencia)
-  --nova-nav-accent-rgb: 96, 165, 250;
+  --app-nav-bg: #2a4bb5;
+  --nova-nav-accent: #93c5fd; // celeste claro combinable (como referencia)
+  --nova-nav-accent-rgb: 147, 197, 253;
 
   .app-sidebar,
   .app-header .app-logo {
     background-image: none;
-    // gradiente azul-índigo (brillante arriba → profundo abajo), como el referencia
-    background: linear-gradient(185deg, #2e4488 0%, #233a6e 55%, #1a2c54 100%);
+    // gradiente azul vivo (royal arriba → índigo abajo), como el referencia
+    background: linear-gradient(185deg, #3457d6 0%, #2a4bb5 55%, #1e3a8e 100%);
   }
 
   .app-sidebar {
@@ -67,7 +67,7 @@
     // ── Links: base con transición fluida ──
     .nav-menu li > a {
       position: relative;
-      margin: 2px 10px;
+      margin: 2px 10px 2px 4px;
       border-radius: 10px;
       cursor: pointer;
       color: #c3cbe0;
@@ -93,16 +93,15 @@
       color: var(--nova-nav-accent);
     }
 
-    // ── Activo: pill con gradiente + glow + barra ──
+    // ── Activo (base, vale también contraído): solo tinte + bold + texto blanco ──
     .nav-menu li.active > a {
       border-left: 0;
-      color: #fff;
-      background: linear-gradient(90deg,
-        rgba(var(--nova-nav-accent-rgb), 0.38) 0%,
-        rgba(var(--nova-nav-accent-rgb), 0.10) 100%);
-      box-shadow:
-        inset 3px 0 0 var(--nova-nav-accent),
-        0 4px 14px rgba(var(--nova-nav-accent-rgb), 0.28);
+      font-weight: 600;
+      box-shadow: inset 0 0 0 999px rgba(var(--nova-nav-accent-rgb), 0.14);
+    }
+    .nav-menu li.active > a,
+    .nav-menu li.active > a .nav-link-text {
+      color: #fff !important;
     }
     .nav-menu li.active > a .sa-icon { color: var(--nova-nav-accent); }
 
@@ -115,6 +114,20 @@
       letter-spacing: 1.4px;
       font-size: 11px;
       opacity: .75;
+    }
+  }
+
+  // ── Contraído (NO hover-expandido): centrar el ícono solo cuando la barra está
+  //    angosta; en hover el sidebar se expande y debe verse alineado a la izq.
+  //    El template deja el label con opacity:0 (ocupa espacio) → lo sacamos del
+  //    flujo para que el ícono y el sombreado del activo queden centrados. ──
+  &.set-nav-minified .app-sidebar:not(:hover) .nav-menu li > a {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+
+    .nav-link-text {
+      display: none;
     }
   }
 }
@@ -135,6 +148,11 @@
 // Filas de tabla: hover suave
 .st-table tbody tr {
   transition: background-color .15s ease;
+}
+
+// Confirmación reutilizable: backdrop sobre overlays custom (rpm-ov = 1050).
+.nova-confirm-bd {
+  z-index: 1099;
 }
 
 // ───────────────────────────────────────────────────────────────
@@ -159,11 +177,14 @@
 
 // Íconos SVG dentro de botones: inline (no se apilan encima del texto) + tamaño
 // relativo → botón deja de inflarse (era 52px → ~36px alineado a inputs).
+// stroke/fill heredan el color del botón (el sprite trae gris hardcodeado).
 .btn .sa-icon {
   display: inline-block;
   width: 1.05em;
   height: 1.05em;
   vertical-align: -2px;
+  stroke: currentColor;
+  fill: none;
 }
 
 // KPI cards: barra de acento a la izquierda (color por tarjeta vía --kpi-accent).

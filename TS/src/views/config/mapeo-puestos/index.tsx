@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Card, Col, Modal, ModalBody, ModalFooter, ModalHeader, Row } from 'react-bootstrap'
 import {
   type ColumnDef,
@@ -15,6 +15,7 @@ import PageBreadcrumb from '@/components/PageBreadcrumb.tsx'
 import KpiCard from '@/components/KpiCard.tsx'
 import DataTable from '@/components/DataTable.tsx'
 import TablePagination from '@/components/TablePagination.tsx'
+import { useConfirm } from '@/components/ConfirmDialog.tsx'
 import { basePath } from '@/helpers'
 import { obtenerMapeoPuestos, guardarMapeoPuestos, type MapeoPuesto } from '@/lib/parametros'
 import { listarRoster, type CategoriaRol } from '@/lib/roster'
@@ -44,9 +45,13 @@ const Aviso = ({ tipo, texto }: { tipo: 'ok' | 'err'; texto: string }) => (
 
 const MapeoPuestos = () => {
   const [filas, setFilas] = useState<MapeoPuesto[]>([])
+  // Ref a las filas vigentes → evita closures stale en celdas memoizadas y
+  // permite enviar la lista completa al auto-guardar.
+  const filasRef = useRef<MapeoPuesto[]>([])
+  filasRef.current = filas
   const [puestosRoster, setPuestosRoster] = useState<string[]>([])
   const [cargando, setCargando] = useState(true)
-  const [guardando, setGuardando] = useState(false)
+  const [estado, setEstado] = useState<'idle' | 'guardando' | 'guardado' | 'error'>('idle')
   const [msg, setMsg] = useState<{ tipo: 'ok' | 'err'; texto: string } | null>(null)
   // Modal "Agregar puesto"
   const [showAdd, toggleAdd] = useToggle()
@@ -60,6 +65,9 @@ const MapeoPuestos = () => {
   // Orden + paginación (gestionados por @tanstack/react-table)
   const [sorting, setSorting] = useState<SortingState>([])
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
+
+  // Confirmación para acciones destructivas
+  const { confirm, dialog: confirmDialog } = useConfirm()
 
   useEffect(() => {
     let vivo = true
@@ -90,10 +98,32 @@ const MapeoPuestos = () => {
       .filter((f) => (!q || f.puesto.toLowerCase().includes(q)) && (!fCategoria || f.categoria === fCategoria))
   }, [filas, busqueda, fCategoria])
 
-  const setCategoria = (i: number, categoria: CategoriaRol) =>
-    setFilas((f) => f.map((x, j) => (j === i ? { ...x, categoria } : x)))
+  // Aplica un cambio en memoria + lo persiste (auto-guardado, nueva versión).
+  const aplicar = async (next: MapeoPuesto[]) => {
+    setFilas(next)
+    setEstado('guardando')
+    setMsg(null)
+    try {
+      await guardarMapeoPuestos(next)
+      setEstado('guardado')
+    } catch (e) {
+      setEstado('error')
+      setMsg({ tipo: 'err', texto: (e as Error)?.message ?? 'No se pudo guardar el cambio.' })
+    }
+  }
 
-  const eliminar = (i: number) => setFilas((f) => f.filter((_, j) => j !== i))
+  const setCategoria = (i: number, categoria: CategoriaRol) =>
+    aplicar(filasRef.current.map((x, j) => (j === i ? { ...x, categoria } : x)))
+
+  const eliminar = async (i: number, puesto: string) => {
+    const ok = await confirm({
+      title: 'Quitar puesto',
+      message: <>¿Quitar <strong>{puesto}</strong> del mapeo?</>,
+      confirmText: 'Quitar',
+      variant: 'danger',
+    })
+    if (ok) aplicar(filasRef.current.filter((_, j) => j !== i))
+  }
 
   // Columnas de la grilla (Puesto/Categoría ordenables; Reasignar/Acciones no).
   const columns = useMemo<ColumnDef<FilaMapeo>[]>(() => [
@@ -128,7 +158,7 @@ const MapeoPuestos = () => {
       enableSorting: false,
       cell: ({ row }) => (
         <div className="text-center">
-          <button className="btn btn-sm btn-icon btn-outline-danger rounded-circle" onClick={() => eliminar(row.original.i)} title="Quitar">
+          <button className="btn btn-sm btn-icon btn-outline-danger rounded-circle" onClick={() => eliminar(row.original.i, row.original.puesto)} title="Quitar">
             <svg className="sa-icon"><use href={`${basePath}/icons/sprite.svg#trash-2`}></use></svg>
           </button>
         </div>
@@ -155,21 +185,8 @@ const MapeoPuestos = () => {
 
   const agregar = () => {
     if (!nuevoPuesto) return
-    setFilas((f) => [...f, { puesto: nuevoPuesto, categoria: nuevaCat }])
+    aplicar([...filasRef.current, { puesto: nuevoPuesto, categoria: nuevaCat }])
     toggleAdd()
-  }
-
-  const guardar = async () => {
-    setGuardando(true)
-    setMsg(null)
-    try {
-      await guardarMapeoPuestos(filas)
-      setMsg({ tipo: 'ok', texto: 'Mapeo guardado. Nueva versión vigente desde hoy.' })
-    } catch (e) {
-      setMsg({ tipo: 'err', texto: (e as Error)?.message ?? 'Error al guardar.' })
-    } finally {
-      setGuardando(false)
-    }
   }
 
   // ── Exportar / copiar (respeta filtros actuales) ──────────────
@@ -230,8 +247,8 @@ const MapeoPuestos = () => {
 
           <div className="alert alert-light border py-2 px-3 mb-3 small text-muted">
             La categoría <strong>Seniors</strong> normalmente se determina por el indicador de empleado
-            senior; este mapeo cubre el puesto base. Guardar crea una nueva versión del parámetro
-            (con vigencia y auditoría), sin tocar código.
+            senior; este mapeo cubre el puesto base. Cada cambio se guarda automáticamente
+            como nueva versión del parámetro (con vigencia y auditoría), sin tocar código.
           </div>
 
           {/* ── Toolbar: búsqueda + filtro + agregar ──────────── */}
@@ -264,10 +281,14 @@ const MapeoPuestos = () => {
               <button className="btn btn-outline-primary" onClick={abrirAgregar} disabled={sinMapear.length === 0}>
                 <svg className="sa-icon me-1"><use href={`${basePath}/icons/sprite.svg#plus`}></use></svg>Nuevo puesto
               </button>
-              <button className="btn btn-primary" onClick={guardar} disabled={guardando}>
-                <svg className="sa-icon me-1"><use href={`${basePath}/icons/sprite.svg#save`}></use></svg>
-                {guardando ? 'Guardando…' : 'Guardar mapeo'}
-              </button>
+              {estado !== 'idle' && (
+                <span className={`small fw-semibold d-inline-flex align-items-center gap-1 ${estado === 'error' ? 'text-danger' : estado === 'guardando' ? 'text-muted' : 'text-success'}`}>
+                  <svg className="sa-icon" style={{ width: 14, height: 14 }}>
+                    <use href={`${basePath}/icons/sprite.svg#${estado === 'error' ? 'alert-triangle' : estado === 'guardando' ? 'refresh-cw' : 'check'}`}></use>
+                  </svg>
+                  {estado === 'guardando' ? 'Guardando…' : estado === 'error' ? 'Error al guardar' : 'Guardado'}
+                </span>
+              )}
             </div>
           </div>
 
@@ -320,6 +341,8 @@ const MapeoPuestos = () => {
           <Button variant="primary" onClick={agregar} disabled={!nuevoPuesto}>Agregar</Button>
         </ModalFooter>
       </Modal>
+
+      {confirmDialog}
     </div>
   )
 }

@@ -85,6 +85,63 @@ public sealed class CrearFeriadoHandler(
     }
 }
 
+/// <summary>Corrige un feriado de carga manual (CU-MAES-01). No aplica a feriados oficiales.</summary>
+public sealed class EditarFeriadoHandler(
+    IFeriadoRepository feriados,
+    IAuditoriaMaestrosRepository auditoria,
+    IUnitOfWork uow,
+    IClock clock)
+{
+    public async Task<Result<FeriadoResponse>> HandleAsync(Guid id, EditarFeriadoRequest req, CancellationToken ct = default)
+    {
+        var f = await feriados.ObtenerAsync(id, ct);
+        if (f is null)
+            return Result.Failure<FeriadoResponse>(Error.NoEncontrado("Feriado no encontrado."));
+
+        var ambitos = (req.Ambitos ?? [])
+            .Select(a => (a.TipoAmbito, a.IdAmbito))
+            .ToList();
+
+        var descripcionAnterior = f.Descripcion;
+        var result = f.Editar(
+            req.Fecha, req.Descripcion, req.Alcance, req.EmpresasAplicables, req.Compensable,
+            req.VigenciaDesde, ambitos, clock.Today);
+        if (result.IsFailure)
+            return Result.Failure<FeriadoResponse>(result.Error);
+
+        await auditoria.AgregarAsync(AuditoriaMaestros.Registrar(
+            AccionConfig.Modificacion, $"FERIADO:{f.Fecha:yyyy-MM-dd}", descripcionAnterior, f.Descripcion,
+            f.VigenciaDesde, req.IdActor, null), ct);
+        await uow.SaveChangesAsync(ct);
+
+        return Result.Success(new FeriadoResponse(
+            f.Id, f.Fecha, f.Descripcion, f.Alcance, f.Origen, f.Compensable, f.VigenciaDesde));
+    }
+}
+
+/// <summary>Elimina un feriado cargado manualmente por error (CU-MAES-01). No borra feriados oficiales.</summary>
+public sealed class EliminarFeriadoHandler(
+    IFeriadoRepository feriados,
+    IAuditoriaMaestrosRepository auditoria,
+    IUnitOfWork uow)
+{
+    public async Task<Result> HandleAsync(Guid id, Guid idActor, CancellationToken ct = default)
+    {
+        var f = await feriados.ObtenerAsync(id, ct);
+        if (f is null)
+            return Result.Failure(Error.NoEncontrado("Feriado no encontrado."));
+        if (!f.EsManual)
+            return Result.Failure(Error.Validacion("Solo se pueden eliminar feriados de carga manual."));
+
+        await feriados.EliminarAsync(f, ct);
+        await auditoria.AgregarAsync(AuditoriaMaestros.Registrar(
+            AccionConfig.Desactivacion, $"FERIADO:{f.Fecha:yyyy-MM-dd}", f.Descripcion, null,
+            f.VigenciaDesde, idActor, null), ct);
+        await uow.SaveChangesAsync(ct);
+        return Result.Success();
+    }
+}
+
 /// <summary>Edita atributos operativos Nova de una tienda (CU-MAES-02, RN-MAES-05).</summary>
 public sealed class EditarTiendaHandler(
     ITiendaRepository tiendas,
@@ -132,6 +189,27 @@ public sealed class CargarCampaniaHandler(
         await auditoria.AgregarAsync(AuditoriaMaestros.Registrar(
             AccionConfig.Alta, $"CAMPANA:{req.IdEmpresa}", null,
             $"{req.Rangos.Count} rango(s)", null, req.IdActor, null), ct);
+        await uow.SaveChangesAsync(ct);
+        return Result.Success();
+    }
+}
+
+/// <summary>Elimina una semana de campaña cargada por error (CU-MAES-08).</summary>
+public sealed class EliminarCampaniaHandler(
+    ISemanaCampaniaRepository semanas,
+    IAuditoriaMaestrosRepository auditoria,
+    IUnitOfWork uow)
+{
+    public async Task<Result> HandleAsync(Guid id, Guid idActor, CancellationToken ct = default)
+    {
+        var semana = await semanas.ObtenerAsync(id, ct);
+        if (semana is null)
+            return Result.Failure(Error.NoEncontrado("Semana de campaña no encontrada."));
+
+        await semanas.EliminarAsync(semana, ct);
+        await auditoria.AgregarAsync(AuditoriaMaestros.Registrar(
+            AccionConfig.Desactivacion, $"CAMPANA:{semana.IdEmpresa}",
+            $"{semana.Desde:yyyy-MM-dd}..{semana.Hasta:yyyy-MM-dd}", null, null, idActor, null), ct);
         await uow.SaveChangesAsync(ct);
         return Result.Success();
     }

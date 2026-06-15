@@ -3,6 +3,8 @@ import { Navigate, type RouteObject } from 'react-router'
 import MainLayout from '@/layouts/MainLayout.tsx'
 import AuthLayout from '@/layouts/AuthLayout.tsx'
 import ProtectedRoute from '@/components/ProtectedRoute.tsx'
+import RequireRoles from '@/components/RequireRoles.tsx'
+import { rolesFor } from '@/lib/acl'
 
 // Dashboards
 const DashboardControl = lazy(() => import('@/views/dashboards/control-center'))
@@ -15,7 +17,20 @@ const UserProfile = lazy(() => import('@/views/user-profile'))
 
 // Nova - Gestión
 const RolPersonal = lazy(() => import('@/views/rol'))
+const Marcaciones = lazy(() => import('@/views/marcaciones'))
+const Ascensos = lazy(() => import('@/views/ascensos'))
+const Encargaturas = lazy(() => import('@/views/encargaturas'))
+const Vacaciones = lazy(() => import('@/views/vacaciones'))
+const Descansos = lazy(() => import('@/views/descansos'))
+const Reportes = lazy(() => import('@/views/reportes'))
 const MapeoPuestos = lazy(() => import('@/views/config/mapeo-puestos'))
+const ParametrosPuestos = lazy(() => import('@/views/config/parametros-puestos'))
+const Feriados = lazy(() => import('@/views/config/feriados'))
+const Tiendas = lazy(() => import('@/views/config/tiendas'))
+const Campania = lazy(() => import('@/views/config/campania'))
+const Parametros = lazy(() => import('@/views/config/parametros'))
+const Historial = lazy(() => import('@/views/config/historial'))
+const FlujosAprobacion = lazy(() => import('@/views/config/flujos-aprobacion'))
 
 //auth pages
 const Login = lazy(() => import('@/views/auth/login'))
@@ -76,8 +91,77 @@ const appPages: RouteObject[] = [
       { path: '/dashboards/marketing', element: <DashboardMarketing /> },
       { path: '/dashboards/project-management', element: <DashboardProjectManagement /> },
       { path: '/dashboards/subscription', element: <DashboardSubscription /> },
-      { path: '/rol', element: <RolPersonal /> },
-      { path: '/config/mapeo-puestos', element: <MapeoPuestos /> },
+      { path: '/rol', element: <RequireRoles roles={rolesFor('/rol')}><RolPersonal /></RequireRoles> },
+      { path: '/marcaciones', element: <RequireRoles roles={rolesFor('/marcaciones')}><Marcaciones /></RequireRoles> },
+      { path: '/ascensos', element: <RequireRoles roles={rolesFor('/ascensos')}><Ascensos /></RequireRoles> },
+      { path: '/encargaturas', element: <RequireRoles roles={rolesFor('/encargaturas')}><Encargaturas /></RequireRoles> },
+      { path: '/vacaciones', element: <RequireRoles roles={rolesFor('/vacaciones')}><Vacaciones /></RequireRoles> },
+      { path: '/descansos', element: <RequireRoles roles={rolesFor('/descansos')}><Descansos /></RequireRoles> },
+      { path: '/reportes', element: <RequireRoles roles={rolesFor('/reportes')}><Reportes /></RequireRoles> },
+      {
+        path: '/config/mapeo-puestos',
+        element: (
+          <RequireRoles roles={rolesFor('/config/mapeo-puestos')}>
+            <MapeoPuestos />
+          </RequireRoles>
+        ),
+      },
+      {
+        path: '/config/parametros-puestos',
+        element: (
+          <RequireRoles roles={rolesFor('/config/parametros-puestos')}>
+            <ParametrosPuestos />
+          </RequireRoles>
+        ),
+      },
+      {
+        path: '/config/feriados',
+        element: (
+          <RequireRoles roles={rolesFor('/config/feriados')}>
+            <Feriados />
+          </RequireRoles>
+        ),
+      },
+      {
+        path: '/config/tiendas',
+        element: (
+          <RequireRoles roles={rolesFor('/config/tiendas')}>
+            <Tiendas />
+          </RequireRoles>
+        ),
+      },
+      {
+        path: '/config/campania',
+        element: (
+          <RequireRoles roles={rolesFor('/config/campania')}>
+            <Campania />
+          </RequireRoles>
+        ),
+      },
+      {
+        path: '/config/parametros',
+        element: (
+          <RequireRoles roles={rolesFor('/config/parametros')}>
+            <Parametros />
+          </RequireRoles>
+        ),
+      },
+      {
+        path: '/config/historial',
+        element: (
+          <RequireRoles roles={rolesFor('/config/historial')}>
+            <Historial />
+          </RequireRoles>
+        ),
+      },
+      {
+        path: '/config/flujos-aprobacion',
+        element: (
+          <RequireRoles roles={rolesFor('/config/flujos-aprobacion')}>
+            <FlujosAprobacion />
+          </RequireRoles>
+        ),
+      },
       { path: '/user-profile', element: <UserProfile /> },
       { path: '/404', element: <Page404 /> },
       { path: '/blank-page', element: <BlankPage /> },

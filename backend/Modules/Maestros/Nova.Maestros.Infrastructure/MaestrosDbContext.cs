@@ -28,6 +28,8 @@ public sealed class MaestrosDbContext(DbContextOptions<MaestrosDbContext> option
     public DbSet<Parametro> Parametros => Set<Parametro>();
     public DbSet<SemanaCampania> SemanasCampania => Set<SemanaCampania>();
     public DbSet<AuditoriaMaestros> Auditoria => Set<AuditoriaMaestros>();
+    /// <summary>Read model cross-schema sobre segu.usuario: resuelve el nombre del actor en auditoría.</summary>
+    public DbSet<UsuarioRef> UsuariosRef => Set<UsuarioRef>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -46,6 +48,7 @@ public sealed class MaestrosDbContext(DbContextOptions<MaestrosDbContext> option
         modelBuilder.ApplyConfiguration(new ParametroConfiguration());
         modelBuilder.ApplyConfiguration(new SemanaCampaniaConfiguration());
         modelBuilder.ApplyConfiguration(new AuditoriaMaestrosConfiguration());
+        modelBuilder.ApplyConfiguration(new UsuarioRefConfiguration());
 
         MaestrosSeedData.Seed(modelBuilder);
     }
@@ -136,6 +139,24 @@ internal sealed class EmpleadoConfiguration : IEntityTypeConfiguration<Empleado>
         b.Property(e => e.Origen).HasColumnName("origen").HasConversion<string>().HasMaxLength(6);
         b.Property(e => e.RmsSyncAt).HasColumnName("rms_sync_at");
         b.HasIndex(e => new { e.IdEmpresa, e.Categoria, e.Estado }).HasDatabaseName("idx_empleado_empresa_categoria_estado");
+    }
+}
+
+/// <summary>Read model de solo lectura sobre segu.usuario (otro esquema, misma BD). No se migra.</summary>
+public sealed class UsuarioRef
+{
+    public Guid Id { get; init; }
+    public string NombreUsuario { get; init; } = default!;
+}
+
+internal sealed class UsuarioRefConfiguration : IEntityTypeConfiguration<UsuarioRef>
+{
+    public void Configure(EntityTypeBuilder<UsuarioRef> b)
+    {
+        // Tabla de otro módulo (Seguridad): solo lectura, excluida de las migraciones de Maestros.
+        b.HasNoKey().ToTable("usuario", "segu", t => t.ExcludeFromMigrations());
+        b.Property(u => u.Id).HasColumnName("id_usuario");
+        b.Property(u => u.NombreUsuario).HasColumnName("nombre_usuario");
     }
 }
 

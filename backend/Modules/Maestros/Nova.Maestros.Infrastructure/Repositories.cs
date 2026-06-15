@@ -141,8 +141,17 @@ internal sealed class FeriadoRepository(MaestrosDbContext db) : IFeriadoReposito
         return await q.OrderBy(f => f.Fecha).ToListAsync(ct);
     }
 
+    public Task<Feriado?> ObtenerAsync(Guid id, CancellationToken ct = default)
+        => db.Feriados.Include(f => f.Ambitos).FirstOrDefaultAsync(f => f.Id == id, ct);
+
     public async Task AgregarAsync(Feriado feriado, CancellationToken ct = default)
         => await db.Feriados.AddAsync(feriado, ct);
+
+    public Task EliminarAsync(Feriado feriado, CancellationToken ct = default)
+    {
+        db.Feriados.Remove(feriado);
+        return Task.CompletedTask;
+    }
 }
 
 internal sealed class ParametroRepository(MaestrosDbContext db) : IParametroRepository
@@ -209,12 +218,53 @@ internal sealed class SemanaCampaniaRepository(MaestrosDbContext db) : ISemanaCa
         return await q.OrderBy(s => s.Desde).ToListAsync(ct);
     }
 
+    public Task<SemanaCampania?> ObtenerAsync(Guid id, CancellationToken ct = default)
+        => db.SemanasCampania.FirstOrDefaultAsync(s => s.Id == id, ct);
+
     public async Task AgregarAsync(SemanaCampania semana, CancellationToken ct = default)
         => await db.SemanasCampania.AddAsync(semana, ct);
+
+    public Task EliminarAsync(SemanaCampania semana, CancellationToken ct = default)
+    {
+        db.SemanasCampania.Remove(semana);
+        return Task.CompletedTask;
+    }
 }
 
 internal sealed class AuditoriaMaestrosRepository(MaestrosDbContext db) : IAuditoriaMaestrosRepository
 {
     public async Task AgregarAsync(AuditoriaMaestros registro, CancellationToken ct = default)
         => await db.Auditoria.AddAsync(registro, ct);
+
+    public async Task<(IReadOnlyList<AuditoriaResponse> items, int total)> ListarAsync(
+        string? elemento, AccionConfig? accion, DateOnly? desde, DateOnly? hasta,
+        int page, int pageSize, CancellationToken ct = default)
+    {
+        var q = db.Auditoria.AsNoTracking().AsQueryable();
+        if (!string.IsNullOrWhiteSpace(elemento)) q = q.Where(a => a.Elemento.Contains(elemento));
+        if (accion is not null) q = q.Where(a => a.Accion == accion);
+        if (desde is not null)
+        {
+            var d = new DateTimeOffset(desde.Value.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+            q = q.Where(a => a.FechaHora >= d);
+        }
+        if (hasta is not null)
+        {
+            var h = new DateTimeOffset(hasta.Value.AddDays(1).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+            q = q.Where(a => a.FechaHora < h);
+        }
+
+        var total = await q.CountAsync(ct);
+        var items = await (
+            from a in q
+            join u in db.UsuariosRef on a.IdActor equals u.Id into gj
+            from u in gj.DefaultIfEmpty()
+            orderby a.FechaHora descending
+            select new AuditoriaResponse(
+                a.Id, a.Accion, a.Elemento, a.ValorAnterior, a.ValorNuevo, a.VigenciaDesde,
+                u != null ? u.NombreUsuario : null, a.Justificacion, a.FechaHora))
+            .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+
+        return (items, total);
+    }
 }

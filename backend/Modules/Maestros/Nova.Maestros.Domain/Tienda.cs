@@ -51,11 +51,15 @@ public sealed class Tienda : Entity
         RmsSyncAt = syncAt;
     }
 
-    /// <summary>Edita SOLO atributos operativos Nova (CU-MAES-02). La dotación mínima NO se toca (RN-MAES-05).</summary>
-    public Result EditarAtributosNova(UbicacionTienda ubicacion, Guid idZona, EstadoTienda estado)
+    /// <summary>
+    /// Edita SOLO atributos operativos Nova (CU-MAES-02). La dotación mínima NO se toca (RN-MAES-05).
+    /// El indicador de ubicación (CC/PC) es el atributo principal (RN-DESC-10B); la zona es opcional y,
+    /// si no se envía, conserva la zona actual.
+    /// </summary>
+    public Result EditarAtributosNova(UbicacionTienda ubicacion, Guid? idZona, EstadoTienda estado)
     {
         Ubicacion = ubicacion;
-        IdZona = idZona;
+        if (idZona.HasValue) IdZona = idZona;
         EstadoOperativo = estado;
         Origen = OrigenDato.Nova;
         return Result.Success();

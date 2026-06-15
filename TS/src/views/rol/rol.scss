@@ -120,6 +120,9 @@
 .rol-tr-zona td {
   padding: 0; background: #1e293b;
 }
+.rol-tr-zona--click td { cursor: pointer; user-select: none; transition: background-color .15s ease; }
+.rol-tr-zona--click:hover td { background: #273449; }
+.rol-zona-row .rol-bico { transition: transform .2s ease; }
 .rol-zona-row {
   display: flex; justify-content: space-between; align-items: center;
   color: #fff; padding: 8px 16px; font-weight: 700; font-size: 12px; letter-spacing: .5px;

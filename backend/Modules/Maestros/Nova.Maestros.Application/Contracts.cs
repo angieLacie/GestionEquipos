@@ -41,11 +41,34 @@ public sealed record ParametroResponse(
     DateOnly VigenciaDesde,
     DateOnly? VigenciaHasta);
 
+// ---------------- Auditoría / historial de cambios (CU-MAES-07) ----------------
+
+public sealed record AuditoriaResponse(
+    Guid Id,
+    AccionConfig Accion,
+    string Elemento,
+    string? ValorAnterior,
+    string? ValorNuevo,
+    DateOnly? VigenciaDesde,
+    string? Usuario,
+    string? Justificacion,
+    DateTimeOffset FechaHora);
+
 // ---------------- Feriados (CU-MAES-01) ----------------
 
 public sealed record AmbitoFeriadoDto(TipoAmbitoFeriado TipoAmbito, Guid IdAmbito);
 
 public sealed record CrearFeriadoRequest(
+    DateOnly Fecha,
+    string Descripcion,
+    AlcanceFeriado Alcance,
+    IReadOnlyList<string> EmpresasAplicables,
+    bool Compensable,
+    DateOnly VigenciaDesde,
+    IReadOnlyList<AmbitoFeriadoDto>? Ambitos,
+    Guid IdActor);
+
+public sealed record EditarFeriadoRequest(
     DateOnly Fecha,
     string Descripcion,
     AlcanceFeriado Alcance,
@@ -68,7 +91,7 @@ public sealed record FeriadoResponse(
 
 public sealed record EditarTiendaRequest(
     UbicacionTienda Ubicacion,
-    Guid IdZona,
+    Guid? IdZona,
     EstadoTienda EstadoOperativo,
     Guid IdActor);
 

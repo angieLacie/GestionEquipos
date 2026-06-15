@@ -25,7 +25,7 @@ function DataTable<TData>({ table, emptyMessage = 'Sin resultados.', className }
               {hg.headers.map((header) => {
                 const canSort = header.column.getCanSort()
                 const sorted = header.column.getIsSorted()
-                const icon = sorted === 'asc' ? 'chevron-up' : 'chevron-down'
+                const icon = sorted === 'asc' ? 'arrow-up' : sorted === 'desc' ? 'arrow-down' : 'chevron-down'
                 return (
                   <th
                     key={header.id}
@@ -35,7 +35,17 @@ function DataTable<TData>({ table, emptyMessage = 'Sin resultados.', className }
                     <span className="d-inline-flex align-items-center gap-1">
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                       {canSort && (
-                        <svg className="sa-icon" style={{ width: 13, height: 13, opacity: sorted ? 1 : 0.4 }}>
+                        <svg
+                          className="sa-icon"
+                          style={{
+                            width: 13,
+                            height: 13,
+                            stroke: 'currentColor',
+                            fill: 'none',
+                            color: sorted ? 'var(--bs-primary)' : '#94a3b8',
+                            opacity: sorted ? 1 : 0.75,
+                          }}
+                        >
                           <use href={`${basePath}/icons/sprite.svg#${icon}`}></use>
                         </svg>
                       )}

@@ -16,8 +16,11 @@ public static class MaestrosModule
         services.AddScoped<LookupParametroHandler>();
         services.AddScoped<CrearParametroHandler>();
         services.AddScoped<CrearFeriadoHandler>();
+        services.AddScoped<EditarFeriadoHandler>();
+        services.AddScoped<EliminarFeriadoHandler>();
         services.AddScoped<EditarTiendaHandler>();
         services.AddScoped<CargarCampaniaHandler>();
+        services.AddScoped<EliminarCampaniaHandler>();
         return services;
     }
 
@@ -90,6 +93,20 @@ public static class MaestrosModule
                 : ToProblem(result.Error);
         }).WithName("CrearFeriado");
 
+        grupo.MapPut("/feriados/{id:guid}", async (
+            Guid id, EditarFeriadoRequest req, EditarFeriadoHandler handler, CancellationToken ct) =>
+        {
+            var result = await handler.HandleAsync(id, req, ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : ToProblem(result.Error);
+        }).WithName("EditarFeriado");
+
+        grupo.MapDelete("/feriados/{id:guid}", async (
+            Guid id, Guid idActor, EliminarFeriadoHandler handler, CancellationToken ct) =>
+        {
+            var result = await handler.HandleAsync(id, idActor, ct);
+            return result.IsSuccess ? Results.NoContent() : ToProblem(result.Error);
+        }).WithName("EliminarFeriado");
+
         // ----------------- Configuración / parámetros (CU-MAES-03/04/06) -----------------
         grupo.MapGet("/configuracion/parametros/lookup", async (
             string clave, DateOnly fecha, string? idEmpresa, string? idAmbito,
@@ -106,6 +123,14 @@ public static class MaestrosModule
             var (items, total) = await repo.ListarAsync(modulo, flujo, criticidad, clave, page ?? 1, pageSize ?? 50, ct);
             return Results.Ok(new { items, page = page ?? 1, page_size = pageSize ?? 50, total });
         }).WithName("ListarParametros");
+
+        grupo.MapGet("/configuracion/auditoria", async (
+            string? elemento, AccionConfig? accion, DateOnly? desde, DateOnly? hasta, int? page, int? pageSize,
+            IAuditoriaMaestrosRepository repo, CancellationToken ct) =>
+        {
+            var (items, total) = await repo.ListarAsync(elemento, accion, desde, hasta, page ?? 1, pageSize ?? 50, ct);
+            return Results.Ok(new { items, page = page ?? 1, page_size = pageSize ?? 50, total });
+        }).WithName("ListarAuditoriaConfig");
 
         grupo.MapPost("/configuracion/parametros", async (CrearParametroRequest req, CrearParametroHandler handler, CancellationToken ct) =>
         {
@@ -133,6 +158,13 @@ public static class MaestrosModule
             var result = await handler.HandleAsync(req, ct);
             return result.IsSuccess ? Results.Created("/v1/maes/campania/semanas", null) : ToProblem(result.Error);
         }).WithName("CargarCampania");
+
+        grupo.MapDelete("/campania/semanas/{id:guid}", async (
+            Guid id, Guid idActor, EliminarCampaniaHandler handler, CancellationToken ct) =>
+        {
+            var result = await handler.HandleAsync(id, idActor, ct);
+            return result.IsSuccess ? Results.NoContent() : ToProblem(result.Error);
+        }).WithName("EliminarCampania");
 
         return app;
     }

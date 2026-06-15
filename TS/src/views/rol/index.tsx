@@ -3,6 +3,7 @@ import { Card, Col, Row } from 'react-bootstrap'
 import PageBreadcrumb from '@/components/PageBreadcrumb.tsx'
 import KpiCard from '@/components/KpiCard.tsx'
 import NovaSelect from '@/components/NovaSelect.tsx'
+import { useConfirm } from '@/components/ConfirmDialog.tsx'
 import { basePath } from '@/helpers'
 import {
   CARGOS_FILTRO,
@@ -158,6 +159,13 @@ const Rol = () => {
   const [dom, setDom] = useState<Date>(() => inicioSemana(new Date()))
   const [colsOpen, setColsOpen] = useState(false)
   const [progOpen, setProgOpen] = useState(false)
+  const [zonasColapsadas, setZonasColapsadas] = useState<Set<string>>(new Set())
+  const toggleZona = (nombre: string) =>
+    setZonasColapsadas((prev) => {
+      const next = new Set(prev)
+      next.has(nombre) ? next.delete(nombre) : next.add(nombre)
+      return next
+    })
   const [cols, setCols] = useState<ColsVisibles>({
     puesto: true, trabajador: true, asesor: true, senior: true, asesoria: true, tesoro: true, sem: true,
   })
@@ -199,6 +207,9 @@ const Rol = () => {
   const [compStep, setCompStep] = useState(false)
   const [fechaComp, setFechaComp] = useState('') // fecha que se compensa (CF/CD)
   const [notas, setNotas] = useState('')
+
+  // Confirmación para acciones destructivas (anular)
+  const { confirm, dialog: confirmDialog } = useConfirm()
 
   const dias = useMemo(() => diasDeSemana(dom), [dom])
   const esSemanaActual = mismaSemana(dom, new Date())
@@ -285,8 +296,15 @@ const Rol = () => {
     setModal(null)
   }
 
-  function anularModal() {
+  async function anularModal() {
     if (!modal) return
+    const ok = await confirm({
+      title: 'Anular programación',
+      message: <>¿Anular la programación de <strong>{modal.nombre}</strong> en {modal.diasSel.length} día(s)?</>,
+      confirmText: 'Anular',
+      variant: 'danger',
+    })
+    if (!ok) return
     setLocalZonas((prev) => {
       const z = JSON.parse(JSON.stringify(prev)) as Zona[]
       const fila = z[modal.zonaIdx].tiendas[modal.tiendaIdx].filas[modal.filaIdx]
@@ -438,17 +456,19 @@ const Rol = () => {
                       <td colSpan={totalCols} className="rol-empty">Sin resultados para los filtros aplicados.</td>
                     </tr>
                   )}
-                  {zonasFiltradas.map((z) => (
+                  {zonasFiltradas.map((z) => {
+                    const colapsada = zonasColapsadas.has(z.nombre)
+                    return (
                     <Fragment key={`z-${z.nombre}`}>
-                      <tr className="rol-tr-zona">
+                      <tr className="rol-tr-zona rol-tr-zona--click" onClick={() => toggleZona(z.nombre)}>
                         <td colSpan={totalCols}>
                           <div className="rol-zona-row">
-                            <span><Ico name="chevron-down" /> {z.nombre}</span>
+                            <span><Ico name={colapsada ? 'chevron-right' : 'chevron-down'} /> {z.nombre}</span>
                             <span className="badge bg-primary">{z.personas} PERSONAS</span>
                           </div>
                         </td>
                       </tr>
-                      {z.tiendas.map((t) => (
+                      {!colapsada && z.tiendas.map((t) => (
                         <Fragment key={`t-${z.nombre}-${t.nombre}`}>
                           <tr className="rol-tr-tienda">
                             <td colSpan={totalCols}><Ico name="map-pin" /> {t.nombre}</td>
@@ -475,7 +495,7 @@ const Rol = () => {
                         </Fragment>
                       ))}
                     </Fragment>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>
@@ -613,6 +633,8 @@ const Rol = () => {
           </div>
         </div>
       )}
+
+      {confirmDialog}
     </div>
   )
 }
