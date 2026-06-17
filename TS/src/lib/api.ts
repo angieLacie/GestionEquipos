@@ -9,7 +9,13 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   }
   if (token) headers.Authorization = `Bearer ${token}`
 
-  const res = await fetch(path, { ...options, headers })
+  let res: Response
+  try {
+    res = await fetch(path, { ...options, headers })
+  } catch {
+    // El fetch falla (red caída, servidor apagado, CORS).
+    throw new ApiError('No se pudo conectar con el servidor. Verifica tu conexión e inténtalo de nuevo.', 0)
+  }
 
   if (res.status === 401) {
     useAuth.getState().logout()
@@ -30,10 +36,18 @@ async function leerError(res: Response): Promise<string> {
     const body = await res.json()
     // RFC 7807 (problem+json) o ValidationProblem.
     if (body.errors?.error?.[0]) return body.errors.error[0]
-    return body.detail ?? body.title ?? `Error ${res.status}`
+    if (body.detail ?? body.title) return body.detail ?? body.title
+    return mensajePorEstado(res.status)
   } catch {
-    return `Error ${res.status}`
+    return mensajePorEstado(res.status)
   }
+}
+
+function mensajePorEstado(status: number): string {
+  if (status >= 500) return 'El servidor no está disponible en este momento. Inténtalo más tarde.'
+  if (status === 403) return 'No tienes permiso para realizar esta acción.'
+  if (status === 404) return 'No se encontró el recurso solicitado.'
+  return `No se pudo completar la solicitud (error ${status}).`
 }
 
 export class ApiError extends Error {
