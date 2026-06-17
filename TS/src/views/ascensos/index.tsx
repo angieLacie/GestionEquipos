@@ -14,8 +14,39 @@ import {
   type EstadoAscenso,
   type MesCumplimiento,
 } from '@/lib/ascensos'
+import '@/views/rol/rol.scss'
 
 type Filtro = 'Todas' | EstadoAscenso
+
+// ── Estado del flujo de ascenso (chip + drawer historial, molde Rol) ──
+type EstadoAscensoFlujo =
+  | 'En evaluación' | 'Enviado a GG' | 'Aprobado' | 'Rechazado' | 'Promovido'
+
+const ESTADO_ASCENSO_COLOR: Record<EstadoAscensoFlujo, string> = {
+  'En evaluación': '#64748b',
+  'Enviado a GG':  '#6366f1',
+  'Aprobado':      '#16a34a',
+  'Rechazado':     '#ef4444',
+  'Promovido':     '#0d9488',
+}
+
+// Estado actual del flujo (mock — se conectará al backend del módulo Ascensos).
+const ESTADO_ACTUAL_ASCENSO: EstadoAscensoFlujo = 'En evaluación'
+
+type HistItem = {
+  fecha: string; hora: string; usuario: string; rol: string
+  accion: string; detalle?: string; antes?: string; despues?: string
+  tipo: 'documento' | 'celda'
+}
+
+// Historial mock del flujo de ascenso (timeline, forma = backend futuro).
+const HISTORIAL_ASCENSO: HistItem[] = [
+  { fecha: '13/06', hora: '08:45', usuario: 'L. Paredes', rol: 'GT', accion: 'Creó solicitud de ascenso', detalle: 'Mendoza Pérez, Carla · Asesor', tipo: 'documento' },
+  { fecha: '13/06', hora: '09:20', usuario: 'L. Paredes', rol: 'GT', accion: 'Adjuntó cumplimiento (6 meses)', detalle: 'Promedio Senior 103.5%', tipo: 'documento' },
+  { fecha: '13/06', hora: '11:10', usuario: 'M. Rojas', rol: 'GZ', accion: 'Actualizó evaluación', detalle: 'Carla Mendoza · % Senior', antes: '98.0%', despues: '103.5%', tipo: 'celda' },
+  { fecha: '14/06', hora: '10:05', usuario: 'M. Rojas', rol: 'GZ', accion: 'Envió a aprobación', detalle: 'Enviado a Gerencia General', tipo: 'documento' },
+  { fecha: '14/06', hora: '15:30', usuario: 'A. Campos', rol: 'GG', accion: 'Cambió decisión', detalle: 'Carla Mendoza', antes: 'Enviado a GG', despues: 'En evaluación', tipo: 'celda' },
+]
 
 const ESTADO_META: Record<EstadoAscenso, { label: string; color: string }> = {
   Pendiente: { label: 'Pendiente', color: 'warning' },
@@ -81,6 +112,9 @@ const Ascensos = () => {
   // Modal registrar
   const [showReg, toggleReg] = useToggle()
   const [regCandidatoId, setRegCandidatoId] = useState<number>(candidatosMock[0]?.id ?? 0)
+
+  // Drawer historial (molde Rol)
+  const [histOpen, setHistOpen] = useState(false)
 
   const { confirm, dialog: confirmDialog } = useConfirm()
 
@@ -169,7 +203,13 @@ const Ascensos = () => {
             {f === 'Todas' ? 'Todas' : ESTADO_META[f].label + 's'} <span className="opacity-75">({cuenta(f)})</span>
           </button>
         ))}
-        <div className="ms-auto d-flex gap-2">
+        <div className="ms-auto d-flex align-items-center gap-2">
+          <span className="rol-estado-chip" style={{ ['--est' as string]: ESTADO_ASCENSO_COLOR[ESTADO_ACTUAL_ASCENSO] }}>
+            <span className="rol-estado-dot" />{ESTADO_ACTUAL_ASCENSO}
+          </span>
+          <button className="btn btn-sm btn-light rol-btn-ghost" onClick={() => setHistOpen(true)}>
+            <svg className="rol-bico me-1"><use href={`${basePath}/icons/sprite.svg#clock`}></use></svg>Historial
+          </button>
           <select className="form-select" style={{ maxWidth: 180 }} value={fZona} onChange={(e) => setFZona(e.target.value)}>
             <option value="">Todas las zonas</option>
             {zonasMock.map((z) => <option key={z} value={z}>{z}</option>)}
@@ -305,6 +345,55 @@ const Ascensos = () => {
           <Button variant="primary" onClick={registrar} disabled={!candReg}>Enviar solicitud a GG</Button>
         </ModalFooter>
       </Modal>
+
+      {/* ── Drawer: Historial de ascensos ── */}
+      {histOpen && (
+        <div className="rol-hist-ov" onClick={() => setHistOpen(false)}>
+          <aside className="rol-hist-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="rol-hist-hd">
+              <div>
+                <div className="rol-hist-ttl">Historial de ascensos</div>
+                <div className="rol-hist-sub">Flujo de evaluación a Senior</div>
+              </div>
+              <button className="rpm-close" onClick={() => setHistOpen(false)}>
+                <svg className="rol-bico"><use href={`${basePath}/icons/sprite.svg#x`}></use></svg>
+              </button>
+            </div>
+
+            <div className="rol-hist-estado">
+              <span className="rol-estado-chip" style={{ ['--est' as string]: ESTADO_ASCENSO_COLOR[ESTADO_ACTUAL_ASCENSO] }}>
+                <span className="rol-estado-dot" />{ESTADO_ACTUAL_ASCENSO}
+              </span>
+              <span className="rol-hist-estado-txt">Estado actual del documento</span>
+            </div>
+
+            <div className="rol-hist-body">
+              <ul className="rol-hist-tl">
+                {HISTORIAL_ASCENSO.map((h, i) => (
+                  <li key={i} className={`rol-hist-it rol-hist-it--${h.tipo}`}>
+                    <span className="rol-hist-dot" />
+                    <div className="rol-hist-card">
+                      <div className="rol-hist-top">
+                        <span className="rol-hist-accion">{h.accion}</span>
+                        <span className="rol-hist-time">{h.fecha} · {h.hora}</span>
+                      </div>
+                      {h.detalle && <div className="rol-hist-det">{h.detalle}</div>}
+                      {h.tipo === 'celda' && (
+                        <div className="rol-hist-cambio">
+                          <span className="rol-hist-antes">{h.antes}</span>
+                          <svg className="rol-bico"><use href={`${basePath}/icons/sprite.svg#arrow-right`}></use></svg>
+                          <span className="rol-hist-despues">{h.despues}</span>
+                        </div>
+                      )}
+                      <div className="rol-hist-user">{h.usuario} · {h.rol}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </aside>
+        </div>
+      )}
 
       {confirmDialog}
     </div>

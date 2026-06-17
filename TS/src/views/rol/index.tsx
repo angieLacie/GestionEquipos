@@ -64,6 +64,43 @@ const TIPO_META: Record<TipoKey, { sub: string; dot: string }> = {
 
 const esCompensacion = (t: TipoKey | null) => t === 'comp-feriado' || t === 'comp-descanso'
 
+// ── Estado del rol semanal (flujo de aprobación, ENT-MOD-ROLP-001 §6) ──
+type EstadoRol =
+  | 'En Edición' | 'Pendiente de Envío' | 'Enviado a GG' | 'Rechazado por GG'
+  | 'Aprobado por GG' | 'Programado por GT' | 'Versión en revisión' | 'Vigente' | 'Histórico'
+
+const ESTADO_ROL_COLOR: Record<EstadoRol, string> = {
+  'En Edición':         '#64748b',
+  'Pendiente de Envío': '#0ea5e9',
+  'Enviado a GG':       '#6366f1',
+  'Rechazado por GG':   '#ef4444',
+  'Aprobado por GG':    '#16a34a',
+  'Programado por GT':  '#0d9488',
+  'Versión en revisión':'#f59e0b',
+  'Vigente':            '#16a34a',
+  'Histórico':          '#94a3b8',
+}
+
+// Estado actual del rol (mock — se conectará al backend del módulo Rol).
+const ESTADO_ACTUAL: EstadoRol = 'En Edición'
+
+type HistItem = {
+  fecha: string; hora: string; usuario: string; rol: string
+  accion: string
+  detalle?: string
+  antes?: string; despues?: string
+  tipo: 'documento' | 'celda'
+}
+
+// Historial mock (timeline de acciones del rol). Forma = backend futuro (CU-14).
+const HISTORIAL: HistItem[] = [
+  { fecha: '14/06', hora: '08:12', usuario: 'M. Rojas', rol: 'GZ', accion: 'Creó el rol de la semana', tipo: 'documento' },
+  { fecha: '14/06', hora: '09:03', usuario: 'M. Rojas', rol: 'GZ', accion: 'Programó descanso', detalle: 'Valeria Castillo · Dom 14', antes: '—', despues: 'Descanso Laboral', tipo: 'celda' },
+  { fecha: '14/06', hora: '09:05', usuario: 'M. Rojas', rol: 'GZ', accion: 'Programó cobertura', detalle: 'Carlos Gómez · Mié 17', antes: '—', despues: 'Cobertura de Tienda', tipo: 'celda' },
+  { fecha: '14/06', hora: '10:20', usuario: 'M. Rojas', rol: 'GZ', accion: 'Editó estado', detalle: 'Luis Quispe · Vie 19', antes: 'Descanso Laboral', despues: 'Apoyo en oficina', tipo: 'celda' },
+  { fecha: '14/06', hora: '10:40', usuario: 'M. Rojas', rol: 'GZ', accion: 'Eliminó estado', detalle: 'Ana Torres · Jue 18', antes: 'Vacaciones', despues: '—', tipo: 'celda' },
+]
+
 const TIPOS_LISTA: TipoKey[] = [
   'descanso', 'cobertura-tienda',
   'comp-feriado', 'comp-descanso',
@@ -159,6 +196,7 @@ const Rol = () => {
   const [dom, setDom] = useState<Date>(() => inicioSemana(new Date()))
   const [colsOpen, setColsOpen] = useState(false)
   const [progOpen, setProgOpen] = useState(false)
+  const [histOpen, setHistOpen] = useState(false)
   const [zonasColapsadas, setZonasColapsadas] = useState<Set<string>>(new Set())
   const toggleZona = (nombre: string) =>
     setZonasColapsadas((prev) => {
@@ -409,14 +447,22 @@ const Rol = () => {
 
           <Card className="rol-card">
             <div className="rol-weeknav">
-              <div className="d-flex align-items-center gap-2">
+              <div className="d-flex align-items-center gap-2 flex-wrap">
                 <button className="btn btn-sm btn-light" onClick={semanaAnterior}><Ico name="chevron-left" /></button>
                 <button className={`btn btn-sm ${esSemanaActual ? 'btn-outline-primary' : 'btn-primary'}`} onClick={irHoy}>Hoy</button>
                 <button className="btn btn-sm btn-light" onClick={semanaSiguiente}><Ico name="chevron-right" /></button>
                 <strong className="ms-2">{etiquetaSemana(dom)}</strong>
                 {esSemanaActual && <span className="badge bg-light text-secondary">Semana actual</span>}
+                <span className="rol-estado-chip" style={{ ['--est' as string]: ESTADO_ROL_COLOR[ESTADO_ACTUAL] }}>
+                  <span className="rol-estado-dot" />{ESTADO_ACTUAL}
+                </span>
               </div>
-              <input className="form-control form-control-sm rol-search" placeholder="Buscar trabajador" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+              <div className="d-flex align-items-center gap-2">
+                <button className="btn btn-sm btn-light rol-btn-ghost" onClick={() => setHistOpen(true)}>
+                  <Ico name="clock" /> Historial
+                </button>
+                <input className="form-control form-control-sm rol-search" placeholder="Buscar trabajador" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+              </div>
             </div>
 
             <div className="rol-grid">
@@ -631,6 +677,57 @@ const Rol = () => {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── Drawer: Historial del rol ─────────────────────────── */}
+      {histOpen && (
+        <div className="rol-hist-ov" onClick={() => setHistOpen(false)}>
+          <aside className="rol-hist-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="rol-hist-hd">
+              <div>
+                <div className="rol-hist-ttl">Historial del rol</div>
+                <div className="rol-hist-sub">{etiquetaSemana(dom)}</div>
+              </div>
+              <button className="rpm-close" onClick={() => setHistOpen(false)}><Ico name="x" /></button>
+            </div>
+
+            <div className="rol-hist-estado">
+              <span className="rol-estado-chip" style={{ ['--est' as string]: ESTADO_ROL_COLOR[ESTADO_ACTUAL] }}>
+                <span className="rol-estado-dot" />{ESTADO_ACTUAL}
+              </span>
+              <span className="rol-hist-estado-txt">Estado actual del documento</span>
+            </div>
+
+            <div className="rol-hist-body">
+              {HISTORIAL.length === 0 ? (
+                <div className="rol-empty">Sin movimientos registrados.</div>
+              ) : (
+                <ul className="rol-hist-tl">
+                  {HISTORIAL.map((h, i) => (
+                    <li key={i} className={`rol-hist-it rol-hist-it--${h.tipo}`}>
+                      <span className="rol-hist-dot" />
+                      <div className="rol-hist-card">
+                        <div className="rol-hist-top">
+                          <span className="rol-hist-accion">{h.accion}</span>
+                          <span className="rol-hist-time">{h.fecha} · {h.hora}</span>
+                        </div>
+                        {h.detalle && <div className="rol-hist-det">{h.detalle}</div>}
+                        {h.tipo === 'celda' && (
+                          <div className="rol-hist-cambio">
+                            <span className="rol-hist-antes">{h.antes}</span>
+                            <Ico name="arrow-right" />
+                            <span className="rol-hist-despues">{h.despues}</span>
+                          </div>
+                        )}
+                        <div className="rol-hist-user">{h.usuario} · {h.rol}</div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </aside>
         </div>
       )}
 

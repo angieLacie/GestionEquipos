@@ -17,6 +17,40 @@ import {
   type EstadoVacacion,
   type MesObligatorio,
 } from '@/lib/vacaciones'
+import '@/views/rol/rol.scss'
+
+// ── Estado del flujo de vacaciones (chip + drawer historial, molde Rol) ──
+type EstadoVacFlujo =
+  | 'Solicitada' | 'Aprobada por GT' | 'Aprobada por GG' | 'Rechazada'
+  | 'Programada' | 'En goce' | 'Concluida'
+
+const ESTADO_VAC_COLOR: Record<EstadoVacFlujo, string> = {
+  'Solicitada':      '#0ea5e9',
+  'Aprobada por GT': '#6366f1',
+  'Aprobada por GG': '#16a34a',
+  'Rechazada':       '#ef4444',
+  'Programada':      '#0d9488',
+  'En goce':         '#f59e0b',
+  'Concluida':       '#94a3b8',
+}
+
+// Estado actual del flujo (mock — se conectará al backend del módulo Vacaciones).
+const ESTADO_ACTUAL_VAC: EstadoVacFlujo = 'Solicitada'
+
+type HistItem = {
+  fecha: string; hora: string; usuario: string; rol: string
+  accion: string; detalle?: string; antes?: string; despues?: string
+  tipo: 'documento' | 'celda'
+}
+
+// Historial mock del flujo de vacaciones (timeline, forma = backend futuro).
+const HISTORIAL_VAC: HistItem[] = [
+  { fecha: '12/06', hora: '09:15', usuario: 'C. Salas', rol: 'GT', accion: 'Creó solicitud', detalle: 'Ramírez Soto, Lucía · 12/07 – 26/07', tipo: 'documento' },
+  { fecha: '12/06', hora: '09:50', usuario: 'C. Salas', rol: 'GT', accion: 'Editó fechas', detalle: 'Lucía Ramírez · Fecha inicio', antes: '12/07', despues: '15/07', tipo: 'celda' },
+  { fecha: '13/06', hora: '08:40', usuario: 'M. Rojas', rol: 'GZ', accion: 'Envió a aprobación', detalle: 'Remitido a Gerencia de Tienda', tipo: 'documento' },
+  { fecha: '13/06', hora: '14:20', usuario: 'C. Salas', rol: 'GT', accion: 'Cambió estado', detalle: 'Lucía Ramírez', antes: 'Solicitada', despues: 'Aprobada por GT', tipo: 'celda' },
+  { fecha: '14/06', hora: '11:05', usuario: 'A. Campos', rol: 'GG', accion: 'Revirtió decisión', detalle: 'Lucía Ramírez', antes: 'Aprobada por GT', despues: 'Solicitada', tipo: 'celda' },
+]
 
 const ESTADOS: EstadoVacacion[] = ['Programada', 'EnCurso', 'Pendiente', 'Aprobada', 'Anulada']
 const ESTADO_STYLE: Record<EstadoVacacion, { label: string; color: string }> = {
@@ -61,6 +95,9 @@ const Vacaciones = () => {
   const [showForm, toggleForm] = useToggle()
   const [editRef, setEditRef] = useState<{ empId: number; progId: number } | null>(null)
   const [form, setForm] = useState(formInicial)
+
+  // Drawer historial (molde Rol)
+  const [histOpen, setHistOpen] = useState(false)
 
   const { confirm, dialog: confirmDialog } = useConfirm()
 
@@ -186,7 +223,15 @@ const Vacaciones = () => {
               <option value="">Todas las tiendas</option>
               {tiendasMock.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
-            <span className="ms-auto text-muted small">{empleados.length} empleados</span>
+            <div className="ms-auto d-flex align-items-center gap-2">
+              <span className="rol-estado-chip" style={{ ['--est' as string]: ESTADO_VAC_COLOR[ESTADO_ACTUAL_VAC] }}>
+                <span className="rol-estado-dot" />{ESTADO_ACTUAL_VAC}
+              </span>
+              <button className="btn btn-sm btn-light rol-btn-ghost" onClick={() => setHistOpen(true)}>
+                <svg className="rol-bico me-1"><use href={`${basePath}/icons/sprite.svg#clock`}></use></svg>Historial
+              </button>
+              <span className="text-muted small">{empleados.length} empleados</span>
+            </div>
           </div>
         </Card.Body>
       </Card>
@@ -320,6 +365,55 @@ const Vacaciones = () => {
           <Button variant="outline-danger" onClick={toggleForm}>✕ Cancelar</Button>
         </ModalFooter>
       </Modal>
+
+      {/* ── Drawer: Historial de vacaciones ── */}
+      {histOpen && (
+        <div className="rol-hist-ov" onClick={() => setHistOpen(false)}>
+          <aside className="rol-hist-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="rol-hist-hd">
+              <div>
+                <div className="rol-hist-ttl">Historial de vacaciones</div>
+                <div className="rol-hist-sub">Flujo de programación anual</div>
+              </div>
+              <button className="rpm-close" onClick={() => setHistOpen(false)}>
+                <svg className="rol-bico"><use href={`${basePath}/icons/sprite.svg#x`}></use></svg>
+              </button>
+            </div>
+
+            <div className="rol-hist-estado">
+              <span className="rol-estado-chip" style={{ ['--est' as string]: ESTADO_VAC_COLOR[ESTADO_ACTUAL_VAC] }}>
+                <span className="rol-estado-dot" />{ESTADO_ACTUAL_VAC}
+              </span>
+              <span className="rol-hist-estado-txt">Estado actual del documento</span>
+            </div>
+
+            <div className="rol-hist-body">
+              <ul className="rol-hist-tl">
+                {HISTORIAL_VAC.map((h, i) => (
+                  <li key={i} className={`rol-hist-it rol-hist-it--${h.tipo}`}>
+                    <span className="rol-hist-dot" />
+                    <div className="rol-hist-card">
+                      <div className="rol-hist-top">
+                        <span className="rol-hist-accion">{h.accion}</span>
+                        <span className="rol-hist-time">{h.fecha} · {h.hora}</span>
+                      </div>
+                      {h.detalle && <div className="rol-hist-det">{h.detalle}</div>}
+                      {h.tipo === 'celda' && (
+                        <div className="rol-hist-cambio">
+                          <span className="rol-hist-antes">{h.antes}</span>
+                          <svg className="rol-bico"><use href={`${basePath}/icons/sprite.svg#arrow-right`}></use></svg>
+                          <span className="rol-hist-despues">{h.despues}</span>
+                        </div>
+                      )}
+                      <div className="rol-hist-user">{h.usuario} · {h.rol}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </aside>
+        </div>
+      )}
 
       {confirmDialog}
     </div>

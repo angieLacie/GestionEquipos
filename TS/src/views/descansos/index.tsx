@@ -10,6 +10,7 @@ import {
   ESTADO_LABEL, ESTADO_COLOR, zonasMock, tiendasMock,
   type CalTrabajador, type RegistroDesc, type EstadoDesc,
 } from '@/lib/descansos'
+import '@/views/rol/rol.scss'
 
 type Tab = 'calendario' | 'tabla' | 'resumen'
 
@@ -23,17 +24,29 @@ const MotivoBadge = ({ tipoKey, motivo }: { tipoKey: string; motivo: string }) =
   return <span className="badge" style={{ background: (t?.color ?? '#888') + '22', color: t?.color ?? '#555' }}>{motivo}</span>
 }
 
-const FiltrosBar = ({ onExport }: { onExport: () => void }) => (
-  <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-    <select className="form-select" style={{ maxWidth: 160 }}><option>Todas las zonas</option>{zonasMock.map((z) => <option key={z}>{z}</option>)}</select>
-    <select className="form-select" style={{ maxWidth: 170 }}><option>Todas las tiendas</option>{tiendasMock.map((t) => <option key={t}>{t}</option>)}</select>
-    <select className="form-select" style={{ maxWidth: 160 }}><option>Todos los tipos</option>{TIPOS.map((t) => <option key={t.key}>{t.label}</option>)}</select>
-    <select className="form-select" style={{ maxWidth: 160 }}><option>Todos los estados</option>{Object.values(ESTADO_LABEL).map((e) => <option key={e}>{e}</option>)}</select>
-    <button className="btn btn-outline-secondary"><svg className="sa-icon me-1"><use href={`${basePath}/icons/sprite.svg#search`}></use></svg>Buscar</button>
-    <button className="btn btn-outline-secondary"><svg className="sa-icon me-1"><use href={`${basePath}/icons/sprite.svg#x`}></use></svg>Limpiar</button>
-    <button className="btn btn-outline-success" onClick={onExport}><svg className="sa-icon me-1"><use href={`${basePath}/icons/sprite.svg#download`}></use></svg>Exportar Excel</button>
-  </div>
+const FiltrosBar = () => (
+  <>
+    <select className="form-select form-select-sm"><option>Todas las zonas</option>{zonasMock.map((z) => <option key={z}>{z}</option>)}</select>
+    <select className="form-select form-select-sm"><option>Todas las tiendas</option>{tiendasMock.map((t) => <option key={t}>{t}</option>)}</select>
+    <select className="form-select form-select-sm"><option>Todos los tipos</option>{TIPOS.map((t) => <option key={t.key}>{t.label}</option>)}</select>
+    <select className="form-select form-select-sm"><option>Todos los estados</option>{Object.values(ESTADO_LABEL).map((e) => <option key={e}>{e}</option>)}</select>
+    <button className="btn btn-sm btn-light rol-btn-ghost"><svg className="sa-icon me-1"><use href={`${basePath}/icons/sprite.svg#x`}></use></svg>Limpiar</button>
+  </>
 )
+
+// Historial mock de acciones sobre descansos (timeline, forma = backend futuro).
+type HistItem = {
+  fecha: string; hora: string; usuario: string; rol: string
+  accion: string; detalle?: string; antes?: string; despues?: string
+  tipo: 'documento' | 'celda'
+}
+const HISTORIAL_DESC: HistItem[] = [
+  { fecha: '14/06', hora: '08:30', usuario: 'M. Rojas', rol: 'GZ', accion: 'Generó sugerencia de descansos', detalle: 'Semana 24 · 11 sugeridos', tipo: 'documento' },
+  { fecha: '14/06', hora: '09:10', usuario: 'M. Rojas', rol: 'GZ', accion: 'Programó descanso laboral', detalle: 'Rodrigo Villar · 26/05', antes: '—', despues: 'Descanso laboral', tipo: 'celda' },
+  { fecha: '14/06', hora: '09:25', usuario: 'S. Méndez', rol: 'GT', accion: 'Programó cobertura', detalle: 'Sandra Méndez · 27/05', antes: '—', despues: 'Cobertura de tienda', tipo: 'celda' },
+  { fecha: '14/06', hora: '10:05', usuario: 'M. Rojas', rol: 'GZ', accion: 'Editó motivo', detalle: 'Daniela Ríos · 28/05', antes: 'Descanso laboral', despues: 'Comp. por desc. no gozado', tipo: 'celda' },
+  { fecha: '14/06', hora: '10:40', usuario: 'A. Campos', rol: 'GG', accion: 'Anuló programación', detalle: 'Mendez Peña, Carlos · 07/05', antes: 'Asesoría', despues: 'Anulado', tipo: 'celda' },
+]
 
 /** Agrupa filas por zona → tienda preservando orden. */
 function agrupar<T extends { zona: string; tienda: string }>(filas: T[]) {
@@ -58,6 +71,7 @@ const Descansos = () => {
 
   // Programar dropdown
   const [showProg, setShowProg] = useState(false)
+  const [histOpen, setHistOpen] = useState(false)
 
   // Modal editar/nueva
   const [showForm, toggleForm] = useToggle()
@@ -137,11 +151,11 @@ const Descansos = () => {
 
       {/* KPIs */}
       <Row className="g-3 mb-4">
-        <Col sm={6} xl><KpiCard label="Trabajadores activos" value={KPIS.activos} accent="var(--primary-600, #4f46e5)" icon="users" sub="personal registrado" /></Col>
-        <Col sm={6} xl><KpiCard label="En descanso hoy" value={KPIS.enDescansoHoy} accent="#f59e0b" icon="coffee" sub="estado: de descanso" /></Col>
-        <Col sm={6} xl><KpiCard label="De vacaciones" value={KPIS.deVacaciones} accent="#14b8a6" icon="sun" sub="estado: vacaciones" /></Col>
-        <Col sm={6} xl><KpiCard label="Con licencia" value={KPIS.conLicencia} accent="#ef4444" icon="file-text" sub="médica / c-s goce" /></Col>
-        <Col sm={6} xl><KpiCard label="Prog. este mes" value={KPIS.progMes} accent="#10b981" icon="calendar" sub="registros activos" /></Col>
+        <Col sm={6} xl><KpiCard size="sm" label="Activos" value={KPIS.activos} accent="#4f46e5" icon="users" /></Col>
+        <Col sm={6} xl><KpiCard size="sm" label="En descanso" value={KPIS.enDescansoHoy} accent="#f97316" icon="coffee" /></Col>
+        <Col sm={6} xl><KpiCard size="sm" label="Vacaciones" value={KPIS.deVacaciones} accent="#06b6d4" icon="sun" /></Col>
+        <Col sm={6} xl><KpiCard size="sm" label="Con licencia" value={KPIS.conLicencia} accent="#f43f5e" icon="file-text" /></Col>
+        <Col sm={6} xl><KpiCard size="sm" label="Prog. mes" value={KPIS.progMes} accent="#22c55e" icon="calendar" /></Col>
       </Row>
 
       {/* Tabs */}
@@ -158,32 +172,42 @@ const Descansos = () => {
 
       {/* ── CALENDARIO ── */}
       {tab === 'calendario' && (
-        <Card>
-          <Card.Body>
-            <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-              <FiltrosBar onExport={() => setMsg('Exportación no disponible en el prototipo.')} />
-              <div className="ms-auto position-relative">
-                <Button variant="primary" onClick={() => setShowProg((v) => !v)}>
-                  <svg className="sa-icon me-1"><use href={`${basePath}/icons/sprite.svg#calendar`}></use></svg>Programar ▾
-                </Button>
+        <>
+        <Card className="rol-toolbar mb-3">
+          <Card.Body className="rol-toolbar-inner">
+            <div className="rol-toolbar-filters">
+              <FiltrosBar />
+            </div>
+            <div className="rol-toolbar-actions">
+              <div className="rol-cols-wrap" onClick={(e) => e.stopPropagation()}>
+                <button className="btn btn-sm btn-primary" onClick={() => setShowProg((v) => !v)}>
+                  <svg className="sa-icon me-1"><use href={`${basePath}/icons/sprite.svg#calendar`}></use></svg>Programar
+                  <svg className="sa-icon ms-1"><use href={`${basePath}/icons/sprite.svg#chevron-down`}></use></svg>
+                </button>
                 {showProg && (
-                  <div className="position-absolute end-0 mt-1 bg-white border rounded-3 shadow p-1" style={{ width: 300, zIndex: 20 }}>
-                    <button className="dropdown-item rounded p-2 text-start w-100" onClick={() => abrirNueva('descanso_laboral')}>
-                      <div className="fw-semibold">🛌 Descanso laboral</div>
-                      <div className="small text-muted">2 días, sin cruce, sin registro previo en la semana</div>
+                  <div className="rol-prog-menu">
+                    <button className="rol-prog-item" onClick={() => { setShowProg(false); abrirNueva('descanso_laboral') }}>
+                      <span className="rol-prog-ico">🛌</span>
+                      <span><strong>Descanso laboral</strong><small>2 días, sin cruce, sin registro previo</small></span>
                     </button>
-                    <button className="dropdown-item rounded p-2 text-start w-100" onClick={() => abrirNueva('comp_feriado')}>
-                      <div className="fw-semibold">🔄 Compensación</div>
-                      <div className="small text-muted">Por feriado o descanso semanal laborado</div>
+                    <button className="rol-prog-item" onClick={() => { setShowProg(false); abrirNueva('comp_feriado') }}>
+                      <span className="rol-prog-ico">🔄</span>
+                      <span><strong>Compensación</strong><small>Por feriado o descanso semanal laborado</small></span>
                     </button>
                   </div>
                 )}
               </div>
+              <button className="btn btn-sm btn-success" onClick={() => setMsg('Exportación no disponible en el prototipo.')}>
+                <svg className="sa-icon me-1"><use href={`${basePath}/icons/sprite.svg#download`}></use></svg>Exportar Excel
+              </button>
             </div>
+          </Card.Body>
+        </Card>
 
+        <Card className="rol-card">
             {/* Banner sugerencia */}
             {sugiriendo ? (
-              <div className="d-flex align-items-center gap-2 bg-dark text-white rounded-3 px-3 py-2 mb-3">
+              <div className="d-flex align-items-center gap-2 bg-dark text-white px-3 py-2">
                 <span className="fs-5">🛌</span>
                 <div className="me-auto">
                   <span className="fw-semibold">Descansos laborales sugeridos</span>
@@ -193,40 +217,57 @@ const Descansos = () => {
                 <Button size="sm" variant="outline-light" onClick={() => setSugiriendo(false)}>✕ Descartar</Button>
               </div>
             ) : (
-              <div className="d-flex align-items-center justify-content-between mb-2">
+              <div className="rol-weeknav">
                 <div className="d-flex align-items-center gap-2">
-                  <button className="btn btn-sm btn-outline-secondary">‹</button>
-                  <button className="btn btn-sm btn-outline-secondary">Hoy</button>
-                  <button className="btn btn-sm btn-outline-secondary">›</button>
-                  <span className="fw-semibold ms-2">Sem · 14 jun – 20 jun 2026</span>
+                  <button className="btn btn-sm btn-light">‹</button>
+                  <button className="btn btn-sm btn-outline-primary">Hoy</button>
+                  <button className="btn btn-sm btn-light">›</button>
+                  <strong className="ms-2">Sem · 14 jun – 20 jun 2026</strong>
                   <span className="text-muted small">· {trabajadores.length} trabajadores</span>
                 </div>
-                <Button size="sm" variant="outline-primary" onClick={() => setSugiriendo(true)}>
-                  <svg className="sa-icon me-1"><use href={`${basePath}/icons/sprite.svg#zap`}></use></svg>Sugerencia automática
-                </Button>
+                <div className="d-flex align-items-center gap-2">
+                  <button className="btn btn-sm btn-light rol-btn-ghost" onClick={() => setHistOpen(true)}>
+                    <svg className="rol-bico me-1"><use href={`${basePath}/icons/sprite.svg#clock`}></use></svg>Historial
+                  </button>
+                  <Button size="sm" variant="outline-primary" onClick={() => setSugiriendo(true)}>
+                    <svg className="sa-icon me-1"><use href={`${basePath}/icons/sprite.svg#zap`}></use></svg>Sugerencia automática
+                  </Button>
+                </div>
               </div>
             )}
 
-            <div className="table-responsive">
-              <table className="table table-bordered align-middle mb-0" style={{ minWidth: 900 }}>
+            <div className="rol-grid">
+              <table className="rol-tbl" style={{ minWidth: 900 }}>
                 <thead>
-                  <tr className="text-center small">
-                    <th className="text-start" style={{ minWidth: 110 }}>Puesto</th>
-                    <th className="text-start" style={{ minWidth: 150 }}>Trabajador</th>
-                    {SEMANA.map((d) => <th key={d.iso}><div>{d.dia}</div><div className="text-muted fw-normal">{d.label}</div></th>)}
+                  <tr className="rol-tr-group">
+                    <th className="rol-th-id">Puesto</th>
+                    <th className="rol-th-id rol-th-trab">Trabajador</th>
+                    {SEMANA.map((d) => (
+                      <th key={d.iso} className="rol-th-dia">
+                        <div className="rol-dia-nombre">{d.dia}</div>
+                        <div className="rol-dia-fecha">{d.label}</div>
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {calGrupos.map((z) => (
                     <Fragment key={z.zona}>
-                      <tr className="bg-dark text-white"><td colSpan={9} className="fw-semibold">▾ {z.zona.toUpperCase()}</td></tr>
+                      <tr className="rol-tr-zona">
+                        <td colSpan={9}>
+                          <div className="rol-zona-row">
+                            <span>▾ {z.zona.toUpperCase()}</span>
+                            <span className="badge bg-primary">{z.tiendas.reduce((s, t) => s + t.filas.length, 0)} PERSONAS</span>
+                          </div>
+                        </td>
+                      </tr>
                       {z.tiendas.map((t) => (
                         <Fragment key={t.tienda}>
-                          <tr className="bg-light"><td colSpan={9} className="small fw-semibold text-danger">📍 {t.tienda}</td></tr>
+                          <tr className="rol-tr-tienda"><td colSpan={9}><svg className="rol-bico"><use href={`${basePath}/icons/sprite.svg#map-pin`}></use></svg> {t.tienda}</td></tr>
                           {t.filas.map((w) => (
-                            <tr key={w.id}>
-                              <td className="text-muted small">{w.puesto}</td>
-                              <td className="fw-semibold">{w.trabajador}</td>
+                            <tr className="rol-tr-fila" key={w.id}>
+                              <td className="rol-td-puesto">{w.puesto}</td>
+                              <td className="rol-td-trab">{w.trabajador}</td>
                               {SEMANA.map((d) => {
                                 const tipoKey = w.celdas[d.iso]
                                 const sugerido = sugiriendo && SUGERENCIAS[w.id]?.includes(d.iso) && !tipoKey
@@ -251,15 +292,27 @@ const Descansos = () => {
                 </tbody>
               </table>
             </div>
-          </Card.Body>
         </Card>
+        </>
       )}
 
       {/* ── TABLA ── */}
       {tab === 'tabla' && (
-        <Card>
+        <>
+        <Card className="rol-toolbar mb-3">
+          <Card.Body className="rol-toolbar-inner">
+            <div className="rol-toolbar-filters">
+              <FiltrosBar />
+            </div>
+            <div className="rol-toolbar-actions">
+              <button className="btn btn-sm btn-success" onClick={() => setMsg('Exportación no disponible en el prototipo.')}>
+                <svg className="sa-icon me-1"><use href={`${basePath}/icons/sprite.svg#download`}></use></svg>Exportar Excel
+              </button>
+            </div>
+          </Card.Body>
+        </Card>
+        <Card className="rol-card">
           <Card.Body>
-            <FiltrosBar onExport={() => setMsg('Exportación no disponible en el prototipo.')} />
             <div className="table-responsive">
               <table className="table align-middle">
                 <thead>
@@ -307,13 +360,26 @@ const Descansos = () => {
             </div>
           </Card.Body>
         </Card>
+        </>
       )}
 
       {/* ── RESUMEN ── */}
       {tab === 'resumen' && (
-        <Card>
+        <>
+        <Card className="rol-toolbar mb-3">
+          <Card.Body className="rol-toolbar-inner">
+            <div className="rol-toolbar-filters">
+              <FiltrosBar />
+            </div>
+            <div className="rol-toolbar-actions">
+              <button className="btn btn-sm btn-success" onClick={() => setMsg('Exportación no disponible en el prototipo.')}>
+                <svg className="sa-icon me-1"><use href={`${basePath}/icons/sprite.svg#download`}></use></svg>Exportar Excel
+              </button>
+            </div>
+          </Card.Body>
+        </Card>
+        <Card className="rol-card">
           <Card.Body>
-            <FiltrosBar onExport={() => setMsg('Exportación no disponible en el prototipo.')} />
             <div className="d-flex justify-content-between align-items-end mb-2">
               <div>
                 <h6 className="mb-0 fw-bold">Resumen por tienda</h6>
@@ -353,6 +419,48 @@ const Descansos = () => {
             </div>
           </Card.Body>
         </Card>
+        </>
+      )}
+
+      {/* ── Drawer: Historial de descansos ── */}
+      {histOpen && (
+        <div className="rol-hist-ov" onClick={() => setHistOpen(false)}>
+          <aside className="rol-hist-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="rol-hist-hd">
+              <div>
+                <div className="rol-hist-ttl">Historial de descansos</div>
+                <div className="rol-hist-sub">Semana · 14 jun – 20 jun 2026</div>
+              </div>
+              <button className="rpm-close" onClick={() => setHistOpen(false)}>
+                <svg className="rol-bico"><use href={`${basePath}/icons/sprite.svg#x`}></use></svg>
+              </button>
+            </div>
+            <div className="rol-hist-body">
+              <ul className="rol-hist-tl">
+                {HISTORIAL_DESC.map((h, i) => (
+                  <li key={i} className={`rol-hist-it rol-hist-it--${h.tipo}`}>
+                    <span className="rol-hist-dot" />
+                    <div className="rol-hist-card">
+                      <div className="rol-hist-top">
+                        <span className="rol-hist-accion">{h.accion}</span>
+                        <span className="rol-hist-time">{h.fecha} · {h.hora}</span>
+                      </div>
+                      {h.detalle && <div className="rol-hist-det">{h.detalle}</div>}
+                      {h.tipo === 'celda' && (
+                        <div className="rol-hist-cambio">
+                          <span className="rol-hist-antes">{h.antes}</span>
+                          <svg className="rol-bico"><use href={`${basePath}/icons/sprite.svg#arrow-right`}></use></svg>
+                          <span className="rol-hist-despues">{h.despues}</span>
+                        </div>
+                      )}
+                      <div className="rol-hist-user">{h.usuario} · {h.rol}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </aside>
+        </div>
       )}
 
       {/* Modal editar / nueva programación */}

@@ -21,6 +21,21 @@ import {
   type Marcacion,
   type EstadoMarcacion,
 } from '@/lib/marcaciones'
+import '@/views/rol/rol.scss'
+
+// Historial mock de correcciones/justificaciones de marcaciones (timeline, forma = backend futuro).
+type HistItem = {
+  fecha: string; hora: string; usuario: string; rol: string
+  accion: string; detalle?: string; antes?: string; despues?: string
+  tipo: 'documento' | 'celda'
+}
+const HISTORIAL: HistItem[] = [
+  { fecha: '15/06', hora: '08:40', usuario: 'C. Paredes', rol: 'GT', accion: 'Corrigió marcación', detalle: 'Luis Quispe · ingreso', antes: '08:15 (tarde)', despues: '08:00 (justificada)', tipo: 'celda' },
+  { fecha: '15/06', hora: '08:55', usuario: 'C. Paredes', rol: 'GT', accion: 'Justificó tardanza', detalle: 'Ana Torres · permiso médico aprobado', tipo: 'documento' },
+  { fecha: '15/06', hora: '12:10', usuario: 'M. Rojas', rol: 'GZ', accion: 'Registró marca manual', detalle: 'Pedro Salas · salida 13:00 (biométrico caído)', tipo: 'documento' },
+  { fecha: '15/06', hora: '14:30', usuario: 'C. Paredes', rol: 'GT', accion: 'Anuló marca duplicada', detalle: 'Rosa Díaz · ingreso 09:01', antes: 'Doble marca', despues: 'Eliminada', tipo: 'celda' },
+  { fecha: '15/06', hora: '18:05', usuario: 'M. Rojas', rol: 'GZ', accion: 'Validó asistencia', detalle: 'Tienda Mall del Sur · jornada cerrada', tipo: 'documento' },
+]
 
 const ESTADOS: EstadoMarcacion[] = ['Completo', 'EnTienda', 'SinMarcacion', 'Descanso', 'Vacaciones']
 
@@ -56,6 +71,7 @@ const Marcaciones = () => {
   const [fTienda, setFTienda] = useState('')
   const [fEstado, setFEstado] = useState<'' | EstadoMarcacion>('')
   const [busqueda, setBusqueda] = useState('')
+  const [histOpen, setHistOpen] = useState(false)
 
   const [sorting, setSorting] = useState<SortingState>([])
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
@@ -209,6 +225,9 @@ const Marcaciones = () => {
             </div>
 
             <div className="ms-auto d-flex gap-2">
+              <button className="btn btn-sm btn-light rol-btn-ghost" onClick={() => setHistOpen(true)}>
+                <svg className="rol-bico me-1"><use href={`${basePath}/icons/sprite.svg#clock`}></use></svg>Historial
+              </button>
               <button className="btn btn-outline-secondary" onClick={limpiar}>
                 <svg className="sa-icon me-1"><use href={`${basePath}/icons/sprite.svg#x`}></use></svg>Limpiar
               </button>
@@ -235,6 +254,47 @@ const Marcaciones = () => {
           )}
         </Card.Body>
       </Card>
+
+      {/* ── Drawer: Historial de marcaciones ── */}
+      {histOpen && (
+        <div className="rol-hist-ov" onClick={() => setHistOpen(false)}>
+          <aside className="rol-hist-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="rol-hist-hd">
+              <div>
+                <div className="rol-hist-ttl">Historial de marcaciones</div>
+                <div className="rol-hist-sub">Correcciones y justificaciones · últimos movimientos</div>
+              </div>
+              <button className="rpm-close" onClick={() => setHistOpen(false)}>
+                <svg className="rol-bico"><use href={`${basePath}/icons/sprite.svg#x`}></use></svg>
+              </button>
+            </div>
+            <div className="rol-hist-body">
+              <ul className="rol-hist-tl">
+                {HISTORIAL.map((h, i) => (
+                  <li key={i} className={`rol-hist-it rol-hist-it--${h.tipo}`}>
+                    <span className="rol-hist-dot" />
+                    <div className="rol-hist-card">
+                      <div className="rol-hist-top">
+                        <span className="rol-hist-accion">{h.accion}</span>
+                        <span className="rol-hist-time">{h.fecha} · {h.hora}</span>
+                      </div>
+                      {h.detalle && <div className="rol-hist-det">{h.detalle}</div>}
+                      {h.tipo === 'celda' && (
+                        <div className="rol-hist-cambio">
+                          <span className="rol-hist-antes">{h.antes}</span>
+                          <svg className="rol-bico"><use href={`${basePath}/icons/sprite.svg#arrow-right`}></use></svg>
+                          <span className="rol-hist-despues">{h.despues}</span>
+                        </div>
+                      )}
+                      <div className="rol-hist-user">{h.usuario} · {h.rol}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </aside>
+        </div>
+      )}
     </div>
   )
 }

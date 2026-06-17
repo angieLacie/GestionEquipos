@@ -25,6 +25,21 @@ import {
   type TipoCobertura,
   type EstadoEncargatura,
 } from '@/lib/encargaturas'
+import '@/views/rol/rol.scss'
+
+// Historial mock de acciones sobre encargaturas (timeline, forma = backend futuro).
+type HistItem = {
+  fecha: string; hora: string; usuario: string; rol: string
+  accion: string; detalle?: string; antes?: string; despues?: string
+  tipo: 'documento' | 'celda'
+}
+const HISTORIAL: HistItem[] = [
+  { fecha: '13/06', hora: '08:20', usuario: 'M. Rojas', rol: 'GZ', accion: 'Programó cobertura', detalle: 'Semana 24 · Tienda Mall del Sur', tipo: 'documento' },
+  { fecha: '13/06', hora: '09:05', usuario: 'C. Paredes', rol: 'GT', accion: 'Asignó encargado', detalle: 'Tienda Mall del Sur · 16/06', antes: '—', despues: 'Encargado: Luis Quispe', tipo: 'celda' },
+  { fecha: '13/06', hora: '10:15', usuario: 'M. Rojas', rol: 'GZ', accion: 'Editó tienda', detalle: 'Encargatura #18', antes: 'Tienda Centro Cívico', despues: 'Tienda Plaza Norte', tipo: 'celda' },
+  { fecha: '14/06', hora: '07:50', usuario: 'A. Campos', rol: 'GG', accion: 'Cambió estado', detalle: 'Encargatura #21 · Plaza Norte', antes: 'Programado', despues: 'En ejecución', tipo: 'celda' },
+  { fecha: '14/06', hora: '11:30', usuario: 'A. Campos', rol: 'GG', accion: 'Anuló encargatura', detalle: 'Encargatura #12 · Mall Aventura', antes: 'Programado', despues: 'Anulado', tipo: 'celda' },
+]
 
 const TIPOS: TipoCobertura[] = ['Tienda', 'Asesoria', 'Tesoro']
 const ESTADOS: EstadoEncargatura[] = ['Programado', 'Ejecucion', 'Culminado', 'Anulado']
@@ -71,6 +86,7 @@ const Encargaturas = () => {
 
   // Modal nueva / editar programación (editId = null → nueva)
   const [showNew, toggleNew] = useToggle()
+  const [histOpen, setHistOpen] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState(() => formInicial(semActual.desde, semActual.hasta))
 
@@ -231,6 +247,9 @@ const Encargaturas = () => {
               {ESTADOS.map((s) => <option key={s} value={s}>{ESTADO_STYLE[s].label}</option>)}
             </select>
             <div className="ms-auto d-flex gap-2">
+              <button className="btn btn-sm btn-light rol-btn-ghost" onClick={() => setHistOpen(true)}>
+                <svg className="rol-bico me-1"><use href={`${basePath}/icons/sprite.svg#clock`}></use></svg>Historial
+              </button>
               <button className="btn btn-outline-secondary" onClick={exportarCsv} disabled={filas.length === 0}>
                 <svg className="sa-icon me-1"><use href={`${basePath}/icons/sprite.svg#download`}></use></svg>Exportar
               </button>
@@ -260,6 +279,47 @@ const Encargaturas = () => {
           )}
         </Card.Body>
       </Card>
+
+      {/* ── Drawer: Historial de encargaturas ── */}
+      {histOpen && (
+        <div className="rol-hist-ov" onClick={() => setHistOpen(false)}>
+          <aside className="rol-hist-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="rol-hist-hd">
+              <div>
+                <div className="rol-hist-ttl">Historial de encargaturas</div>
+                <div className="rol-hist-sub">Programaciones de cobertura · últimos movimientos</div>
+              </div>
+              <button className="rpm-close" onClick={() => setHistOpen(false)}>
+                <svg className="rol-bico"><use href={`${basePath}/icons/sprite.svg#x`}></use></svg>
+              </button>
+            </div>
+            <div className="rol-hist-body">
+              <ul className="rol-hist-tl">
+                {HISTORIAL.map((h, i) => (
+                  <li key={i} className={`rol-hist-it rol-hist-it--${h.tipo}`}>
+                    <span className="rol-hist-dot" />
+                    <div className="rol-hist-card">
+                      <div className="rol-hist-top">
+                        <span className="rol-hist-accion">{h.accion}</span>
+                        <span className="rol-hist-time">{h.fecha} · {h.hora}</span>
+                      </div>
+                      {h.detalle && <div className="rol-hist-det">{h.detalle}</div>}
+                      {h.tipo === 'celda' && (
+                        <div className="rol-hist-cambio">
+                          <span className="rol-hist-antes">{h.antes}</span>
+                          <svg className="rol-bico"><use href={`${basePath}/icons/sprite.svg#arrow-right`}></use></svg>
+                          <span className="rol-hist-despues">{h.despues}</span>
+                        </div>
+                      )}
+                      <div className="rol-hist-user">{h.usuario} · {h.rol}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </aside>
+        </div>
+      )}
 
       {/* Modal: nueva programación */}
       <Modal show={showNew} onHide={toggleNew} centered className="fade" tabIndex={-1}>
