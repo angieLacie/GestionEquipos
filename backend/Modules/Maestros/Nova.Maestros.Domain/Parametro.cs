@@ -51,6 +51,12 @@ public sealed class Parametro : Entity
     public DateOnly? VigenciaHasta { get; private set; }
     public string? Justificacion { get; private set; }
 
+    /// <summary>
+    /// Estado explícito Activo/Inactivo (default Activo). Ortogonal a la vigencia (RN-MAES-09):
+    /// un parámetro Inactivo no se resuelve en el lookup aunque esté dentro de su ventana.
+    /// </summary>
+    public EstadoParametro Estado { get; private set; } = EstadoParametro.Activo;
+
     /// <summary>Deriva la clave lógica de módulo/flujo/nivel/nombre (ADR-004).</summary>
     public static string DerivarClave(ModuloNova modulo, string? flujo, string? nivel, string nombre)
     {
@@ -103,6 +109,33 @@ public sealed class Parametro : Entity
     /// <summary>Vigente a la fecha de referencia (RN-MAES-14).</summary>
     public bool EstaVigente(DateOnly fecha)
         => VigenciaDesde <= fecha && (VigenciaHasta is null || fecha <= VigenciaHasta);
+
+    /// <summary>Resoluble en el lookup: Activo y dentro de su ventana de vigencia (RN-MAES-14).</summary>
+    public bool EsResoluble(DateOnly fecha)
+        => Estado == EstadoParametro.Activo && EstaVigente(fecha);
+
+    /// <summary>Activa el parámetro (idempotente). No altera versiones ni vigencia (RN-MAES-09).</summary>
+    public Result Activar()
+    {
+        Estado = EstadoParametro.Activo;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Desactiva el parámetro (idempotente). Es un ESTADO, NO un cierre de vigencia: la versión
+    /// permanece inmutable y deja de resolverse en el lookup (RN-MAES-09).
+    /// </summary>
+    public Result Desactivar()
+    {
+        Estado = EstadoParametro.Inactivo;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Solo es eliminable una versión FUTURA que nunca estuvo vigente (vigencia_desde &gt; hoy).
+    /// Las versiones vigentes/pasadas son inmutables: la vía para retirarlas es Desactivar.
+    /// </summary>
+    public bool PuedeEliminarse(DateOnly hoy) => VigenciaDesde > hoy;
 
     /// <summary>Cierra/ajusta la vigencia de esta versión (CAMBIO_VIGENCIA).</summary>
     public Result CerrarVigencia(DateOnly vigenciaHasta)

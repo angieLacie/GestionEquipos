@@ -63,6 +63,17 @@ public enum AmbitoParam
     Puesto = 5
 }
 
+/// <summary>
+/// Estado explícito de un parámetro (Activo/Inactivo). Es ortogonal a la vigencia temporal:
+/// un parámetro Inactivo no se resuelve en el lookup aunque su ventana de vigencia esté abierta
+/// (RN-MAES-09 versionado inmutable: desactivar no cierra vigencia ni altera versiones).
+/// </summary>
+public enum EstadoParametro
+{
+    Activo = 1,
+    Inactivo = 2
+}
+
 /// <summary>Alcance de un feriado (RN-MAES-01).</summary>
 public enum AlcanceFeriado
 {
@@ -111,5 +122,9 @@ public enum AccionConfig
     Modificacion = 2,
     Desactivacion = 3,
     CambioVigencia = 4,
-    CorreccionRetroactiva = 5
+    CorreccionRetroactiva = 5,
+    /// <summary>Activación/desactivación explícita de un parámetro (no cierra vigencia).</summary>
+    CambioEstado = 6,
+    /// <summary>Eliminación física de una versión futura no consumida.</summary>
+    Eliminacion = 7
 }

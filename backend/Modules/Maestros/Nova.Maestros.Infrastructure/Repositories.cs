@@ -165,9 +165,9 @@ internal sealed class ParametroRepository(MaestrosDbContext db) : IParametroRepo
                 && (idAmbito == null || p.IdAmbito == idAmbito))
             .ToListAsync(ct);
 
-        // Filtro de vigencia en memoria (EstaVigente); el más específico/reciente gana.
+        // Filtro de resolución en memoria (Activo + vigencia); el más específico/reciente gana.
         return candidatos
-            .Where(p => p.EstaVigente(fecha))
+            .Where(p => p.EsResoluble(fecha))
             .OrderByDescending(p => p.VigenciaDesde)
             .FirstOrDefault();
     }
@@ -202,10 +202,16 @@ internal sealed class ParametroRepository(MaestrosDbContext db) : IParametroRepo
     }
 
     public Task<Parametro?> ObtenerAsync(Guid id, CancellationToken ct = default)
-        => db.Parametros.FirstOrDefaultAsync(p => p.Id == id, ct);
+        => db.Parametros.FirstOrDefaultAsync(p => p.Id == id, ct); // tracking: cambio de estado se persiste en SaveChanges
 
     public async Task AgregarAsync(Parametro parametro, CancellationToken ct = default)
         => await db.Parametros.AddAsync(parametro, ct);
+
+    public Task EliminarAsync(Parametro parametro, CancellationToken ct = default)
+    {
+        db.Parametros.Remove(parametro);
+        return Task.CompletedTask;
+    }
 }
 
 internal sealed class SemanaCampaniaRepository(MaestrosDbContext db) : ISemanaCampaniaRepository

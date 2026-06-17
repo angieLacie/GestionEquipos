@@ -277,6 +277,9 @@ internal sealed class ParametroConfiguration : IEntityTypeConfiguration<Parametr
         b.Property(p => p.VigenciaDesde).HasColumnName("vigencia_desde");
         b.Property(p => p.VigenciaHasta).HasColumnName("vigencia_hasta");
         b.Property(p => p.Justificacion).HasColumnName("justificacion");
+        b.Property(p => p.Estado).HasColumnName("estado").HasConversion<string>().HasMaxLength(12)
+            .HasDefaultValue(EstadoParametro.Activo)
+            .HasSentinel((EstadoParametro)0); // CLR default es Activo(1); 0 nunca es un valor válido
         // Resolución de valor vigente (RN-MAES-14): clave + ámbito + ventana de vigencia.
         b.HasIndex(p => new { p.Clave, p.IdEmpresa, p.IdAmbito, p.VigenciaDesde })
             .HasDatabaseName("idx_parametro_clave_ambito_vigencia");

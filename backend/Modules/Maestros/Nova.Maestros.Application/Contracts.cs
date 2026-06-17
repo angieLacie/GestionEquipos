@@ -39,7 +39,13 @@ public sealed record ParametroResponse(
     string Valor,
     Criticidad CriticidadConsumo,
     DateOnly VigenciaDesde,
-    DateOnly? VigenciaHasta);
+    DateOnly? VigenciaHasta,
+    EstadoParametro Estado);
+
+/// <summary>Cambio de estado explícito Activo/Inactivo de un parámetro (CU-MAES-04, RN-MAES-09).</summary>
+public sealed record CambiarEstadoParametroRequest(
+    EstadoParametro Estado,
+    Guid IdActor);
 
 // ---------------- Auditoría / historial de cambios (CU-MAES-07) ----------------
 

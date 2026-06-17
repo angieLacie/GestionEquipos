@@ -50,7 +50,69 @@ public sealed class CrearParametroHandler(
         await uow.SaveChangesAsync(ct);
 
         return Result.Success(new ParametroResponse(
-            p.Id, p.Clave, p.Modulo, p.NombreParametro, p.Valor, p.CriticidadConsumo, p.VigenciaDesde, p.VigenciaHasta));
+            p.Id, p.Clave, p.Modulo, p.NombreParametro, p.Valor, p.CriticidadConsumo, p.VigenciaDesde, p.VigenciaHasta, p.Estado));
+    }
+}
+
+/// <summary>
+/// Activa o desactiva explícitamente un parámetro (CU-MAES-04, RN-MAES-09). Idempotente.
+/// Es un ESTADO, NO un cierre de vigencia: la versión permanece inmutable y, si queda Inactiva,
+/// deja de resolverse en el lookup.
+/// </summary>
+public sealed class CambiarEstadoParametroHandler(
+    IParametroRepository parametros,
+    IAuditoriaMaestrosRepository auditoria,
+    IUnitOfWork uow)
+{
+    public async Task<Result<ParametroResponse>> HandleAsync(Guid id, CambiarEstadoParametroRequest req, CancellationToken ct = default)
+    {
+        var p = await parametros.ObtenerAsync(id, ct);
+        if (p is null)
+            return Result.Failure<ParametroResponse>(Error.NoEncontrado("Parámetro no encontrado."));
+
+        var estadoAnterior = p.Estado;
+        var result = req.Estado == EstadoParametro.Activo ? p.Activar() : p.Desactivar();
+        if (result.IsFailure)
+            return Result.Failure<ParametroResponse>(result.Error);
+
+        // Solo audita cuando hubo transición real (idempotente).
+        if (estadoAnterior != p.Estado)
+        {
+            await auditoria.AgregarAsync(AuditoriaMaestros.Registrar(
+                AccionConfig.CambioEstado, p.Clave, estadoAnterior.ToString(), p.Estado.ToString(),
+                p.VigenciaDesde, req.IdActor, null), ct);
+            await uow.SaveChangesAsync(ct);
+        }
+
+        return Result.Success(new ParametroResponse(
+            p.Id, p.Clave, p.Modulo, p.NombreParametro, p.Valor, p.CriticidadConsumo, p.VigenciaDesde, p.VigenciaHasta, p.Estado));
+    }
+}
+
+/// <summary>
+/// Elimina físicamente SOLO una versión futura no consumida (vigencia_desde &gt; hoy), nunca vigente
+/// (RN-MAES-09). Para versiones vigentes/pasadas la vía es Desactivar.
+/// </summary>
+public sealed class EliminarParametroHandler(
+    IParametroRepository parametros,
+    IAuditoriaMaestrosRepository auditoria,
+    IUnitOfWork uow,
+    IClock clock)
+{
+    public async Task<Result> HandleAsync(Guid id, Guid idActor, CancellationToken ct = default)
+    {
+        var p = await parametros.ObtenerAsync(id, ct);
+        if (p is null)
+            return Result.Failure(Error.NoEncontrado("Parámetro no encontrado."));
+        if (!p.PuedeEliminarse(clock.Today))
+            return Result.Failure(Error.Validacion(
+                "Solo se pueden eliminar versiones futuras no consumidas; las vigentes/pasadas se desactivan."));
+
+        await parametros.EliminarAsync(p, ct);
+        await auditoria.AgregarAsync(AuditoriaMaestros.Registrar(
+            AccionConfig.Eliminacion, p.Clave, p.Valor, null, p.VigenciaDesde, idActor, null), ct);
+        await uow.SaveChangesAsync(ct);
+        return Result.Success();
     }
 }
 

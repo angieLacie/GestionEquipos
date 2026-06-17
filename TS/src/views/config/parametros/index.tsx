@@ -14,10 +14,13 @@ import PageBreadcrumb from '@/components/PageBreadcrumb.tsx'
 import KpiCard from '@/components/KpiCard.tsx'
 import DataTable from '@/components/DataTable.tsx'
 import TablePagination from '@/components/TablePagination.tsx'
+import { useConfirm } from '@/components/ConfirmDialog.tsx'
 import { basePath } from '@/helpers'
 import {
   listarParametros,
   crearParametro,
+  cambiarEstadoParametro,
+  eliminarParametro,
   MODULOS,
   TIPOS_DATO,
   CRITICIDADES,
@@ -38,6 +41,10 @@ const fmtFecha = (iso: string | null) => {
 
 const CritBadge = ({ c }: { c: Criticidad }) => (
   <span className={`badge ${c === 'Bloqueante' ? 'bg-danger' : 'bg-warning text-dark'}`}>{c}</span>
+)
+
+const EstadoBadge = ({ e }: { e: Parametro['estado'] }) => (
+  <span className={`badge ${e === 'Activo' ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-muted'}`}>{e}</span>
 )
 
 const Aviso = ({ tipo, texto }: { tipo: 'ok' | 'err'; texto: string }) => (
@@ -72,10 +79,13 @@ const Parametros = () => {
   const [fCrit, setFCrit] = useState<'' | Criticidad>('')
   const [fClave, setFClave] = useState('')
 
-  // Modal alta
+  // Modal alta / edición (nueva versión a partir de una fila existente)
   const [showAdd, toggleAdd] = useToggle()
+  const [editando, setEditando] = useState(false)
   const [form, setForm] = useState<CrearParametroInput>(formInicial)
   const [guardando, setGuardando] = useState(false)
+
+  const { confirm, dialog: confirmDialog } = useConfirm()
 
   const [sorting, setSorting] = useState<SortingState>([])
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 })
@@ -95,8 +105,53 @@ const Parametros = () => {
   }, [fModulo, fCrit, fClave])
 
   const abrirAgregar = () => {
+    setEditando(false)
     setForm(formInicial())
     toggleAdd()
+  }
+
+  // Editar = crear una NUEVA versión prellenada con los valores de la fila.
+  // Campos no presentes en la fila quedan en su default (formInicial).
+  const abrirEditar = (p: Parametro) => {
+    setEditando(true)
+    setForm({
+      ...formInicial(),
+      modulo: p.modulo,
+      nombreParametro: p.nombreParametro,
+      valor: p.valor,
+      criticidadConsumo: p.criticidadConsumo,
+    })
+    toggleAdd()
+  }
+
+  const alternarEstado = async (p: Parametro) => {
+    const nuevo = p.estado === 'Activo' ? 'Inactivo' : 'Activo'
+    setMsg(null)
+    try {
+      await cambiarEstadoParametro(p.id, nuevo)
+      setMsg({ tipo: 'ok', texto: `Parámetro ${p.clave} marcado como ${nuevo}.` })
+      cargar()
+    } catch (e) {
+      setMsg({ tipo: 'err', texto: (e as Error)?.message ?? 'No se pudo cambiar el estado.' })
+    }
+  }
+
+  const eliminar = async (p: Parametro) => {
+    const ok = await confirm({
+      title: 'Eliminar versión',
+      message: <>¿Eliminar la versión <strong>{p.clave}</strong> vigente desde {fmtFecha(p.vigenciaDesde)}? Solo se pueden borrar versiones futuras no consumidas. Esta acción no se puede deshacer.</>,
+      confirmText: 'Eliminar',
+      variant: 'danger',
+    })
+    if (!ok) return
+    setMsg(null)
+    try {
+      await eliminarParametro(p.id)
+      setMsg({ tipo: 'ok', texto: `Versión ${p.clave} eliminada.` })
+      cargar()
+    } catch (e) {
+      setMsg({ tipo: 'err', texto: (e as Error)?.message ?? 'No se pudo eliminar.' })
+    }
   }
 
   // Impacto de negocio exige justificación (RN-MAES-17); retroactivo exige flag.
@@ -157,7 +212,38 @@ const Parametros = () => {
       cell: ({ row }) =>
         row.original.vigenciaHasta
           ? <span className="small text-muted">{fmtFecha(row.original.vigenciaHasta)}</span>
-          : <span className="badge bg-success-subtle text-success">Vigente</span>,
+          : <span className="badge bg-info-subtle text-info">Sin cierre</span>,
+    },
+    {
+      accessorKey: 'estado',
+      header: 'Estado',
+      cell: ({ row }) => <EstadoBadge e={row.original.estado} />,
+    },
+    {
+      id: 'acciones',
+      header: () => <span className="d-block text-center">Acciones</span>,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const p = row.original
+        const activo = p.estado === 'Activo'
+        return (
+          <div className="text-center d-inline-flex gap-1">
+            <button className="btn btn-sm btn-icon btn-outline-secondary rounded-circle" onClick={() => abrirEditar(p)} title="Editar (nueva versión)">
+              <svg className="sa-icon"><use href={`${basePath}/icons/sprite.svg#edit-2`}></use></svg>
+            </button>
+            <button
+              className={`btn btn-sm btn-icon rounded-circle ${activo ? 'btn-outline-warning' : 'btn-outline-success'}`}
+              onClick={() => alternarEstado(p)}
+              title={activo ? 'Desactivar' : 'Activar'}
+            >
+              <svg className="sa-icon"><use href={`${basePath}/icons/sprite.svg#power`}></use></svg>
+            </button>
+            <button className="btn btn-sm btn-icon btn-outline-danger rounded-circle" onClick={() => eliminar(p)} title="Eliminar">
+              <svg className="sa-icon"><use href={`${basePath}/icons/sprite.svg#trash-2`}></use></svg>
+            </button>
+          </div>
+        )
+      },
     },
   ], [])
 
@@ -251,7 +337,7 @@ const Parametros = () => {
       {/* Modal: nueva versión de parámetro */}
       <Modal show={showAdd} onHide={toggleAdd} centered size="lg" className="fade" tabIndex={-1}>
         <ModalHeader>
-          <h5 className="modal-title">Nueva versión de parámetro</h5>
+          <h5 className="modal-title">{editando ? 'Editar (nueva versión)' : 'Nueva versión de parámetro'}</h5>
           <button type="button" className="btn-close" onClick={toggleAdd}></button>
         </ModalHeader>
         <ModalBody>
@@ -361,6 +447,8 @@ const Parametros = () => {
           </Button>
         </ModalFooter>
       </Modal>
+
+      {confirmDialog}
     </div>
   )
 }

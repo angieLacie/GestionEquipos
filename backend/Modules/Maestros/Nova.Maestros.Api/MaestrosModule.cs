@@ -15,6 +15,8 @@ public static class MaestrosModule
     {
         services.AddScoped<LookupParametroHandler>();
         services.AddScoped<CrearParametroHandler>();
+        services.AddScoped<CambiarEstadoParametroHandler>();
+        services.AddScoped<EliminarParametroHandler>();
         services.AddScoped<CrearFeriadoHandler>();
         services.AddScoped<EditarFeriadoHandler>();
         services.AddScoped<EliminarFeriadoHandler>();
@@ -139,6 +141,22 @@ public static class MaestrosModule
                 ? Results.Created($"/v1/maes/configuracion/parametros/{result.Value.Id}", result.Value)
                 : ToProblem(result.Error);
         }).WithName("CrearParametro");
+
+        // Cambio de estado explícito Activo/Inactivo (CU-MAES-04, RN-MAES-09). No cierra vigencia.
+        grupo.MapPatch("/configuracion/parametros/{id:guid}/estado", async (
+            Guid id, CambiarEstadoParametroRequest req, CambiarEstadoParametroHandler handler, CancellationToken ct) =>
+        {
+            var result = await handler.HandleAsync(id, req, ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : ToProblem(result.Error);
+        }).WithName("CambiarEstadoParametro");
+
+        // Eliminación de versión futura no consumida (CU-MAES-04, RN-MAES-09).
+        grupo.MapDelete("/configuracion/parametros/{id:guid}", async (
+            Guid id, Guid idActor, EliminarParametroHandler handler, CancellationToken ct) =>
+        {
+            var result = await handler.HandleAsync(id, idActor, ct);
+            return result.IsSuccess ? Results.NoContent() : ToProblem(result.Error);
+        }).WithName("EliminarParametro");
 
         // ----------------- Tiendas (escritura, CU-MAES-02) -----------------
         grupo.MapPatch("/tiendas/{idTienda:guid}", async (

@@ -86,8 +86,11 @@ public interface IParametroRepository
     Task<Parametro?> ObtenerVigenteParaCierreAsync(string clave, DateOnly fecha, string? idEmpresa, string? idAmbito, CancellationToken ct = default);
     Task<(IReadOnlyList<Parametro> items, int total)> ListarAsync(
         ModuloNova? modulo, string? flujo, Criticidad? criticidad, string? clave, int page, int pageSize, CancellationToken ct = default);
+    /// <summary>Carga con tracking para cambiar estado o eliminar (CU-MAES-04).</summary>
     Task<Parametro?> ObtenerAsync(Guid id, CancellationToken ct = default);
     Task AgregarAsync(Parametro parametro, CancellationToken ct = default);
+    /// <summary>Elimina físicamente una versión futura no consumida (RN-MAES-09).</summary>
+    Task EliminarAsync(Parametro parametro, CancellationToken ct = default);
 }
 
 public interface ISemanaCampaniaRepository

@@ -23,6 +23,7 @@ export interface Parametro {
   nombreParametro: string
   valor: string
   criticidadConsumo: Criticidad
+  estado: 'Activo' | 'Inactivo'
   vigenciaDesde: string
   vigenciaHasta: string | null
 }
@@ -92,5 +93,26 @@ export function crearParametro(input: CrearParametroInput): Promise<Parametro> {
       esCorreccionRetroactiva: input.esCorreccionRetroactiva,
       idActor,
     }),
+  })
+}
+
+/** Activa/desactiva una versión de parámetro (no destructivo, RN-MAES). */
+export function cambiarEstadoParametro(id: string, estado: 'Activo' | 'Inactivo'): Promise<Parametro> {
+  const idActor = useAuth.getState().usuario?.idUsuario ?? ''
+  return api<Parametro>(`/v1/maes/configuracion/parametros/${id}/estado`, {
+    method: 'PATCH',
+    body: JSON.stringify({ estado, idActor }),
+  })
+}
+
+/**
+ * Elimina una versión futura no consumida de un parámetro.
+ * El backend responde 204 (ok) o 400 si vigenciaDesde <= hoy (ya vigente/pasada);
+ * en ese caso `api` propaga el problem.detail como Error.message.
+ */
+export async function eliminarParametro(id: string): Promise<void> {
+  const idActor = useAuth.getState().usuario?.idUsuario ?? ''
+  await api<void>(`/v1/maes/configuracion/parametros/${id}?idActor=${encodeURIComponent(idActor)}`, {
+    method: 'DELETE',
   })
 }
