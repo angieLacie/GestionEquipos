@@ -14,6 +14,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
 import { colors, fontSize, radius, spacing } from '@/theme';
 import { iniciales, mesActual } from '@/lib/format';
+import { usePerfil } from '@/lib/usePerfil';
+import { etiquetaPerfil, type Perfil } from '@/lib/perfil';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -25,7 +27,8 @@ interface Tile {
   ruta?: string;
 }
 
-const TILES: Tile[] = [
+/** Tiles del perfil GESTIÓN (gerentes/supervisores). */
+const TILES_GESTION: Tile[] = [
   { key: 'equipos', label: 'Gestión Equipos', icon: 'people', color: colors.tile.equipos, ruta: '/gestion-equipos' },
   { key: 'vacaciones', label: 'Vacaciones', icon: 'sunny', color: colors.tile.vacaciones },
   { key: 'ampliaciones', label: 'Ampliaciones', icon: 'time', color: colors.tile.ampliaciones },
@@ -33,14 +36,32 @@ const TILES: Tile[] = [
   { key: 'licencias', label: 'Licencias', icon: 'document-text', color: colors.tile.licencias },
 ];
 
+/** Tiles del perfil CAMPO (colaborador de tienda). */
+const TILES_CAMPO: Tile[] = [
+  { key: 'mi-marcacion', label: 'Mi marcación', icon: 'finger-print', color: colors.tile.equipos, ruta: '/mi-marcacion' },
+  { key: 'mi-rol', label: 'Mi rol y descansos', icon: 'calendar', color: colors.tile.licencias, ruta: '/mi-rol' },
+  { key: 'mis-solicitudes', label: 'Mis solicitudes', icon: 'document-text', color: colors.tile.ampliaciones, ruta: '/mis-solicitudes' },
+  { key: 'notificaciones', label: 'Notificaciones', icon: 'notifications', color: colors.tile.aprobaciones, ruta: '/notificaciones' },
+];
+
+function tilesPorPerfil(p: Perfil): Tile[] {
+  return p === 'gestion' ? TILES_GESTION : TILES_CAMPO;
+}
+
+function saludoPorPerfil(p: Perfil): string {
+  return p === 'gestion' ? 'Bienvenido de vuelta' : 'Hola, buen turno';
+}
+
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { sesion } = useAuth();
+  const { perfilEfectivo } = usePerfil();
 
   const nombre = sesion?.nombreUsuario ?? 'Usuario';
   const ini = useMemo(() => iniciales(nombre), [nombre]);
   const mes = useMemo(() => mesActual(), []);
+  const tiles = useMemo(() => tilesPorPerfil(perfilEfectivo), [perfilEfectivo]);
 
   function onTile(t: Tile) {
     if (t.ruta) {
@@ -65,9 +86,12 @@ export default function HomeScreen() {
               <Text style={styles.avatarText}>{ini}</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.saludo}>Bienvenido de vuelta</Text>
+              <Text style={styles.saludo}>{saludoPorPerfil(perfilEfectivo)}</Text>
               <Text style={styles.nombre} numberOfLines={1}>
                 {nombre}
+              </Text>
+              <Text style={styles.perfilLabel}>
+                Perfil: {etiquetaPerfil(perfilEfectivo)}
               </Text>
             </View>
             <Pressable
@@ -93,7 +117,7 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.grid}>
-            {TILES.map((t) => (
+            {tiles.map((t) => (
               <Pressable
                 key={t.key}
                 style={({ pressed }) => [styles.tile, pressed && { opacity: 0.7 }]}
@@ -137,6 +161,12 @@ const styles = StyleSheet.create({
   avatarText: { color: colors.white, fontWeight: '800', fontSize: fontSize.lg },
   saludo: { color: colors.textOnBrandMuted, fontSize: fontSize.sm },
   nombre: { color: colors.white, fontSize: fontSize.lg, fontWeight: '700' },
+  perfilLabel: {
+    color: colors.textOnBrandMuted,
+    fontSize: fontSize.xs,
+    fontWeight: '600',
+    marginTop: 2,
+  },
   badge: {
     position: 'absolute',
     top: -4,

@@ -130,3 +130,63 @@ eas submit -p ios --profile production --latest
 | Home | Completa | Sesión real; tiles salvo "Gestión Equipos" → "Próximamente" |
 | Gestión de Equipos | Completa | Intenta `GET /v1/maes/empleados/roster` y agrega por zona; cae a **mock** si el endpoint no existe o el shape no alcanza (seam `// TODO: backend resumen por zona` en `src/lib/gestion-equipos.ts`) |
 | Buscar / Perfil | Placeholder / Perfil con logout | — |
+
+## Perfiles (multi-perfil por rol)
+
+La app es **una sola** pero adapta navegación y contenido al **perfil** derivado del rol del usuario autenticado. No hay dos apps ni dos builds: el mismo binario sirve a ambos públicos.
+
+### Mapeo rol → perfil
+
+`src/lib/perfil.ts`:
+
+- `Perfil = 'gestion' | 'campo'`
+- `perfilDeRoles(roles: string[]): Perfil` → `'gestion'` si los roles del usuario **intersectan** `ROLES_GESTION`; en caso contrario `'campo'`. Comparación case-insensitive y tolerante a espacios.
+- `ROLES_GESTION = ['R-ADM', 'R-GG', 'R-GZ', 'R-GT']`
+
+| Rol (id) | Significado | Perfil |
+|---|---|---|
+| `R-ADM` | Administrador / Admin de Ventas (confirmado) | Gestión |
+| `R-GG` | Gerente General (por convención) | Gestión |
+| `R-GZ` | Gerente de Zona (por convención) | Gestión |
+| `R-GT` | Gerente de Tienda (por convención) | Gestión |
+| cualquier otro | Senior / colaborador / empleado | Campo |
+
+> **TODO:** confirmar ids de rol reales con Seguridad. Hoy solo `R-ADM` está confirmado; `R-GG/R-GZ/R-GT` son por convención (marcado con `// TODO` en `perfil.ts`).
+
+### Tiles por perfil (Home — `app/(tabs)/index.tsx`)
+
+El Home elige set de tiles, saludo y label de perfil ("Perfil: Gestión" / "Perfil: Campo") según el **perfil activo** (`usePerfilActivo` / `usePerfil`).
+
+**GESTIÓN** (gerentes/supervisores):
+
+| Tile | Ruta | Estado |
+|---|---|---|
+| Gestión Equipos (azul) | `/gestion-equipos` | Pantalla existente (real + fallback mock) |
+| Vacaciones | — | Alert "Próximamente" |
+| Ampliaciones | — | Alert "Próximamente" |
+| Aprobaciones | — | Alert "Próximamente" |
+| Licencias | — | Alert "Próximamente" |
+
+**CAMPO** (colaborador de tienda) — rutas nuevas placeholder, sin backend:
+
+| Tile | Ícono | Ruta | Estado |
+|---|---|---|---|
+| Mi marcación | `finger-print` | `/mi-marcacion` | Placeholder "Próximamente" |
+| Mi rol y descansos | `calendar` | `/mi-rol` | Placeholder "Próximamente" |
+| Mis solicitudes | `document-text` | `/mis-solicitudes` | Placeholder "Próximamente" |
+| Notificaciones | `notifications` | `/notificaciones` | Placeholder "Próximamente" |
+
+Las pantallas de Campo usan el componente reutilizable `src/components/Placeholder.tsx` (header con back + ícono grande + nombre de módulo + "Próximamente"), mismo estilo de marca que los tiles de gestión sin backend.
+
+### Pantalla Perfil (`app/(tabs)/perfil.tsx`)
+
+Muestra nombre, rol(es), **perfil resuelto** (real) y un chip "Perfil: …" del perfil activo. Conserva el cerrar-sesión real (`signOut` de `AuthContext`).
+
+### Override de preview — SOLO desarrollo
+
+Para poder ver ambos perfiles con el único usuario de pruebas (`admin`, cuyo rol real `R-ADM` siempre resuelve a `gestion`):
+
+- `src/context/PreviewPerfilContext.tsx` — `PreviewPerfilProvider` envuelve la zona autenticada (montado en `app/_layout.tsx` dentro de `AuthProvider`). Expone `previewPerfil` y `setPreviewPerfil`.
+- En **producción** (`!__DEV__`) el provider fuerza `previewPerfil = null` y el setter es no-op: **el perfil real siempre manda**.
+- `src/lib/usePerfil.ts` — hook `usePerfil()` y alias semántico `usePerfilActivo()`. Devuelven `{ perfilReal, perfilEfectivo, enPreview }`. `perfilEfectivo = previewPerfil ?? perfilReal`.
+- En **Perfil**, dentro de `__DEV__`, hay un selector segmentado "Ver como: Real / Gestión / Campo" (marcado como herramienta de desarrollo). Cambiar el override re-renderiza el Home con el set de tiles del perfil seleccionado. Este bloque **no se renderiza** en producción.

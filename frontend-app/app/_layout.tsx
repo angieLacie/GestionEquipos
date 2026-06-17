@@ -5,6 +5,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { PreviewPerfilProvider } from '@/context/PreviewPerfilContext';
 import { colors } from '@/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -55,6 +56,11 @@ function RootNavigator() {
         name="gestion-equipos"
         options={{ animation: 'slide_from_right' }}
       />
+      {/* Rutas de perfil CAMPO (placeholders sin backend). */}
+      <Stack.Screen name="mi-marcacion" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="mi-rol" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="mis-solicitudes" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="notificaciones" options={{ animation: 'slide_from_right' }} />
     </Stack>
   );
 }
@@ -63,8 +69,10 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <StatusBar style="light" />
-        <RootNavigator />
+        <PreviewPerfilProvider>
+          <StatusBar style="light" />
+          <RootNavigator />
+        </PreviewPerfilProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );
