@@ -30,6 +30,15 @@
 - **Módulos de Gestión** (UI lista, datos mock salvo Rol): **Rol de Personal** (calendario semanal con roster real, programación, pendientes), Marcaciones, Ascenso Senior, Encargatura, Vacaciones, **Descansos** (calendario/tabla/resumen, toolbar estilo Rol), Reportes.
 - **Patrón estado + historial** (sesión 2026-06-16/17): chip de estado + drawer de historial (timeline con antes→después). Chip+drawer en **Rol, Ascenso Senior, Vacaciones**; solo drawer en **Descansos, Encargatura, Marcaciones**. *Datos mock, forma = backend (CU-14).*
 
+### App-móvil — INICIADA v1 (sesión 2026-06-17)
+- **Stack**: React Native + **Expo (SDK 56)** + TS + **expo-router**, store-ready. Identidad "Gestión de Equipos" / `com.tandemeje.gestionequipos`. **EAS** configurado (dev/preview/production). Verificada en **emulador Android** real (login real + navegación).
+- **Auth real** (`POST /v1/segu/auth/login`) + token en `expo-secure-store` + guard de rutas.
+- **Perfiles por rol** (una sola app): **Gestión** (R-ADM/GG/GZ/GT) y **Campo** (colaborador). Home muestra tiles distintos por perfil; selector "Ver como" solo en dev.
+- **Gestión de Equipos** (drill-down): zona → tienda → asesores desde el **roster real**; KPIs por zona/tienda; **buscador** (tiendas+empleados); **detalle de tienda**; fila de asesor con badge Senior + vigencia.
+- **Acciones por asesor** (bottom-sheets, submit mock): **Marcar Senior**, **Traslado**, **Conv. Encargatura**.
+- **Placeholder/mock**: tiles Vacaciones/Ampliaciones/Aprobaciones/Licencias y pantallas de Campo (Mi marcación, Mi rol, Mis solicitudes, Notificaciones); resumen por zona (DM/VAC/LIC/cobertura) cae a mock si el backend no expone endpoint; firma electrónica (selfie+código+fecha+GPS) aún no construida.
+- **Pendiente publicación**: `eas init` (projectId) + URL API real desplegada; `eas build`/`eas submit` los corre la usuaria con cuentas Apple/Google.
+
 ---
 
 ## 1. Backend — la brecha principal
@@ -72,7 +81,7 @@ Módulos construidos: **Maestros, Rol, Seguridad** (.NET 8 + SQL Server, monolit
 
 - Sin **CI/CD**, sin observabilidad/monitoreo.
 - Sin **pruebas** automatizadas (QA pendiente).
-- **App móvil** (React Native / Expo): no iniciada.
+- **App móvil** (React Native / Expo): **iniciada v1** (auth real + perfiles + Gestión de Equipos); falta `eas init` + API desplegada para publicar a tiendas.
 - Backend host **no persiste** entre ejecuciones (se cae). Falta `dotnet watch` o ejecutarlo como servicio/terminal fija.
 
 ## 6. Fases (referencia de roadmap)
