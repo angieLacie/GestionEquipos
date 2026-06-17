@@ -6,11 +6,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/lib/api';
-import { buscarTienda, cargarGestionEquipos, type GestionData } from '@/lib/gestion-equipos';
+import {
+  buscarTienda,
+  cargarGestionEquipos,
+  listarTiendas,
+  type GestionData,
+} from '@/lib/gestion-equipos';
 import type { AsesorItem, TiendaResumen } from '@/lib/types';
 import { colors, fontSize, radius, spacing } from '@/theme';
 import { KpiStrip } from '@/components/gestion/KpiStrip';
 import { AsesorRow } from '@/components/gestion/AsesorRow';
+import { AccionesAsesorSheets, type AccionAsesor } from '@/components/gestion/AccionesAsesorSheets';
 
 export default function TiendaDetalleScreen() {
   const insets = useSafeAreaInsets();
@@ -21,6 +27,8 @@ export default function TiendaDetalleScreen() {
   const [data, setData] = useState<GestionData | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Hoja de acción por asesor (Marcar Senior / Traslado / Conv. Encargatura).
+  const [accionAsesor, setAccionAsesor] = useState<{ accion: AccionAsesor; asesor: AsesorItem } | null>(null);
 
   const cargar = useCallback(async () => {
     if (!sesion) return;
@@ -45,11 +53,9 @@ export default function TiendaDetalleScreen() {
     [data, id],
   );
 
-  // TODO: definir acciones por asesor con la usuaria.
-  const onAccionAsesor = (accion: 'estado' | 'detalle' | 'ficha', a: AsesorItem) => {
-    const etiqueta = accion === 'estado' ? 'Estado/marcación' : accion === 'detalle' ? 'Detalle' : 'Ficha/rol';
-    router.push({ pathname: '/proximamente', params: { titulo: `${etiqueta} · ${a.nombreCompleto}` } });
-  };
+  // Abre la hoja de acción por asesor según el botón-ícono tocado.
+  const onAccionAsesor = (accion: AccionAsesor, a: AsesorItem) =>
+    setAccionAsesor({ accion, asesor: a });
 
   return (
     <View style={styles.root}>
@@ -122,6 +128,16 @@ export default function TiendaDetalleScreen() {
           )}
         />
       )}
+
+      {data ? (
+        <AccionesAsesorSheets
+          accion={accionAsesor?.accion ?? null}
+          asesor={accionAsesor?.asesor ?? null}
+          tiendas={listarTiendas(data.zonas)}
+          tiendaActualId={tienda?.id}
+          onClose={() => setAccionAsesor(null)}
+        />
+      ) : null}
     </View>
   );
 }

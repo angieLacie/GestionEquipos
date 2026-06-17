@@ -222,3 +222,55 @@ Los **3 botones-ícono** (estado/marcación, detalle, ficha/rol) y el menú "…
 - `npx tsc --noEmit` — pasa sin errores.
 - `npx expo export --platform android` — bundle OK (`dist/`, ~3.1MB hbc).
 - Auth/perfiles y demás pantallas intactos (solo se añadieron rutas nuevas; no se tocó el guard de sesión).
+
+---
+
+## Acciones por asesor (Marcar Senior / Traslado / Conv. Encargatura)
+
+Los **3 botones-ícono** del `AsesorRow` ya no abren el placeholder: ahora cada uno
+abre un **bottom-sheet con formulario** (acción por asesor). El submit es **MOCK**
+(no hay backend de Senior/Traslados/Encargatura): valida campos requeridos, llama a
+una función mock con delay simulado, muestra el banner **"✓ Registrado (demo) · {ref}"**
+y cierra la hoja. Seam marcado con `// TODO: conectar a backend (módulos Encargatura/Traslados/Ascenso aún no existen)`.
+
+### Componente reutilizable `src/components/BottomSheet.tsx`
+Hoja blanca anclada abajo, esquinas superiores redondeadas (`radius.xl`), overlay
+`rgba(15,23,42,.45)` que **cierra al tocar fuera**, handle, título "{Acción} — {nombre}",
+botón **X** arriba a la derecha, contenido scrollable (`KeyboardAvoidingView` +
+`ScrollView`) y botón ancho de confirmar con **gradiente índigo→azul** (`colors.gradient`),
+respetando `safe-area`. Usa el `Modal` nativo de RN con `animationType="slide"` (sin libs nuevas).
+Props: `confirmDisabled` (validación) y `submitting` (muestra "Procesando…").
+
+### Campos compartidos `src/components/gestion/AccionFields.tsx`
+- `FieldLabel` — etiqueta en mayúsculas estilo formulario.
+- `Select` — select propio sin libs: control + modal de opciones tocables (check en la activa).
+- `Segmented` — control segmentado tipo pill (N opciones).
+- `DateField` — input de fecha por texto con **máscara y validación dd/mm/aaaa** (`fechaValida`).
+  Se evitó `@react-native-community/datetimepicker` (no instalado) para no agregar dependencias.
+
+### Orquestador `src/components/gestion/AccionesAsesorSheets.tsx`
+Recibe `accion` ('estado' | 'detalle' | 'ficha'), `asesor`, `tiendas` (de `listarTiendas(zonas)`)
+y `tiendaActualId`. Reinicia el formulario al abrir. Las 3 hojas:
+
+| Botón-ícono | Acción / Título | Campos | Botón |
+|---|---|---|---|
+| círculo (1.º, `estado`) | **Marcar Senior — {nombre}** | TIENDA (select, default = tienda actual), TIPO DE VENTA (Asesoría/Tesoro/Cobertura/Otros), RANGO DE FECHAS (desde/hasta) | Marcar como Senior |
+| flecha → (2.º, `detalle`) | **Traslado — {nombre}** | TIENDA DESTINO (select), RANGO DE FECHAS (desde/hasta) | Confirmar traslado |
+| documento (3.º, `ficha`) | **Conv. Encargatura — {nombre}** | TIPO DE CONVENIO (segmented: Por encargatura / Por suplencia), TIENDA (select), FECHA INICIO DE CONVENIO (date) | Confirmar convenio |
+
+Las listas de **tiendas** salen de la jerarquía zona→tienda (`listarTiendas` en `gestion-equipos.ts`).
+
+### Mock seam `src/lib/acciones-asesor.ts`
+Funciones async con delay simulado que devuelven `{ ok, ref }`:
+`marcarSenior(...)`, `trasladar(...)`, `crearConvenioEncargatura(...)`. Cada una con su
+`// TODO: conectar a backend`. Tipos `TipoVenta`, `TipoConvenio` y catálogo `TIPOS_VENTA`.
+
+### Integración en pantallas
+- `app/gestion-equipos.tsx` y `app/tienda/[id].tsx`: estado `accionAsesor` + render de
+  `<AccionesAsesorSheets>`. En el detalle de tienda se pasa `tiendaActualId` para el default
+  del select TIENDA en Marcar Senior. El buscador (selección de empleado) abre la hoja Marcar Senior.
+- No se tocó jerarquía/buscador/detalle ni auth/perfiles.
+
+### Verificación (lote acciones por asesor)
+- `npx tsc --noEmit` — pasa sin errores.
+- `npx expo export --platform android` — bundle OK (`dist/`, ~3.2MB hbc).

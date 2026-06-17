@@ -13,12 +13,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/lib/api';
-import { cargarGestionEquipos, type GestionData } from '@/lib/gestion-equipos';
+import { cargarGestionEquipos, listarTiendas, type GestionData } from '@/lib/gestion-equipos';
 import type { AsesorItem, GestionKpis, TiendaResumen, ZonaDetalle } from '@/lib/types';
 import { colors, coverageColor, fontSize, radius, spacing } from '@/theme';
 import { KpiStrip, ChipsEstado } from '@/components/gestion/KpiStrip';
 import { AsesorRow } from '@/components/gestion/AsesorRow';
 import { BuscadorModal } from '@/components/gestion/BuscadorModal';
+import { AccionesAsesorSheets, type AccionAsesor } from '@/components/gestion/AccionesAsesorSheets';
 
 export default function GestionEquiposScreen() {
   const insets = useSafeAreaInsets();
@@ -31,6 +32,8 @@ export default function GestionEquiposScreen() {
   const [buscadorVisible, setBuscadorVisible] = useState(false);
   const [zonasAbiertas, setZonasAbiertas] = useState<Set<string>>(new Set());
   const [tiendasAbiertas, setTiendasAbiertas] = useState<Set<string>>(new Set());
+  // Hoja de acción por asesor (Marcar Senior / Traslado / Conv. Encargatura).
+  const [accionAsesor, setAccionAsesor] = useState<{ accion: AccionAsesor; asesor: AsesorItem } | null>(null);
 
   const cargar = useCallback(async () => {
     if (!sesion) return;
@@ -63,14 +66,9 @@ export default function GestionEquiposScreen() {
       return next;
     });
 
-  // TODO: definir acciones por asesor con la usuaria.
-  const onAccionAsesor = (accion: 'estado' | 'detalle' | 'ficha', a: AsesorItem) => {
-    const etiqueta = accion === 'estado' ? 'Estado/marcación' : accion === 'detalle' ? 'Detalle' : 'Ficha/rol';
-    router.push({
-      pathname: '/proximamente',
-      params: { titulo: `${etiqueta} · ${a.nombreCompleto}` },
-    });
-  };
+  // Abre la hoja de acción por asesor según el botón-ícono tocado.
+  const onAccionAsesor = (accion: AccionAsesor, a: AsesorItem) =>
+    setAccionAsesor({ accion, asesor: a });
 
   const irATienda = (t: TiendaResumen) =>
     router.push({ pathname: '/tienda/[id]', params: { id: t.id } });
@@ -152,7 +150,14 @@ export default function GestionEquiposScreen() {
             zonas={data.zonas}
             onClose={() => setBuscadorVisible(false)}
             onSelTienda={irATienda}
-            onSelEmpleado={(a) => onAccionAsesor('detalle', a)}
+            onSelEmpleado={(a) => onAccionAsesor('estado', a)}
+          />
+
+          <AccionesAsesorSheets
+            accion={accionAsesor?.accion ?? null}
+            asesor={accionAsesor?.asesor ?? null}
+            tiendas={listarTiendas(data.zonas)}
+            onClose={() => setAccionAsesor(null)}
           />
         </>
       ) : null}

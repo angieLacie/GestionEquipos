@@ -253,6 +253,24 @@ export function aResumenZonas(zonas: ZonaDetalle[]): ZonaResumen[] {
   }));
 }
 
+/** Opción de tienda para selects (id + nombre + zona). */
+export interface OpcionTienda {
+  id: string;
+  nombre: string;
+  zona: string;
+}
+
+/** Aplana la jerarquía zona->tienda a una lista plana para los selects de acciones. */
+export function listarTiendas(zonas: ZonaDetalle[]): OpcionTienda[] {
+  const out: OpcionTienda[] = [];
+  for (const z of zonas) {
+    for (const t of z.tiendas) {
+      out.push({ id: t.id, nombre: t.nombre, zona: z.zona });
+    }
+  }
+  return out;
+}
+
 /** Busca una tienda por id en toda la jerarquía. */
 export function buscarTienda(zonas: ZonaDetalle[], id: string): TiendaResumen | undefined {
   for (const z of zonas) {
