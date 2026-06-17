@@ -56,6 +56,8 @@ function RootNavigator() {
         name="gestion-equipos"
         options={{ animation: 'slide_from_right' }}
       />
+      <Stack.Screen name="tienda/[id]" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="proximamente" options={{ animation: 'slide_from_right' }} />
       {/* Rutas de perfil CAMPO (placeholders sin backend). */}
       <Stack.Screen name="mi-marcacion" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="mi-rol" options={{ animation: 'slide_from_right' }} />

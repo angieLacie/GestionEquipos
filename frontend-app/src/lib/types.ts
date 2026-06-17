@@ -23,8 +23,43 @@ export interface RosterEmpleado {
   idEmpleado?: number | string;
   zona?: string | null;
   tienda?: string | null;
+  nombreCompleto?: string | null;
+  puesto?: string | null;
+  esSenior?: boolean | null;
   estado?: string | null; // ACTIVO, DESCANSO_MEDICO, VACACIONES, LICENCIA, ...
+  vigenciaDesde?: string | null; // ISO o dd/mm/aaaa
+  vigenciaHasta?: string | null;
   [key: string]: unknown;
+}
+
+/** Asesor dentro de la jerarquía zona -> tienda -> asesores. */
+export interface AsesorItem {
+  id: string;
+  nombreCompleto: string;
+  puesto: string;
+  esSenior: boolean;
+  estado: string;
+  /** true si el asesor cuenta como activo (cobertura). */
+  activo: boolean;
+  /** Vigencia mockeada/real para mostrar "dd/mm/aaaa – dd/mm/aaaa". */
+  vigenciaDesde?: string;
+  vigenciaHasta?: string;
+}
+
+/** Tienda dentro de una zona, con sus asesores y KPIs. */
+export interface TiendaResumen {
+  id: string;
+  nombre: string;
+  encargado: string;
+  kpis: GestionKpis;
+  asesores: AsesorItem[];
+}
+
+/** Zona con detalle completo: KPIs + tiendas + asesores. */
+export interface ZonaDetalle {
+  zona: string;
+  kpis: GestionKpis;
+  tiendas: TiendaResumen[];
 }
 
 /** Agregado por zona para la pantalla de Gestión de Equipos. */

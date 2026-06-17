@@ -190,3 +190,35 @@ Para poder ver ambos perfiles con el único usuario de pruebas (`admin`, cuyo ro
 - En **producción** (`!__DEV__`) el provider fuerza `previewPerfil = null` y el setter es no-op: **el perfil real siempre manda**.
 - `src/lib/usePerfil.ts` — hook `usePerfil()` y alias semántico `usePerfilActivo()`. Devuelven `{ perfilReal, perfilEfectivo, enPreview }`. `perfilEfectivo = previewPerfil ?? perfilReal`.
 - En **Perfil**, dentro de `__DEV__`, hay un selector segmentado "Ver como: Real / Gestión / Campo" (marcado como herramienta de desarrollo). Cambiar el override re-renderiza el Home con el set de tiles del perfil seleccionado. Este bloque **no se renderiza** en producción.
+
+## Gestión de Equipos (drill-down + buscador + detalle tienda)
+
+Evolución del módulo Gestión de Equipos a 3 pantallas con jerarquía **zona → tienda → asesores**, replicando el diseño objetivo. Estilo nativo existente (gradiente índigo en headers, `@expo/vector-icons`, safe-area, `src/theme`).
+
+### Pantallas y rutas
+- `app/gestion-equipos.tsx` — **Lista con drill-down**. Header gradiente con back + lupa (abre el buscador modal) + título "GESTIÓN DE EQUIPOS". Tira de 6 KPIs globales. Lista por **zona expandible** (chevron) → al abrir muestra sus **tiendas expandibles** → al abrir muestra sus **asesores inline** (`AsesorRow`). Footer fijo "TOTAL GENERAL · plantilla · activos · tiendas · DM/VAC/LIC" + cobertura% global.
+- `app/tienda/[id].tsx` — **Detalle de tienda** (ruta stack, sin tab bar). Header gradiente con back + nombre tienda + subtítulo "Detalle de la tienda" + menú "…" (placeholder). 6 KPIs de esa tienda + "Listado de asesores" (mismas filas `AsesorRow`). Recarga el roster y localiza la tienda por `id` con `buscarTienda()`.
+- `app/proximamente.tsx` — Placeholder genérico parametrizado por `titulo` (reusa `components/Placeholder`). Destino temporal de las acciones por asesor y del menú "…".
+
+Rutas registradas en `app/_layout.tsx` (`tienda/[id]`, `proximamente`) con animación `slide_from_right`.
+
+### Componentes reutilizables nuevos (`src/components/gestion/`)
+- `KpiStrip.tsx` — `KpiStrip`, `Chip`, `ChipsEstado` (tira de 6 KPIs + chips DM/VAC/LIC). Compartido por la lista y el detalle de tienda.
+- `AsesorRow.tsx` — fila de asesor: avatar de iniciales, nombre, **badge "Senior"** (morado), línea "Vigencia: dd/mm/aaaa – dd/mm/aaaa" cuando existe, y **3 botones-ícono**: (a) estado/marcación (círculo, ámbar si activo), (b) detalle (flecha →), (c) ficha/rol (documento). Usada en drill-down y detalle de tienda.
+- `BuscadorModal.tsx` — modal de búsqueda combinada: tiendas (ícono tienda, "Tienda · {encargado}") + empleados (avatar iniciales, puesto · tienda), filtrado en vivo. Tocar tienda → detalle de tienda; tocar empleado → placeholder.
+
+### Datos: real vs mock (`src/lib/gestion-equipos.ts`)
+- **Real** (desde `GET /v1/maes/empleados/roster`): jerarquía zona → tienda → asesores. Por asesor se leen `nombreCompleto`, `puesto`, `esSenior` (o puesto que contenga "SENIOR"), `estado` (ACTIVO/DM/VAC/LIC) y `vigenciaDesde/Hasta` (acepta ISO o dd/mm/aaaa). Activos, cobertura% y DM/VAC/LIC se **agregan** desde los asesores reales (`kpisDesdeAsesores` → `kpisDesdeTiendas` → `kpisDesdeZonas`).
+- **Mock con seam** (`// TODO: backend resumen`):
+  - **Encargado de tienda**: el roster no trae un campo dedicado; se toma el primer senior o el primer asesor de la tienda. Si el backend lo expone, usarlo.
+  - **Vigencia por asesor**: si el roster no la trae, queda sin mostrar (real) o se mockea en el fallback completo.
+  - **Fallback completo**: si el endpoint no responde (404/5xx/shape insuficiente) se genera una jerarquía de ejemplo determinista (PRNG por hash de zona/tienda) y se muestra el banner "Datos de ejemplo". Errores de red/401 se propagan a la UI (no se enmascaran).
+- `aResumenZonas()` y `buscarTienda()` exportados como helpers (compat agregado por zona y lookup de tienda).
+
+### Acciones por asesor — PENDIENTES de definir con la usuaria
+Los **3 botones-ícono** (estado/marcación, detalle, ficha/rol) y el menú "…" de tienda abren hoy el placeholder `app/proximamente.tsx` con el texto de la acción. Marcado en código con `// TODO: definir acciones por asesor con la usuaria` en `gestion-equipos.tsx` y `tienda/[id].tsx`. Falta acordar: destino del detalle del asesor, qué muestra "ficha/rol" y el comportamiento del botón de estado/marcación.
+
+### Verificación
+- `npx tsc --noEmit` — pasa sin errores.
+- `npx expo export --platform android` — bundle OK (`dist/`, ~3.1MB hbc).
+- Auth/perfiles y demás pantallas intactos (solo se añadieron rutas nuevas; no se tocó el guard de sesión).
