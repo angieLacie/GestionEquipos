@@ -7,7 +7,7 @@ import { basePath } from '@/helpers'
 
 const INIT_STATE: LayoutState = {
   theme: 'light',
-  headerFixed: false,
+  headerFixed: true,
   navFull: false,
   navFixed: false,
   navCollapsed: false,

@@ -17,6 +17,8 @@ export type KpiCardProps = {
   badge?: { text: string; variant?: Variant }
   /** Texto auxiliar a la derecha del badge. */
   sub?: ReactNode
+  /** Densidad de la tarjeta. 'sm' (default) = compacta con ícono pastel; 'md' = grande. */
+  size?: 'sm' | 'md'
   className?: string
 }
 
@@ -24,12 +26,12 @@ export type KpiCardProps = {
  * Tarjeta KPI estilo SmartAdmin: label + número grande + badge/sub.
  * Reutilizable en todas las pantallas Nova.
  */
-const KpiCard = ({ label, value, accent, icon, badge, sub, className }: KpiCardProps) => (
+const KpiCard = ({ label, value, accent, icon, badge, sub, size = 'sm', className }: KpiCardProps) => (
   <Card
-    className={clsx('kpi-card mb-0 h-100', className)}
+    className={clsx('kpi-card mb-0 h-100', size === 'sm' && 'kpi-card--sm', className)}
     style={accent ? ({ '--kpi-accent': accent } as CSSProperties) : undefined}
   >
-    <Card.Body className="py-3 px-4 position-relative">
+    <Card.Body className={clsx('position-relative', size === 'sm' ? 'py-2 px-3' : 'py-3 px-4')}>
       {icon && (
         <span className="kpi-card-iconwrap">
           <svg className="sa-icon" aria-hidden="true">
@@ -39,7 +41,7 @@ const KpiCard = ({ label, value, accent, icon, badge, sub, className }: KpiCardP
       )}
       <div className="text-muted text-uppercase fw-semibold fs-xs ls-1 mb-1 pe-5">{label}</div>
       <div className="d-flex align-items-baseline gap-2">
-        <span className="fs-1 fw-bold lh-1" style={accent ? { color: accent } : undefined}>{value}</span>
+        <span className={clsx('fw-bold lh-1', size === 'sm' ? 'fs-4' : 'fs-1')} style={accent ? { color: accent } : undefined}>{value}</span>
       </div>
       {(badge || sub) && (
         <div className="d-flex align-items-center gap-2 mt-2">

@@ -72,32 +72,38 @@
       cursor: pointer;
       color: #c3cbe0;
       transition:
-        background-color .22s ease,
-        color .22s ease,
-        padding-left .22s ease,
-        box-shadow .25s ease,
-        transform .18s ease;
+        background-color .15s ease,
+        color .15s ease,
+        transform .15s ease;
     }
 
-    // ── Hover: desliza + ilumina + icono se mueve ──
+    // ── Hover: ilumina sin desplazar (no mueve a la derecha) ──
     .nav-menu li > a:hover {
       background-color: rgba(var(--nova-nav-accent-rgb), 0.12);
       color: #fff;
-      padding-left: 20px;
     }
-    .nav-menu li > a .sa-icon {
-      transition: transform .22s ease, color .22s ease;
+    // Ícono visible sobre el azul (el tema oscuro lo dejaba a 0.4 → casi invisible,
+    // sobre todo con el menú contraído). Subimos contraste de stroke/fill.
+    .primary-nav .nav-menu li > a .sa-icon {
+      transition: transform .22s ease, stroke .22s ease, fill .22s ease;
+      stroke: rgba(255, 255, 255, .82);
+      fill: rgba(255, 255, 255, .14);
     }
-    .nav-menu li > a:hover .sa-icon {
-      transform: translateX(2px) scale(1.08);
-      color: var(--nova-nav-accent);
+    .primary-nav .nav-menu li > a:hover .sa-icon,
+    .primary-nav .nav-menu li.active > a .sa-icon {
+      stroke: var(--nova-nav-accent);
+      fill: rgba(var(--nova-nav-accent-rgb), .2);
     }
+    .primary-nav .nav-menu li > a:hover .sa-icon { transform: scale(1.08); }
 
     // ── Activo (base, vale también contraído): solo tinte + bold + texto blanco ──
+    //    Tinte con background-color (barato e instantáneo). Antes usaba un
+    //    box-shadow inset de 999px animado → lento al entrar/salir y se percibía
+    //    que "no se quedaba". ──
     .nav-menu li.active > a {
       border-left: 0;
       font-weight: 600;
-      box-shadow: inset 0 0 0 999px rgba(var(--nova-nav-accent-rgb), 0.14);
+      background-color: rgba(var(--nova-nav-accent-rgb), 0.18);
     }
     .nav-menu li.active > a,
     .nav-menu li.active > a .nav-link-text {
@@ -117,18 +123,87 @@
     }
   }
 
-  // ── Contraído (NO hover-expandido): centrar el ícono solo cuando la barra está
-  //    angosta; en hover el sidebar se expande y debe verse alineado a la izq.
-  //    El template deja el label con opacity:0 (ocupa espacio) → lo sacamos del
-  //    flujo para que el ícono y el sombreado del activo queden centrados. ──
-  &.set-nav-minified .app-sidebar:not(:hover) .nav-menu li > a {
-    justify-content: center;
-    padding-left: 0;
-    padding-right: 0;
+  // ── Contraído (NO hover-expandido): centrar el ícono dentro de la barra angosta.
+  //    Clave: el <a> nativo mide ~210px (ancho del label), así que un simple
+  //    justify-content:center centra el ícono FUERA de los ~62px visibles. Hay que
+  //    fijar el ancho de ul/li/a a la barra para que el centrado caiga dentro. ──
+    // ── Contraído: el <a> mide el ancho expandido (210px) y el menú arranca con un
+    //    offset de ~21px (simplebar) dentro de la barra de 62px → el sombreado del
+    //    activo y el ícono quedan descentrados a la derecha. Lo convertimos en un
+    //    "tile" de ancho fijo, tirado a la izquierda (margin negativo que compensa el
+    //    offset) para que ÍCONO y SOMBREADO queden centrados en los 62px. ──
+  &.set-nav-minified .app-sidebar:not(:hover) {
+    .nav-menu li > a {
+      width: 44px;
+      margin: 2px 0 2px -13px; // (62-44)/2 - 21(offset simplebar) ≈ -13
+      padding-left: 0;
+      padding-right: 0;
+      justify-content: center;
+      border-radius: 12px;
+      overflow: hidden;
 
-    .nav-link-text {
-      display: none;
+      .nav-link-text {
+        display: none;
+      }
+
+      // Ítems con submenú llevan un bloque .ms-auto (badge + chevron) que, al
+      // centrar, empujaría el ícono fuera del recorte → ocultarlo en colapsado.
+      > .ms-auto {
+        display: none;
+      }
     }
+  }
+}
+
+// ───────────────────────────────────────────────────────────────
+//  Auth: campos outlined con label flotante (login + recuperación)
+// ───────────────────────────────────────────────────────────────
+.nova-field {
+  .form-control {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    min-height: 60px;
+    background-color: #fff;
+    color: #0f172a;
+    transition: border-color .15s ease, box-shadow .15s ease;
+
+    &:focus {
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, .15);
+    }
+  }
+
+  label {
+    color: #64748b;
+    font-weight: 500;
+  }
+
+  // deja sitio al toggle (candado/ojo) a la derecha
+  &.nova-field--icon .form-control {
+    padding-right: 3.25rem;
+  }
+}
+
+// Botón primario de auth: gradiente índigo→azul + profundidad + hover lift.
+.nova-auth-btn {
+  background: linear-gradient(135deg, #4f46e5 0%, #2563eb 100%);
+  border: 0;
+  border-radius: 12px;
+  padding: .9rem 1rem;
+  box-shadow: 0 10px 24px rgba(79, 70, 229, .32);
+  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 30px rgba(79, 70, 229, .42);
+    filter: brightness(1.04);
+    color: #fff;
+  }
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+  &:disabled {
+    opacity: .65;
   }
 }
 
@@ -210,5 +285,28 @@
   .sa-icon {
     width: 18px;
     height: 18px;
+  }
+}
+
+// KPI compacta (size="sm"): burbuja sólida con color vivo + ícono blanco.
+.kpi-card--sm {
+  border-left: 3px solid var(--kpi-accent, #64748b);
+
+  .kpi-card-iconwrap {
+    top: 10px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    // Tile pastel suave + ícono teñido con el acento (estilo de referencia).
+    background: color-mix(in srgb, var(--kpi-accent, #64748b) 15%, transparent);
+
+    // .sa-icon usa vars (--sa-icon-color/-fill), NO currentColor.
+    .sa-icon {
+      width: 16px;
+      height: 16px;
+      --sa-icon-color: var(--kpi-accent, #64748b);
+      --sa-icon-fill: color-mix(in srgb, var(--kpi-accent, #64748b) 25%, transparent);
+    }
   }
 }
