@@ -1,5 +1,8 @@
 import { API_URL, REQUEST_TIMEOUT } from './config';
 import type { LoginResponse, RosterEmpleado } from './types';
+import type { AprobacionesData } from './aprobaciones';
+import type { VacacionesData } from './vacaciones';
+import type { AmpliacionesData } from './ampliaciones';
 
 /** Error de API con clasificación para que la UI muestre el mensaje correcto. */
 export class ApiError extends Error {
@@ -101,5 +104,32 @@ export const api = {
    */
   rosterEmpleados(token: string, signal?: AbortSignal): Promise<RosterEmpleado[]> {
     return request<RosterEmpleado[]>('/v1/maes/empleados/roster', { token, signal });
+  },
+
+  /**
+   * GET /v1/apro/bandejas
+   * Endpoint tentativo del módulo Aprobaciones (motor de flujos F0, aún no
+   * construido). Si el backend no lo expone, `cargarAprobaciones` cae al mock.
+   */
+  aprobaciones(token: string, signal?: AbortSignal): Promise<AprobacionesData> {
+    return request<AprobacionesData>('/v1/apro/bandejas', { token, signal });
+  },
+
+  /**
+   * GET /v1/vaca/tiendas
+   * Endpoint tentativo del módulo Vacaciones (aún no construido). Si el backend
+   * no lo expone, `cargarVacaciones` cae al mock.
+   */
+  vacaciones(token: string, signal?: AbortSignal): Promise<VacacionesData> {
+    return request<VacacionesData>('/v1/vaca/tiendas', { token, signal });
+  },
+
+  /**
+   * GET /v1/ampl/historial
+   * Endpoint tentativo del módulo Ampliaciones (aún no construido). Si el
+   * backend no lo expone, `cargarAmpliaciones` cae al mock.
+   */
+  ampliaciones(token: string, signal?: AbortSignal): Promise<AmpliacionesData> {
+    return request<AmpliacionesData>('/v1/ampl/historial', { token, signal });
   },
 };

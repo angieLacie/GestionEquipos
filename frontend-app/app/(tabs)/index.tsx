@@ -30,9 +30,9 @@ interface Tile {
 /** Tiles del perfil GESTIÓN (gerentes/supervisores). */
 const TILES_GESTION: Tile[] = [
   { key: 'equipos', label: 'Gestión Equipos', icon: 'people', color: colors.tile.equipos, ruta: '/gestion-equipos' },
-  { key: 'vacaciones', label: 'Vacaciones', icon: 'sunny', color: colors.tile.vacaciones },
-  { key: 'ampliaciones', label: 'Ampliaciones', icon: 'time', color: colors.tile.ampliaciones },
-  { key: 'aprobaciones', label: 'Aprobaciones', icon: 'checkmark-done', color: colors.tile.aprobaciones },
+  { key: 'vacaciones', label: 'Vacaciones', icon: 'sunny', color: colors.tile.vacaciones, ruta: '/vacaciones' },
+  { key: 'ampliaciones', label: 'Ampliaciones', icon: 'time', color: colors.tile.ampliaciones, ruta: '/ampliaciones' },
+  { key: 'aprobaciones', label: 'Aprobaciones', icon: 'checkmark-done', color: colors.tile.aprobaciones, ruta: '/aprobaciones' },
   { key: 'licencias', label: 'Licencias', icon: 'document-text', color: colors.tile.licencias },
 ];
 
